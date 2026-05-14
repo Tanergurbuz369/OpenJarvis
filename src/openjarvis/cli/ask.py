@@ -32,6 +32,78 @@ from openjarvis.telemetry.store import TelemetryStore
 logger = logging.getLogger(__name__)
 
 
+def _run_research(
+    *,
+    query_text: str,
+    engine,
+    model_name: str | None,
+    knowledge_db: str | None,
+    output_json: bool,
+    console: Console,
+) -> None:
+    """Run the hybrid-search research loop and print the result to the console.
+
+    Lazy imports keep the cost of this branch off the cold-path of plain
+    ``jarvis ask`` calls.
+    """
+    from openjarvis.agents.research_loop import DEFAULT_PLANNER_MODEL, ResearchAgent
+    from openjarvis.connectors.embeddings import OllamaEmbedder
+    from openjarvis.connectors.hybrid_search import HybridSearch
+    from openjarvis.connectors.store import KnowledgeStore
+
+    store_kwargs: dict = {}
+    if knowledge_db:
+        store_kwargs["db_path"] = knowledge_db
+    store = KnowledgeStore(**store_kwargs)
+
+    embedder = OllamaEmbedder()
+    if not embedder.is_available():
+        console.print(
+            "[yellow]Ollama embedder unavailable — falling back to BM25-only "
+            "retrieval. Run `ollama pull nomic-embed-text` for hybrid scoring.[/yellow]"
+        )
+        embedder = None
+
+    planner_model = model_name or DEFAULT_PLANNER_MODEL
+    agent = ResearchAgent(
+        engine=engine,
+        search=HybridSearch(store, embedder),
+        model=planner_model,
+    )
+
+    result = agent.run(query_text)
+
+    if output_json:
+        click.echo(
+            json_mod.dumps(
+                {
+                    "answer": result.answer,
+                    "iterations": result.iterations,
+                    "usage": result.usage,
+                    "tool_calls": [
+                        {
+                            "arguments": inv.arguments,
+                            "num_results": inv.num_results,
+                            "top_titles": inv.top_titles,
+                        }
+                        for inv in result.tool_calls
+                    ],
+                },
+                indent=2,
+            )
+        )
+        return
+
+    # Trace summary to stderr so the answer on stdout is pipeable.
+    for i, inv in enumerate(result.tool_calls, start=1):
+        console.print(
+            f"[dim]search #{i}: query={inv.arguments.get('query')!r} "
+            f"person={inv.arguments.get('person')} "
+            f"→ {inv.num_results} hits[/dim]"
+        )
+    click.echo(result.answer)
+
+
 def _get_memory_backend(config):
     """Try to instantiate the memory backend.
 
@@ -368,6 +440,21 @@ def _print_profile(
     is_flag=True,
     help="Print inference telemetry profile (latency, tokens, energy, IPW).",
 )
+@click.option(
+    "--research",
+    "research_mode",
+    is_flag=True,
+    help=(
+        "Route the query through the hybrid-search research agent over the "
+        "personal knowledge store (BM25 + dense embeddings, max 5 tool calls)."
+    ),
+)
+@click.option(
+    "--knowledge-db",
+    "knowledge_db",
+    default=None,
+    help="Override the KnowledgeStore path used by --research (default: ~/.openjarvis/knowledge.db).",
+)
 def ask(
     query: tuple[str, ...],
     model_name: str | None,
@@ -380,6 +467,8 @@ def ask(
     agent_name: str | None,
     tool_names: str | None,
     enable_profile: bool,
+    research_mode: bool,
+    knowledge_db: str | None,
 ) -> None:
     """Ask Jarvis a question."""
     console = Console(stderr=True)
@@ -444,6 +533,20 @@ def ask(
         sys.exit(1)
 
     engine_name, engine = resolved
+
+    # ------------------------------------------------------------------
+    # Research mode — hybrid search + agentic loop over the knowledge store
+    # ------------------------------------------------------------------
+    if research_mode:
+        _run_research(
+            query_text=query_text,
+            engine=engine,
+            model_name=model_name,
+            knowledge_db=knowledge_db,
+            output_json=output_json,
+            console=console,
+        )
+        return
 
     # Apply security guardrails
     from openjarvis.security import setup_security
