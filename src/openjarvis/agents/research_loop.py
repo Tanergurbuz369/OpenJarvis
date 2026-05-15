@@ -128,7 +128,8 @@ Strategy:
   3. The `time_range` argument is a JSON object: `{{"start": "<ISO 8601>", "end": "<ISO 8601>"}}`. Either bound may be omitted, but pass at least one whenever the user gave you a temporal cue.
   4. If the first structured search returns nothing useful, broaden with a semantic query and drop filters one at a time.
   5. You have a clarify tool. Only use it AFTER at least one search attempt. Use it when: you found multiple ambiguous matches (e.g. 3 different people named John), search returned zero results and the query might need reframing, or the scope is too broad to synthesize meaningfully. Never use clarify before searching — always try first.
-  6. Tool calls — search AND clarify — share a budget of 5 total. Spend wisely.
+  6. After receiving a clarify response, use the information to construct a precise search with the correct person, time_range, and query parameters. Never send an empty query or a query with no parameters — extract every concrete signal from the user's reply (names, dates, topics) and put it on the call.
+  7. Tool calls — search AND clarify — share a budget of 5 total. Spend wisely.
 
 Synthesis rules:
   - Cite specific results by their numeric id (e.g. "[hit-3]").
@@ -502,9 +503,41 @@ class ResearchAgent:
                     )
                 )
 
-        # Loop fell through (shouldn't happen unless max_iterations is 0).
+        # Loop fell through without the model producing a text response.
+        # Force one final tool-less synthesis call so the caller always gets
+        # an answer — bailing out with a sentinel string is never useful to
+        # the user, who already paid for the searches.
+        messages.append(
+            Message(
+                role=Role.USER,
+                content=(
+                    "You've used all your search attempts. Synthesize your "
+                    "findings now from whatever you've found so far. Do not "
+                    "request more tool calls — write the final answer as "
+                    "plain text, citing specific hits by id where you can. "
+                    "If the searches returned nothing usable, say so plainly."
+                ),
+            )
+        )
+        iterations += 1
+        final = self._engine.generate(
+            messages,
+            model=self._model,
+            temperature=self._temperature,
+            max_tokens=self._max_tokens,
+            num_ctx=self._num_ctx,
+            tools=None,
+        )
+        for k in total_usage:
+            total_usage[k] += int(final.get("usage", {}).get(k, 0))
+        answer = (final.get("content", "") or "").strip()
+        if not answer:
+            answer = (
+                "(no synthesis available — the search budget was exhausted "
+                "and the model returned no text response)"
+            )
         return ResearchResult(
-            answer="(loop exhausted without final synthesis)",
+            answer=answer,
             iterations=iterations,
             tool_calls=invocations,
             usage=total_usage,
