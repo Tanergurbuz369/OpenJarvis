@@ -255,6 +255,16 @@ class ResearchAgent:
         Hard ceiling on tool calls before the loop is forced into synthesis.
     temperature, max_tokens, num_ctx:
         Generation parameters passed through to ``engine.generate``.
+    on_event:
+        Optional callback fired at loop milestones so callers (e.g. the SSE
+        research router) can stream progress without rewriting the loop.
+        Receives a dict in one of these shapes:
+          - ``{"type": "search_call", "arguments": {...}}`` — about to call search
+          - ``{"type": "search_result", "num_hits": N, "top_titles": [...]}`` — search returned
+          - ``{"type": "clarify_call", "question": "..."}`` — about to ask for clarification
+          - ``{"type": "clarify_response", "response": "..."}`` — clarification received
+          - ``{"type": "final_answer", "text": "..."}`` — synthesis ready
+        The callback runs on the same thread as ``run`` and must be non-blocking.
     """
 
     def __init__(
@@ -268,6 +278,7 @@ class ResearchAgent:
         max_tokens: int = 1500,
         num_ctx: int = 16384,
         clarify_handler: Optional[Callable[[str], str]] = None,
+        on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
     ) -> None:
         self._engine = engine
         self._search = search
@@ -277,6 +288,16 @@ class ResearchAgent:
         self._max_tokens = int(max_tokens)
         self._num_ctx = int(num_ctx)
         self._clarify_handler = clarify_handler or _default_clarify_handler
+        self._on_event = on_event
+
+    def _emit(self, event: Dict[str, Any]) -> None:
+        """Fire ``self._on_event`` if set; swallow callback errors."""
+        if self._on_event is None:
+            return
+        try:
+            self._on_event(event)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("on_event callback raised %s — ignoring", exc)
 
     # ------------------------------------------------------------------
     # Argument parsing
@@ -389,8 +410,10 @@ class ResearchAgent:
 
             if not tool_calls_raw:
                 if content.strip():
+                    answer = content.strip()
+                    self._emit({"type": "final_answer", "text": answer})
                     return ResearchResult(
-                        answer=content.strip(),
+                        answer=answer,
                         iterations=iterations,
                         tool_calls=invocations,
                         usage=total_usage,
@@ -408,8 +431,10 @@ class ResearchAgent:
                         )
                     )
                     continue
+                fallback = "(model returned no content and no tool calls)"
+                self._emit({"type": "final_answer", "text": fallback})
                 return ResearchResult(
-                    answer="(model returned no content and no tool calls)",
+                    answer=fallback,
                     iterations=iterations,
                     tool_calls=invocations,
                     usage=total_usage,
@@ -441,8 +466,16 @@ class ResearchAgent:
                     # Guard against the planner pre-empting clarify before any
                     # search has run — silently accept; the rule lives in the
                     # system prompt as guidance, not enforcement.
+                    self._emit({"type": "search_call", "arguments": args})
                     inv = self._execute_search(args)
                     invocations.append(inv)
+                    self._emit(
+                        {
+                            "type": "search_result",
+                            "num_hits": inv.num_results,
+                            "top_titles": inv.top_titles,
+                        }
+                    )
                     tool_output = json.dumps(
                         shape_results_for_model(inv.raw_hits), ensure_ascii=False
                     )
@@ -463,8 +496,14 @@ class ResearchAgent:
                             }
                         )
                     else:
+                        self._emit(
+                            {"type": "clarify_call", "question": str(args.get("question", ""))}
+                        )
                         inv = self._execute_clarify(args)
                         invocations.append(inv)
+                        self._emit(
+                            {"type": "clarify_response", "response": inv.response}
+                        )
                         tool_output = json.dumps(
                             {
                                 "question": inv.arguments.get("question", ""),
@@ -536,6 +575,7 @@ class ResearchAgent:
                 "(no synthesis available — the search budget was exhausted "
                 "and the model returned no text response)"
             )
+        self._emit({"type": "final_answer", "text": answer})
         return ResearchResult(
             answer=answer,
             iterations=iterations,
