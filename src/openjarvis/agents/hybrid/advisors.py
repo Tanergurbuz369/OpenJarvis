@@ -28,7 +28,12 @@ import urllib.request
 from typing import Any, Dict, Optional, Tuple
 
 from openjarvis.agents._stubs import AgentContext
-from openjarvis.agents.hybrid._base import LocalCloudAgent
+from openjarvis.agents.hybrid._base import (
+    WEB_SEARCH_COST_PER_CALL,
+    LocalCloudAgent,
+    build_web_search_tool,
+    web_search_cfg,
+)
 from openjarvis.agents.hybrid.mini_swe_agent import (
     run_swe_agent_loop,
 )
@@ -112,13 +117,32 @@ class AdvisorsAgent(LocalCloudAgent):
         advisor_max_tokens = int(cfg.get("advisor_max_tokens", 1024))
         advisor_temperature = float(cfg.get("advisor_temperature", 0.2))
 
-        # 1. Initial executor pass
-        initial_resp, e1_in, e1_out = self._call_cloud(
-            user=f"Question:\n{question}",
-            system=EXECUTOR_INITIAL_SYS,
-            max_tokens=executor_max_tokens,
-            temperature=0.0,
-        )
+        ws_enabled, ws_max_uses = web_search_cfg(cfg)
+        use_ws = ws_enabled and self._cloud_endpoint == "anthropic"
+        gaia_max_turns = int(cfg.get("gaia_max_turns", 8))
+        ws_tool = [build_web_search_tool(ws_max_uses)] if use_ws else None
+        n_searches_total = 0
+
+        # 1. Initial executor pass — advisor (Qwen) doesn't get tools;
+        # only the cloud executor passes do.
+        if use_ws:
+            initial_resp, e1_in, e1_out, n_s1, _ = self._call_anthropic_agent(
+                self._cloud_model,
+                user=f"Question:\n{question}",
+                system=EXECUTOR_INITIAL_SYS,
+                max_tokens=executor_max_tokens,
+                temperature=0.0,
+                tools=ws_tool,
+                max_turns=gaia_max_turns,
+            )
+            n_searches_total += n_s1
+        else:
+            initial_resp, e1_in, e1_out = self._call_cloud(
+                user=f"Question:\n{question}",
+                system=EXECUTOR_INITIAL_SYS,
+                max_tokens=executor_max_tokens,
+                temperature=0.0,
+            )
 
         # 2. Advisor pass (local)
         if not self._local_endpoint or not self._local_model:
@@ -147,25 +171,41 @@ class AdvisorsAgent(LocalCloudAgent):
             f"Produce your best final answer now, respecting the question's "
             f"answer-format rules."
         )
-        final_answer, e2_in, e2_out = self._call_cloud(
-            user=final_user,
-            system=EXECUTOR_FINAL_SYS,
-            max_tokens=executor_max_tokens,
-            temperature=0.0,
-        )
+        if use_ws:
+            final_answer, e2_in, e2_out, n_s2, _ = self._call_anthropic_agent(
+                self._cloud_model,
+                user=final_user,
+                system=EXECUTOR_FINAL_SYS,
+                max_tokens=executor_max_tokens,
+                temperature=0.0,
+                tools=ws_tool,
+                max_turns=gaia_max_turns,
+            )
+            n_searches_total += n_s2
+        else:
+            final_answer, e2_in, e2_out = self._call_cloud(
+                user=final_user,
+                system=EXECUTOR_FINAL_SYS,
+                max_tokens=executor_max_tokens,
+                temperature=0.0,
+            )
 
         tokens_local = adv_in + adv_out
         tokens_cloud = e1_in + e1_out + e2_in + e2_out
         cost = self.cost_usd(self._cloud_model, e1_in + e2_in, e1_out + e2_out)
+        cost += n_searches_total * WEB_SEARCH_COST_PER_CALL
 
         meta: Dict[str, Any] = {
             "tokens_local": tokens_local,
             "tokens_cloud": tokens_cloud,
             "cost_usd": cost,
             "turns": 3,
+            "web_search_uses": n_searches_total,
             "traces": {
                 "initial_response": initial_resp,
                 "advisor_feedback": advisor_text,
+                "web_search_enabled": use_ws,
+                "n_web_searches": n_searches_total,
                 "note": "inference-only advisor (untrained); lower bound on the technique.",
             },
         }

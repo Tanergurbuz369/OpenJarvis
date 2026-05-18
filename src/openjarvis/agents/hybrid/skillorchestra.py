@@ -33,7 +33,12 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 
 from openjarvis.agents._stubs import AgentContext
-from openjarvis.agents.hybrid._base import LocalCloudAgent
+from openjarvis.agents.hybrid._base import (
+    WEB_SEARCH_COST_PER_CALL,
+    LocalCloudAgent,
+    build_web_search_tool,
+    web_search_cfg,
+)
 from openjarvis.agents.hybrid._prices import supports_temperature
 from openjarvis.agents.hybrid.mini_swe_agent import run_swe_agent_loop
 from openjarvis.core.registry import AgentRegistry
@@ -454,6 +459,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
         tokens_local = 0
         tokens_cloud = r_in + r_out
         run_cost = self.cost_usd(router_model, r_in, r_out)
+        self._web_search_uses_last = 0
 
         # 2. Execute via chosen agent
         task_meta = (context.metadata.get("task") if context is not None else {}) or {}
@@ -515,13 +521,31 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 tokens_cloud += out["tokens_in"] + out["tokens_out"]
                 run_cost += out["cost_usd"]
             else:
-                ans, w_in, w_out = self._call_cloud(
-                    user=question,
-                    max_tokens=int(cfg.get("cloud_max_tokens", 4096)),
-                    temperature=0.0,
-                )
+                # GAIA cloud worker: opt-in native web_search via the new
+                # method_cfg.web_search schema. Only fires when the chosen
+                # worker is on Anthropic (server-side tool).
+                ws_enabled, ws_max_uses = web_search_cfg(cfg)
+                gaia_max_turns = int(cfg.get("gaia_max_turns", 8))
+                n_searches = 0
+                if ws_enabled and self._cloud_endpoint == "anthropic":
+                    ans, w_in, w_out, n_searches, _ = self._call_anthropic_agent(
+                        self._cloud_model,
+                        user=question,
+                        max_tokens=int(cfg.get("cloud_max_tokens", 4096)),
+                        temperature=0.0,
+                        tools=[build_web_search_tool(ws_max_uses)],
+                        max_turns=gaia_max_turns,
+                    )
+                else:
+                    ans, w_in, w_out = self._call_cloud(
+                        user=question,
+                        max_tokens=int(cfg.get("cloud_max_tokens", 4096)),
+                        temperature=0.0,
+                    )
                 tokens_cloud += w_in + w_out
                 run_cost += self.cost_usd(self._cloud_model, w_in, w_out)
+                run_cost += n_searches * WEB_SEARCH_COST_PER_CALL
+                self._web_search_uses_last = n_searches
             worker_model = self._cloud_model
 
         meta = {
@@ -529,12 +553,14 @@ class SkillOrchestraAgent(LocalCloudAgent):
             "tokens_cloud": tokens_cloud,
             "cost_usd": run_cost,
             "turns": 2,  # router + worker
+            "web_search_uses": self._web_search_uses_last,
             "traces": {
                 "chosen_agent": chosen,
                 "worker_model": worker_model,
                 "skill_weights": skill_weights,
                 "agent_scores": scored,
                 "reasoning": decision.get("reasoning", ""),
+                "n_web_searches": self._web_search_uses_last,
             },
         }
         return ans, meta

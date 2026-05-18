@@ -64,6 +64,35 @@ ANTHROPIC_WEB_SEARCH_TOOL = {
 }
 
 
+def build_web_search_tool(max_uses: int = 8) -> Dict[str, Any]:
+    """Build an Anthropic server-side web_search tool block with a custom cap.
+
+    Web_search is server-side: Anthropic runs the searches internally before
+    returning, so ``max_uses`` is the only knob the caller has to bound cost
+    per task. Defaults to 8 (matches ``ANTHROPIC_WEB_SEARCH_TOOL``).
+    """
+    return {
+        "type": "web_search_20250305",
+        "name": "web_search",
+        "max_uses": int(max_uses),
+    }
+
+
+def web_search_cfg(method_cfg: Optional[Dict[str, Any]]) -> Tuple[bool, int]:
+    """Parse ``method_cfg.web_search = { enabled, max_uses }``.
+
+    Defaults: enabled=False, max_uses=8. ``enabled`` defaults to False so
+    existing cells stay one-shot (backwards compat). Cells opting in flip
+    ``enabled=true`` in the registry. Returns ``(enabled, max_uses)``.
+    """
+    if not method_cfg:
+        return False, 8
+    ws = method_cfg.get("web_search")
+    if not isinstance(ws, dict):
+        return False, 8
+    return bool(ws.get("enabled", False)), int(ws.get("max_uses", 8))
+
+
 # ---------- Thread-local trace buffer ----------
 #
 # Every call through ``_call_anthropic`` / ``_call_openai`` / ``_call_vllm``
@@ -353,6 +382,75 @@ class LocalCloudAgent(BaseAgent):
         return text, p, c
 
     @staticmethod
+    def _call_gemini(
+        model: str,
+        *,
+        user: str,
+        system: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+        timeout: float = 600.0,
+        trace_role: str = "cloud",
+    ) -> Tuple[str, int, int]:
+        """Single Gemini Developer-API call. Returns (text, p_tok, c_tok).
+
+        Tool-call parity with Anthropic is intentionally NOT implemented —
+        skillorchestra / baseline-cloud only need text generation, and the
+        google-genai tool-config plumbing diverges enough from the
+        Anthropic/OpenAI shape that wiring it would double the surface
+        area of this file. If a future paradigm needs Gemini tool use,
+        extend this helper rather than hand-rolling it in the agent.
+
+        Captures the call into the active per-task trace via the
+        ``"gemini"`` kind so the dashboard's trace renderer picks it up.
+        """
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(http_options=types.HttpOptions(timeout=int(timeout * 1000)))
+        cfg = types.GenerateContentConfig(
+            temperature=temperature,
+            max_output_tokens=max_tokens,
+        )
+        if system:
+            cfg.system_instruction = system
+        t0 = time.time()
+        resp = client.models.generate_content(
+            model=model,
+            contents=user,
+            config=cfg,
+        )
+        latency = time.time() - t0
+        # `resp.text` is the convenience accessor that concatenates every
+        # text part in the first candidate. Empty if the model emitted
+        # only non-text parts (which we don't request).
+        text = (resp.text or "") if hasattr(resp, "text") else ""
+        um = getattr(resp, "usage_metadata", None)
+        p = int(getattr(um, "prompt_token_count", 0) or 0) if um else 0
+        c = int(getattr(um, "candidates_token_count", 0) or 0) if um else 0
+        finish_reason = None
+        try:
+            finish_reason = str(resp.candidates[0].finish_reason)
+        except Exception:
+            pass
+        _record_event({
+            "kind": "gemini",
+            "role": trace_role,
+            "model": model,
+            "system": system,
+            "user": user,
+            "response": text,
+            "tokens_in": p,
+            "tokens_out": c,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
+            "finish_reason": finish_reason,
+            "latency_s": latency,
+            "ts": time.time(),
+        })
+        return text, p, c
+
+    @staticmethod
     def _call_vllm(
         model: str,
         endpoint: str,
@@ -426,6 +524,122 @@ class LocalCloudAgent(BaseAgent):
         })
         return text, p, c
 
+    @staticmethod
+    def _call_anthropic_agent(
+        model: str,
+        *,
+        user: str,
+        system: Optional[str] = None,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+        tools: Optional[list] = None,
+        max_turns: int = 8,
+        timeout: float = 600.0,
+        max_retries: int = 5,
+        trace_role: str = "cloud",
+    ) -> Tuple[str, int, int, int, int]:
+        """Multi-turn Anthropic loop with optional tools.
+
+        Returns ``(final_text, prompt_tokens_sum, completion_tokens_sum,
+        n_web_searches_sum, turns)``. The loop appends the assistant
+        response (preserving server-tool blocks so Anthropic's continuation
+        is valid) and re-prompts until the model stops with ``end_turn``
+        or we hit ``max_turns``. Server-side tools (web_search) execute
+        inside a single message and don't require a tool_result echo —
+        the model just continues thinking with the search results
+        already in its context. Client-side tools aren't executed here;
+        if the model emits a client-side ``tool_use`` block we stop
+        (paradigms that want client tools should call ``_call_anthropic``
+        directly and handle their own dispatch).
+        """
+        import anthropic
+
+        client = anthropic.Anthropic(timeout=timeout, max_retries=max_retries)
+        # Build the conversation. We grow ``messages`` across turns so the
+        # model sees its own prior assistant content (text + server tool
+        # use + web_search_tool_result). For server tools Anthropic is
+        # happy as long as we feed the raw assistant content back; no
+        # synthetic user tool_result block is needed.
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": user}]
+        p_total = 0
+        c_total = 0
+        n_searches_total = 0
+        last_text = ""
+        turns = 0
+        for turn in range(max(1, max_turns)):
+            turns = turn + 1
+            kwargs: Dict[str, Any] = {
+                "model": model,
+                "max_tokens": max_tokens,
+                "messages": messages,
+            }
+            if system:
+                kwargs["system"] = system
+            if supports_temperature(model):
+                kwargs["temperature"] = temperature
+            if tools:
+                kwargs["tools"] = tools
+            t0 = time.time()
+            msg = client.messages.create(**kwargs)
+            latency = time.time() - t0
+            text = "".join(b.text for b in msg.content if hasattr(b, "text"))
+            srv = getattr(msg.usage, "server_tool_use", None)
+            n_searches = getattr(srv, "web_search_requests", 0) if srv else 0
+            content_blocks = [_serialize_block(b) for b in msg.content]
+            tool_use_blocks = [
+                b for b in content_blocks
+                if b.get("type") in ("tool_use", "server_tool_use")
+            ]
+            tool_result_blocks = [
+                b for b in content_blocks
+                if b.get("type") in ("web_search_tool_result", "tool_result")
+            ]
+            stop_reason = getattr(msg, "stop_reason", None)
+            _record_event({
+                "kind": "anthropic",
+                "role": trace_role,
+                "model": model,
+                "system": system if turn == 0 else None,
+                "user": user if turn == 0 else None,
+                "turn": turn,
+                "response": text,
+                "content_blocks": content_blocks,
+                "tool_calls": tool_use_blocks,
+                "tool_results": tool_result_blocks,
+                "tokens_in": msg.usage.input_tokens,
+                "tokens_out": msg.usage.output_tokens,
+                "n_web_searches": n_searches,
+                "tools_declared": tools,
+                "stop_reason": stop_reason,
+                "latency_s": latency,
+                "ts": time.time(),
+            })
+            p_total += msg.usage.input_tokens
+            c_total += msg.usage.output_tokens
+            n_searches_total += n_searches
+            if text:
+                last_text = text
+            # If the model wants a client-side tool we don't dispatch
+            # here — break and let the caller (or future loop variant)
+            # handle it. Only ``server_tool_use`` blocks (web_search)
+            # are auto-continued by Anthropic itself.
+            client_tool_use = any(
+                b.get("type") == "tool_use" for b in content_blocks
+            )
+            if client_tool_use:
+                break
+            if stop_reason == "end_turn" or stop_reason is None:
+                break
+            # Otherwise: ``stop_reason`` like "max_tokens" or "tool_use"
+            # (server side) — Anthropic returned mid-thought. Append the
+            # assistant turn and ask it to continue.
+            messages.append({"role": "assistant", "content": msg.content})
+            messages.append({
+                "role": "user",
+                "content": "Continue.",
+            })
+        return last_text, p_total, c_total, n_searches_total, turns
+
     def _call_cloud(
         self,
         *,
@@ -453,6 +667,23 @@ class LocalCloudAgent(BaseAgent):
             return text, p, c
         if self._cloud_endpoint == "openai":
             return self._call_openai(
+                self._cloud_model,
+                user=user,
+                system=system,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                **kwargs,
+            )
+        if self._cloud_endpoint == "gemini":
+            # Gemini helper doesn't accept tools / response_format kwargs.
+            # Drop them rather than letting them surface as a TypeError so
+            # paradigms that opportunistically pass these for OpenAI /
+            # Anthropic still work when routed to Gemini.
+            kwargs.pop("tools", None)
+            kwargs.pop("tool_choice", None)
+            kwargs.pop("response_format", None)
+            kwargs.pop("output_config", None)
+            return self._call_gemini(
                 self._cloud_model,
                 user=user,
                 system=system,
@@ -609,7 +840,9 @@ __all__ = [
     "LocalCloudAgent",
     "NO_TEMP_PREFIXES",
     "WEB_SEARCH_COST_PER_CALL",
+    "build_web_search_tool",
     "estimate_cost",
     "is_gpt5_family",
     "supports_temperature",
+    "web_search_cfg",
 ]

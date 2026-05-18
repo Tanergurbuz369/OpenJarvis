@@ -48,6 +48,8 @@ from openjarvis.agents.hybrid._base import (
     ANTHROPIC_WEB_SEARCH_TOOL,
     WEB_SEARCH_COST_PER_CALL,
     LocalCloudAgent,
+    build_web_search_tool,
+    web_search_cfg,
 )
 from openjarvis.agents.hybrid._prices import NO_TEMP_PREFIXES
 from openjarvis.agents.hybrid.mini_swe_agent import run_swe_agent_loop
@@ -200,6 +202,13 @@ def _patch_anthropic_globally() -> None:
 
         def make_patched(orig):  # type: ignore[no-untyped-def]
             def patched(self, **kwargs):  # type: ignore[no-untyped-def]
+                # External Minions's AnthropicClient.chat passes
+                # `cache_control={"type":"ephemeral"}` as a top-level kwarg
+                # (clients/anthropic.py:207). Newer Anthropic SDKs reject that
+                # — cache_control belongs on individual content blocks, not on
+                # Messages.create itself. Strip it; we're not relying on the
+                # ephemeral hint for correctness in these short minions turns.
+                kwargs.pop("cache_control", None)
                 model = kwargs.get("model", "")
                 if model.startswith(NO_TEMP_PREFIXES):
                     kwargs.pop("temperature", None)
@@ -251,7 +260,12 @@ def _apply_patches_once() -> None:
 
 # ---------- Pre-fetch helper (GAIA only) ----------
 
-def _prefetch_context(question: str, cloud_endpoint: str, cloud_model: str) -> Dict[str, Any]:
+def _prefetch_context(
+    question: str,
+    cloud_endpoint: str,
+    cloud_model: str,
+    max_uses: int = 8,
+) -> Dict[str, Any]:
     """Use Anthropic web_search to fetch real source material the worker can read.
 
     Minions's premise is "worker reads a doc, asks cloud for help" — but GAIA
@@ -278,7 +292,7 @@ def _prefetch_context(question: str, cloud_endpoint: str, cloud_model: str) -> D
             cloud_model,
             user=prompt,
             max_tokens=8192,
-            tools=[ANTHROPIC_WEB_SEARCH_TOOL],
+            tools=[build_web_search_tool(max_uses)],
             tool_choice={"type": "any"},
         )
         from openjarvis.agents.hybrid._prices import cost as _cost_usd
@@ -412,12 +426,29 @@ class MinionsAgent(LocalCloudAgent):
         # GAIA-shape only: prefetch a web_search digest so the worker has
         # something real to read. SWE-bench (problem_statement only) already
         # ships its own doc.
+        #
+        # Honors the new ``method_cfg.web_search`` schema:
+        #   - omitted          → prefetch ON (legacy default for minions GAIA)
+        #   - enabled = false  → prefetch OFF
+        #   - enabled = true   → prefetch ON (honors max_uses)
         prefetch: Dict[str, Any] = {
             "text": "", "tokens": 0, "cost_usd": 0.0, "n_searches": 0,
         }
-        if task_meta.get("question"):
+        ws_block = cfg.get("web_search") if isinstance(cfg.get("web_search"), dict) else None
+        ws_enabled, ws_max_uses = web_search_cfg(cfg)
+        # If the cell explicitly set web_search.enabled = false, honor that.
+        # If it set web_search.enabled = true, honor max_uses. If it didn't
+        # set a web_search block at all, keep legacy prefetch ON.
+        prefetch_on = (
+            ws_block is None  # legacy default
+            or ws_enabled
+        )
+        if task_meta.get("question") and prefetch_on:
             prefetch = _prefetch_context(
-                task_meta["question"], self._cloud_endpoint, self._cloud_model
+                task_meta["question"],
+                self._cloud_endpoint,
+                self._cloud_model,
+                max_uses=ws_max_uses,
             )
 
         if prefetch.get("text"):
@@ -462,6 +493,7 @@ class MinionsAgent(LocalCloudAgent):
             "tokens_cloud": (rp + rc) + prefetch["tokens"],
             "cost_usd": self.cost_usd(self._cloud_model, rp, rc) + prefetch["cost_usd"],
             "turns": cfg.get("max_rounds", 3),
+            "web_search_uses": prefetch["n_searches"],
             "traces": {
                 "mode": mode,
                 "supervisor_messages": out.get("supervisor_messages"),

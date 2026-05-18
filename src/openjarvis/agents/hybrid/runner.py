@@ -43,12 +43,44 @@ DEFAULT_REGISTRY_DIR = PACKAGE_DIR / "registry"
 DEFAULT_EXPERIMENTS_DIR = Path(
     os.environ.get(
         "OPENJARVIS_HYBRID_EXPERIMENTS_DIR",
-        str(Path.home() / ".openjarvis-hybrid" / "experiments"),
+        "/matx/u/aspark/.openjarvis/experiments/hybrid",
     )
 )
+DEFAULT_SUBSETS_DIR = DEFAULT_EXPERIMENTS_DIR / "subsets"
 
 
 # ---------- Registry ----------
+
+_SWE_BENCHES = {"swebench-verified", "swebench_verified", "swebench"}
+
+
+def _validate_cells(cells: Dict[str, Dict[str, Any]]) -> None:
+    """Catch registry mistakes that would silently degrade behaviour.
+
+    Currently: skillorchestra on a SWE bench MUST have
+    ``method_cfg.swe_use_agent_loop = true``. Without the flag,
+    skillorchestra.py falls back to a one-shot cloud call even for
+    SWE-bench tasks, which is rarely what the experimenter wants and is
+    invisible at runtime (Bug 5, 2026-05-15).
+    """
+    bad: List[str] = []
+    for name, cell in cells.items():
+        if cell.get("method") != "skillorchestra":
+            continue
+        if cell.get("bench") not in _SWE_BENCHES:
+            continue
+        mcfg = cell.get("method_cfg") or {}
+        if not bool(mcfg.get("swe_use_agent_loop")):
+            bad.append(name)
+    if bad:
+        raise ValueError(
+            "skillorchestra SWE cells missing required "
+            "`method_cfg.swe_use_agent_loop = true`: "
+            + ", ".join(sorted(bad))
+            + ". Without this flag the cell silently falls back to a "
+            "one-shot cloud call for SWE-bench tasks."
+        )
+
 
 def load_registry(registry_dir: Optional[Path] = None) -> Dict[str, Dict[str, Any]]:
     """Merge every ``<registry_dir>/*.toml``. Cell names must be unique."""
@@ -67,6 +99,7 @@ def load_registry(registry_dir: Optional[Path] = None) -> Dict[str, Dict[str, An
                     f"duplicate cell {name!r} (already defined before {p.name})"
                 )
             cells[name] = cell
+    _validate_cells(cells)
     return cells
 
 
@@ -81,12 +114,17 @@ def _load_gaia_tasks(n: Optional[int]) -> List[Dict[str, Any]]:
     out: List[Dict[str, Any]] = []
     for rec in ds.iter_records():
         # rec.problem is the formatted question prompt; rec.metadata carries
-        # the GAIA-specific fields including any reference answer.
+        # the GAIA-specific fields including any reference answer. Prefer the
+        # upstream GAIA `task_id` field (bare uuid) over rec.record_id (which
+        # OpenJarvis prefixes with `gaia-`) so subsets keyed by the upstream
+        # id round-trip.
+        md = rec.metadata or {}
+        task_id = md.get("task_id") or rec.record_id
         out.append({
-            "task_id": rec.record_id,
-            "question": rec.metadata.get("question", rec.problem),
+            "task_id": task_id,
+            "question": md.get("question", rec.problem),
             "reference": rec.reference,
-            "metadata": dict(rec.metadata),
+            "metadata": dict(md),
         })
     return out
 
@@ -95,7 +133,7 @@ def _load_swebench_tasks(n: Optional[int]) -> List[Dict[str, Any]]:
     """SWE-bench-Verified test. Each task carries patch-evaluation fields."""
     from openjarvis.evals.datasets.swebench import SWEBenchDataset
 
-    ds = SWEBenchDataset()
+    ds = SWEBenchDataset(variant="verified")
     ds.load(max_samples=n)
     out: List[Dict[str, Any]] = []
     for rec in ds.iter_records():
@@ -122,6 +160,72 @@ def load_tasks(bench: str, n: Optional[int]) -> List[Dict[str, Any]]:
     if bench in ("swebench-verified", "swebench_verified", "swebench"):
         return _load_swebench_tasks(n)
     raise ValueError(f"unknown bench: {bench!r}")
+
+
+def _load_subset_file(subset_path: str) -> Dict[str, Any]:
+    """Resolve a cell's ``subset`` field to a parsed JSON dict.
+
+    Resolution order:
+      1. Absolute path → use as-is.
+      2. Bare filename / relative path → look up under
+         ``<experiments>/subsets/`` (matches where ``make_subset.py``
+         writes its output).
+
+    Accepts both list-of-ids and dict-with-task_ids shapes; the legacy
+    harness wrote the dict shape and we preserve that. Returns a dict
+    with at least a ``task_ids`` list so callers don't have to branch.
+    """
+    p = Path(subset_path)
+    if not p.is_absolute():
+        p = DEFAULT_SUBSETS_DIR / p
+    if not p.exists():
+        raise FileNotFoundError(f"subset file not found: {p}")
+    data = json.loads(p.read_text())
+    if isinstance(data, list):
+        return {"task_ids": list(data)}
+    if isinstance(data, dict):
+        if "task_ids" not in data:
+            raise ValueError(
+                f"subset {p.name} has no 'task_ids' field; got keys {list(data.keys())}"
+            )
+        return data
+    raise ValueError(f"subset {p.name} must be a list or dict; got {type(data).__name__}")
+
+
+def _apply_subset(
+    tasks: List[Dict[str, Any]],
+    subset: Dict[str, Any],
+    cell: Dict[str, Any],
+) -> List[Dict[str, Any]]:
+    """Filter ``tasks`` to the subset's task IDs, preserving subset order.
+
+    Hard-errors if the cell's ``n`` doesn't equal ``len(task_ids)`` so a
+    typo in the registry can't silently shrink the eval. Also errors if
+    any subset ID is missing from the dataset (caller's bench wiring is
+    broken).
+    """
+    ids: List[str] = list(subset["task_ids"])
+    cell_n = int(cell["n"])
+    if cell_n != len(ids):
+        raise ValueError(
+            f"subset n={len(ids)} ≠ cell n={cell_n} — refusing to silently "
+            "change scope. Fix the registry's `n` to match the subset file."
+        )
+    if "bench" in subset and subset["bench"] != cell["bench"]:
+        raise ValueError(
+            f"subset bench={subset['bench']!r} ≠ cell bench={cell['bench']!r}"
+        )
+    order = {tid: i for i, tid in enumerate(ids)}
+    allow = set(ids)
+    kept = [t for t in tasks if t["task_id"] in allow]
+    kept.sort(key=lambda t: order[t["task_id"]])
+    missing = allow - {t["task_id"] for t in kept}
+    if missing:
+        raise ValueError(
+            f"subset references {len(missing)} task_ids not in dataset "
+            f"(e.g. {next(iter(missing))!r})"
+        )
+    return kept
 
 
 # ---------- Scoring ----------
@@ -275,6 +379,7 @@ def _run_one(agent, bench: str, task: Dict[str, Any], log_dir: str) -> Dict[str,
             "tokens_cloud": int(meta.get("tokens_cloud", 0)),
             "cost_usd": float(meta.get("cost_usd", 0.0)),
             "latency_s": float(meta.get("latency_s", time.time() - t0)),
+            "web_search_uses": int(meta.get("web_search_uses", 0)),
             "traces": meta.get("traces", {}),
         }
         if "soft_error" in meta:
@@ -286,6 +391,7 @@ def _run_one(agent, bench: str, task: Dict[str, Any], log_dir: str) -> Dict[str,
             "answer": "",
             "tokens_local": 0, "tokens_cloud": 0,
             "cost_usd": 0.0, "latency_s": time.time() - t0,
+            "web_search_uses": 0,
             "traces": {},
             "error": f"{type(e).__name__}: {e}\n{traceback.format_exc()}",
         }
@@ -312,6 +418,7 @@ def _write_summary(
     cell: Dict[str, Any],
     tasks: List[Dict[str, Any]],
     t_start: float,
+    n_processed: int = -1,
 ) -> None:
     results_path = out_dir / "results.jsonl"
     rows = [
@@ -326,7 +433,28 @@ def _write_summary(
     total_cost = sum(r.get("cost_usd", 0.0) for r in rows)
     total_local = sum(r.get("tokens_local", 0) for r in rows)
     total_cloud = sum(r.get("tokens_cloud", 0) for r in rows)
+    total_web_searches = sum(int(r.get("web_search_uses", 0) or 0) for r in rows)
     elapsed = time.time() - t_start
+
+    # Preserve prior wall_time_s on no-op resume so we don't clobber the
+    # original run's runtime. A resume that did zero work (everything was
+    # already cached in results.jsonl) records ~seconds of elapsed time;
+    # writing that as wall_time_s makes the cell look 20× faster than it
+    # really was. If we did process anything this session, accumulate so
+    # partial-resumes still report total wall time honestly.
+    summary_path = out_dir / "summary.json"
+    prior_wall = 0.0
+    if summary_path.exists():
+        try:
+            prior_wall = float(
+                json.loads(summary_path.read_text()).get("wall_time_s", 0.0) or 0.0
+            )
+        except Exception:
+            prior_wall = 0.0
+    if n_processed == 0 and prior_wall > 0:
+        wall = prior_wall
+    else:
+        wall = prior_wall + elapsed
 
     summary = {
         "cell": cell_name,
@@ -338,14 +466,16 @@ def _write_summary(
         "accuracy": acc,
         "tokens_local_total": total_local,
         "tokens_cloud_total": total_cloud,
+        "web_search_uses_total": total_web_searches,
         "cost_usd_total": total_cost,
-        "wall_time_s": elapsed,
+        "wall_time_s": wall,
         "task_count": len(tasks),
     }
-    (out_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+    summary_path.write_text(json.dumps(summary, indent=2))
     print(
         f"[summary] {cell_name}: n={n_done}/{cell['n']} err={n_err} "
-        f"acc={acc:.3f} cost=${total_cost:.2f} time={elapsed/60:.1f}m",
+        f"acc={acc:.3f} cost=${total_cost:.2f} time={wall/60:.1f}m "
+        f"(session +{elapsed/60:.1f}m, processed={n_processed})",
         flush=True,
     )
 
@@ -398,8 +528,21 @@ def _run_cell_locked(
             flush=True,
         )
 
-    tasks = load_tasks(cell["bench"], n=cell["n"])
-    print(f"[load] {cell['bench']} → {len(tasks)} tasks", flush=True)
+    subset_path = cell.get("subset")
+    if subset_path:
+        subset = _load_subset_file(subset_path)
+        # Load the full bench (n=None) so we can pick the exact subset IDs.
+        # The dataset providers are cached, so this isn't a re-fetch.
+        all_tasks = load_tasks(cell["bench"], n=None)
+        tasks = _apply_subset(all_tasks, subset, cell)
+        print(
+            f"[load] {cell['bench']} subset={Path(subset_path).name} "
+            f"→ {len(tasks)} tasks",
+            flush=True,
+        )
+    else:
+        tasks = load_tasks(cell["bench"], n=cell["n"])
+        print(f"[load] {cell['bench']} → {len(tasks)} tasks", flush=True)
 
     pending = [t for t in tasks if t["task_id"] not in done_ids]
     concurrency = max(1, int(cell.get("concurrency", 1)))
@@ -440,7 +583,7 @@ def _run_cell_locked(
             for fut in as_completed(futures):
                 fut.result()
 
-    _write_summary(out_dir, cell_name, cell, tasks, t_start)
+    _write_summary(out_dir, cell_name, cell, tasks, t_start, n_processed=len(pending))
 
 
 # ---------- CLI ----------

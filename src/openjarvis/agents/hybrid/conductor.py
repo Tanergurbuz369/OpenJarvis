@@ -39,7 +39,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from openjarvis.agents._stubs import AgentContext
-from openjarvis.agents.hybrid._base import LocalCloudAgent
+from openjarvis.agents.hybrid._base import (
+    WEB_SEARCH_COST_PER_CALL,
+    LocalCloudAgent,
+    build_web_search_tool,
+    web_search_cfg,
+)
 from openjarvis.agents.hybrid._prices import (
     PRICES,
     is_gpt5_family,
@@ -340,6 +345,130 @@ def _resolve_worker_pool(
     return resolved
 
 
+# Endpoints conductor's `_call_worker` actually knows how to dispatch to.
+# Web-search and gemini are NOT supported here — toolorchestra has the
+# web-search dispatcher; gemini isn't wired into _call_worker.
+_CONDUCTOR_VALID_ENDPOINTS = ("vllm", "openai", "anthropic")
+
+
+def _resolve_worker_pool(
+    cfg: Dict[str, Any],
+    local_model: Optional[str],
+    local_endpoint: Optional[str],
+    cloud_model: str,
+) -> List[Dict[str, Any]]:
+    """Return the worker pool for this run.
+
+    Strict replace, not merge: if ``cfg["worker_pool"]`` is set, the
+    default pool is ignored entirely. Falls back to ``_default_pool`` when
+    the override is absent.
+
+    Each user-supplied entry must be a dict with keys ``id``, ``name``,
+    ``endpoint``, and ``model``. ``endpoint`` must be one of
+    ``vllm`` / ``openai`` / ``anthropic`` — conductor does not wire
+    web-search or gemini workers.
+
+    Substitution: ``model = "$local"`` (or ``"<local>"``) resolves to
+    ``local_model``; ``model = "$cloud"`` / ``"<cloud>"`` to ``cloud_model``.
+
+    On any validation failure, raises ``ValueError`` with the message
+    ``"Invalid worker_pool entry [<id>]: <reason>"``. Fails fast at agent
+    init rather than mid-task.
+    """
+    override = cfg.get("worker_pool")
+    if override is None:
+        return _default_pool(local_model, local_endpoint)
+    if not isinstance(override, list) or not override:
+        raise ValueError(
+            "Invalid worker_pool entry [-]: worker_pool must be a non-empty list"
+        )
+
+    resolved: List[Dict[str, Any]] = []
+    seen_ids: set = set()
+    has_non_search = False
+    for raw in override:
+        wid_repr = raw.get("id", "?") if isinstance(raw, dict) else "?"
+        if not isinstance(raw, dict):
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid_repr}]: entry must be a dict"
+            )
+        entry = dict(raw)
+        wid = entry.get("id")
+        if not isinstance(wid, int):
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid_repr}]: 'id' must be an int"
+            )
+        if wid in seen_ids:
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid}]: duplicate id"
+            )
+        seen_ids.add(wid)
+        if not entry.get("name") or not isinstance(entry["name"], str):
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid}]: 'name' must be a non-empty string"
+            )
+        endpoint = entry.get("endpoint") or entry.get("type")
+        if not isinstance(endpoint, str) or endpoint.lower() not in _CONDUCTOR_VALID_ENDPOINTS:
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid}]: 'endpoint' must be one of "
+                f"{_CONDUCTOR_VALID_ENDPOINTS} (got {endpoint!r})"
+            )
+        endpoint = endpoint.lower()
+        entry["endpoint"] = endpoint
+        # Substitute $local / $cloud placeholders.
+        model = entry.get("model")
+        if isinstance(model, str) and model in ("$local", "<local>"):
+            if not local_model:
+                raise ValueError(
+                    f"Invalid worker_pool entry [{wid}]: model='{model}' "
+                    "requires a local_model to be configured for this cell"
+                )
+            model = local_model
+            entry["model"] = model
+        elif isinstance(model, str) and model in ("$cloud", "<cloud>"):
+            model = cloud_model
+            entry["model"] = model
+        if not isinstance(model, str) or not model:
+            raise ValueError(
+                f"Invalid worker_pool entry [{wid}]: 'model' must be a non-empty string"
+            )
+        if endpoint == "vllm":
+            if not entry.get("base_url"):
+                # Default to the local endpoint if not specified — matches
+                # how _default_pool wires it.
+                if not local_endpoint:
+                    raise ValueError(
+                        f"Invalid worker_pool entry [{wid}]: vllm worker needs "
+                        "'base_url' (or a configured local_endpoint to fall back to)"
+                    )
+                entry["base_url"] = local_endpoint
+            entry.setdefault("api_key", "EMPTY")
+            # Local also counts as a non-search worker for the
+            # "must have at least one solver" check.
+            has_non_search = True
+        else:
+            # Cloud workers: model must be priced (any unknown model would
+            # silently cost $0, which masks billing mistakes downstream).
+            if model not in PRICES:
+                raise ValueError(
+                    f"Invalid worker_pool entry [{wid}]: model {model!r} is "
+                    f"not in PRICES (known: {sorted(PRICES)})"
+                )
+            has_non_search = True
+        entry.setdefault(
+            "description",
+            f"User-supplied {endpoint} worker ({model}).",
+        )
+        resolved.append(entry)
+
+    if not has_non_search:
+        raise ValueError(
+            "Invalid worker_pool entry [-]: worker_pool must contain at least "
+            "one non-search worker (vllm / openai / anthropic)"
+        )
+    return resolved
+
+
 def _format_worker_pool(workers: List[Dict[str, Any]]) -> str:
     return "\n".join(
         f"Model {w['id']} ({w['name']}): {w['description']}" for w in workers
@@ -376,9 +505,19 @@ def _build_step_prompt(
 # ---------- Worker invocation ----------
 
 def _call_worker(
-    worker: Dict[str, Any], prompt: str, cfg: Dict[str, Any]
-) -> Tuple[str, int, int, bool]:
-    """Returns (text, p_tok, c_tok, is_local)."""
+    worker: Dict[str, Any],
+    prompt: str,
+    cfg: Dict[str, Any],
+    *,
+    web_search_tool: Optional[Dict[str, Any]] = None,
+) -> Tuple[str, int, int, bool, int]:
+    """Returns (text, p_tok, c_tok, is_local, n_web_searches).
+
+    ``web_search_tool``: if set AND the worker endpoint is Anthropic, the
+    server-side web_search tool is declared on the call. ``n_web_searches``
+    is the actual count Anthropic ran. Non-Anthropic workers ignore it
+    and return 0.
+    """
     ep = (worker.get("endpoint") or "openai").lower()
     max_tok = int(cfg.get("worker_max_tokens", 4096))
     temp = float(cfg.get("worker_temperature", 0.2))
@@ -392,7 +531,7 @@ def _call_worker(
             temperature=temp,
             enable_thinking=False,
         )
-        return text, p, c, True
+        return text, p, c, True, 0
     if ep == "openai":
         text, p, c = LocalCloudAgent._call_openai(
             worker["model"],
@@ -400,16 +539,20 @@ def _call_worker(
             max_tokens=max_tok,
             temperature=(1.0 if is_gpt5_family(worker["model"]) else temp),
         )
-        return text, p, c, False
+        return text, p, c, False, 0
     if ep == "anthropic":
         eff_temp = temp if supports_temperature(worker["model"]) else 0.0
-        text, p, c, _ = LocalCloudAgent._call_anthropic(
-            worker["model"],
+        anthropic_kwargs: Dict[str, Any] = dict(
             user=prompt,
             max_tokens=max_tok,
             temperature=eff_temp,
         )
-        return text, p, c, False
+        if web_search_tool is not None:
+            anthropic_kwargs["tools"] = [web_search_tool]
+        text, p, c, n_searches = LocalCloudAgent._call_anthropic(
+            worker["model"], **anthropic_kwargs
+        )
+        return text, p, c, False, n_searches
     raise ValueError(f"unsupported worker endpoint: {ep!r}")
 
 
@@ -420,10 +563,11 @@ def _swe_worker_step(
     cfg: Dict[str, Any],
     workdir: Path,
     step_idx: int,
-) -> Tuple[str, int, int, bool]:
+) -> Tuple[str, int, int, bool, int]:
     """Run one Conductor worker step as a mini-SWE-agent subloop on a shared
-    workdir. Returns (final_summary_or_diff, tokens_in, tokens_out, is_local)
-    in the same shape as ``_call_worker``."""
+    workdir. Returns (final_summary_or_diff, tokens_in, tokens_out, is_local,
+    n_web_searches) in the same shape as ``_call_worker``. SWE workers
+    don't use web_search (the bash tool is the only tool they need)."""
     ep = (worker.get("endpoint") or "openai").lower()
     if ep == "vllm":
         backbone, model, endpoint, is_local = (
@@ -455,7 +599,10 @@ def _swe_worker_step(
         trace_prefix=f"conductor_step{step_idx}",
         workdir=workdir,
     )
-    return out["final_summary"] or out["answer"], out["tokens_in"], out["tokens_out"], is_local
+    return (
+        out["final_summary"] or out["answer"],
+        out["tokens_in"], out["tokens_out"], is_local, 0,
+    )
 
 
 @AgentRegistry.register("conductor")
@@ -566,6 +713,15 @@ class ConductorAgent(LocalCloudAgent):
         cost = 0.0
         final_answer = ""
         shared_workdir: Optional[Path] = None
+        n_web_searches_total = 0
+
+        # Web_search opt-in: when enabled, declare the native server-side
+        # tool on Anthropic worker calls. GAIA-only — SWE workers use bash
+        # not web_search. OpenAI / vLLM workers ignore it.
+        ws_enabled, ws_max_uses = web_search_cfg(cfg)
+        ws_tool = (
+            build_web_search_tool(ws_max_uses) if ws_enabled else None
+        )
 
         try:
             if swe_mode:
@@ -598,17 +754,21 @@ class ConductorAgent(LocalCloudAgent):
                 })
 
                 if swe_mode:
-                    text, w_in, w_out, is_local = _swe_worker_step(
+                    text, w_in, w_out, is_local, n_searches = _swe_worker_step(
                         worker, task_meta, prompt, cfg, shared_workdir, i,
                     )
                 else:
-                    text, w_in, w_out, is_local = _call_worker(worker, prompt, cfg)
+                    text, w_in, w_out, is_local, n_searches = _call_worker(
+                        worker, prompt, cfg, web_search_tool=ws_tool,
+                    )
 
                 if is_local:
                     tokens_local += w_in + w_out
                 else:
                     tokens_cloud += w_in + w_out
                     cost += self.cost_usd(worker["model"], w_in, w_out)
+                    cost += n_searches * WEB_SEARCH_COST_PER_CALL
+                n_web_searches_total += n_searches
                 steps.append({
                     "step_idx": i,
                     "model_id": mid,
@@ -650,10 +810,13 @@ class ConductorAgent(LocalCloudAgent):
             "tokens_cloud": tokens_cloud,
             "cost_usd": cost,
             "turns": len(steps) + 1,  # planner + N execution steps
+            "web_search_uses": n_web_searches_total,
             "traces": {
                 "steps": traces,
                 "plan": plan,
                 "fallback_used": fallback_used,
+                "web_search_enabled": ws_enabled,
+                "n_web_searches": n_web_searches_total,
                 "parse_attempts": parse_attempts,
                 "workers": [
                     {k: v for k, v in w.items() if k != "api_key"}
