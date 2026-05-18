@@ -50,14 +50,40 @@ def _run_research(
     from openjarvis.connectors.embeddings import OllamaEmbedder
     from openjarvis.connectors.hybrid_search import HybridSearch
     from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.engine.ollama import OllamaEngine
 
     store_kwargs: dict = {}
     if knowledge_db:
         store_kwargs["db_path"] = knowledge_db
     store = KnowledgeStore(**store_kwargs)
 
+    # Research mode is wired specifically to Ollama: the planner prompt
+    # (gemma4:31b) and the function-call schema for search/clarify both
+    # assume Ollama's /api/chat tool semantics. Using the engine returned
+    # by get_engine() here is a foot-gun — engine discovery can pick
+    # LemonadeEngine (or any other OpenAI-compatible engine registered on
+    # the same port as our own API server), route the planner through a
+    # chat endpoint that strips the tools spec, and end up with a model
+    # that "responds without searching" plus fabricated citations.
+    # research_router.py hardcodes OllamaEngine() for the same reason;
+    # mirror that here so the CLI and HTTP paths behave identically.
+    engine = OllamaEngine()
+
+    chunk_count = store._conn.execute(
+        "SELECT COUNT(*) FROM knowledge_chunks"
+    ).fetchone()[0]
+    logger.debug(
+        "research: engine=%s.%s db=%s chunks=%d",
+        type(engine).__module__,
+        type(engine).__name__,
+        store._db_path,
+        chunk_count,
+    )
+
     embedder = OllamaEmbedder()
-    if not embedder.is_available():
+    embedder_available = embedder.is_available()
+    logger.debug("research: embedder available=%s", embedder_available)
+    if not embedder_available:
         console.print(
             "[yellow]Ollama embedder unavailable — falling back to BM25-only "
             "retrieval. Run `ollama pull nomic-embed-text` for hybrid scoring.[/yellow]"
@@ -65,6 +91,7 @@ def _run_research(
         embedder = None
 
     planner_model = model_name or DEFAULT_PLANNER_MODEL
+    logger.debug("research: planner_model=%s", planner_model)
     agent = ResearchAgent(
         engine=engine,
         search=HybridSearch(store, embedder),
@@ -72,6 +99,12 @@ def _run_research(
     )
 
     result = agent.run(query_text)
+    logger.debug(
+        "research: iterations=%d tool_calls=%d usage=%s",
+        result.iterations,
+        len(result.tool_calls),
+        result.usage,
+    )
 
     if output_json:
         click.echo(
