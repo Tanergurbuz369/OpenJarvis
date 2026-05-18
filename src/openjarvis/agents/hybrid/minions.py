@@ -494,6 +494,9 @@ class MinionsAgent(LocalCloudAgent):
             "cost_usd": self.cost_usd(self._cloud_model, rp, rc) + prefetch["cost_usd"],
             "turns": cfg.get("max_rounds", 3),
             "web_search_uses": prefetch["n_searches"],
+            # GAIA: only countable tool surface is the prefetch web_search.
+            # The Minions protocol itself is supervisor↔worker text, no tools.
+            "tool_calls": int(prefetch["n_searches"]),
             "traces": {
                 "mode": mode,
                 "supervisor_messages": out.get("supervisor_messages"),
@@ -572,6 +575,8 @@ class MinionsAgent(LocalCloudAgent):
             "tokens_cloud": p_in + p_out,
             "cost_usd": supervisor_cost,
             "turns": 1 + out["turns"],
+            # SWE: only the worker invokes tools (bash); supervisor is text-only.
+            "tool_calls": int(out["turns"]),
             "traces": {
                 "swe_mode": True,
                 "supervisor_plan": plan_text,

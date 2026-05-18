@@ -460,6 +460,9 @@ class SkillOrchestraAgent(LocalCloudAgent):
         tokens_cloud = r_in + r_out
         run_cost = self.cost_usd(router_model, r_in, r_out)
         self._web_search_uses_last = 0
+        # tool_calls: bash turns on SWE, web_search count on GAIA. Router
+        # itself is text-only — doesn't add to the count.
+        tool_calls = 0
 
         # 2. Execute via chosen agent
         task_meta = (context.metadata.get("task") if context is not None else {}) or {}
@@ -490,6 +493,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 )
                 ans = out["answer"]
                 tokens_local += out["tokens_in"] + out["tokens_out"]
+                tool_calls += int(out["turns"])
             else:
                 ans, w_in, w_out = self._call_vllm(
                     self._local_model,
@@ -520,6 +524,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 ans = out["answer"]
                 tokens_cloud += out["tokens_in"] + out["tokens_out"]
                 run_cost += out["cost_usd"]
+                tool_calls += int(out["turns"])
             else:
                 # GAIA cloud worker: opt-in native web_search via the new
                 # method_cfg.web_search schema. Only fires when the chosen
@@ -546,6 +551,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 run_cost += self.cost_usd(self._cloud_model, w_in, w_out)
                 run_cost += n_searches * WEB_SEARCH_COST_PER_CALL
                 self._web_search_uses_last = n_searches
+                tool_calls += int(n_searches)
             worker_model = self._cloud_model
 
         meta = {
@@ -554,6 +560,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
             "cost_usd": run_cost,
             "turns": 2,  # router + worker
             "web_search_uses": self._web_search_uses_last,
+            "tool_calls": int(tool_calls),
             "traces": {
                 "chosen_agent": chosen,
                 "worker_model": worker_model,

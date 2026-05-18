@@ -501,6 +501,8 @@ class ArchonAgent(LocalCloudAgent):
             "cost_usd": cost,
             "turns": (K + 2) if arch == "ensemble_rank_fuse" else 1,
             "web_search_uses": n_searches,
+            # GAIA: only ranker/fuser can hit web_search; proposers don't.
+            "tool_calls": int(n_searches),
             "traces": {
                 "architecture": arch,
                 "n_samples":    K,
@@ -613,6 +615,9 @@ class ArchonAgent(LocalCloudAgent):
             "tokens_cloud": total_tokens_cloud,
             "cost_usd": total_cost,
             "turns": sum(c["turns"] for c in candidates) + 1,
+            # SWE: total bash turns across the K candidate runs; ranker
+            # is a single text call with no tools.
+            "tool_calls": int(sum(c["turns"] for c in candidates)),
             "traces": {
                 "swe_mode": True,
                 "K": K,

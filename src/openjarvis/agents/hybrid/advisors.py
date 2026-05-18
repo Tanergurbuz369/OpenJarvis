@@ -201,6 +201,8 @@ class AdvisorsAgent(LocalCloudAgent):
             "cost_usd": cost,
             "turns": 3,
             "web_search_uses": n_searches_total,
+            # GAIA: only the executor passes invoke a tool (web_search).
+            "tool_calls": int(n_searches_total),
             "traces": {
                 "initial_response": initial_resp,
                 "advisor_feedback": advisor_text,
@@ -305,6 +307,9 @@ class AdvisorsAgent(LocalCloudAgent):
             "tokens_cloud": tokens_cloud,
             "cost_usd": cost,
             "turns": initial_out["turns"] + 1 + final_out["turns"],
+            # SWE: sum bash turns from both executor passes; advisor pass
+            # is a local-model critique with no tools.
+            "tool_calls": int(initial_out["turns"] + final_out["turns"]),
             "traces": {
                 "swe_mode": True,
                 "initial_summary": initial_out["final_summary"],

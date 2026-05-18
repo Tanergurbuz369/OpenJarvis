@@ -407,14 +407,19 @@ def _swe_call_worker(
     task: Dict[str, Any],
     workdir: Path,
     turn: int,
-) -> Tuple[str, int, int, bool, float, int]:
+) -> Tuple[str, int, int, bool, float, int, int]:
     """SWE-bench worker dispatch: route solver workers through
     run_swe_agent_loop on a shared workdir. Web-search workers fall back
-    to the regular one-shot dispatch (search isn't an agent loop)."""
+    to the regular one-shot dispatch (search isn't an agent loop).
+
+    Trailing ``bash_turns`` (last element) counts agent-loop turns so the
+    caller can surface ``tool_calls`` per row. Fallbacks to one-shot
+    workers return 0 bash turns (no agent loop ran)."""
     wtype = worker.get("type", "openai")
     if wtype == "anthropic-web-search":
         # Search workers stay one-shot.
-        return _call_worker(worker, prompt, cfg)
+        text, p, c, is_local, extra, n_searches = _call_worker(worker, prompt, cfg)
+        return text, p, c, is_local, extra, n_searches, 0
     if wtype == "vllm":
         backbone = "local"
         endpoint = worker.get("base_url")
@@ -423,7 +428,8 @@ def _swe_call_worker(
         endpoint = None
     else:
         # OpenAI workers fall back to one-shot.
-        return _call_worker(worker, prompt, cfg)
+        text, p, c, is_local, extra, n_searches = _call_worker(worker, prompt, cfg)
+        return text, p, c, is_local, extra, n_searches, 0
     out = run_swe_agent_loop(
         task,
         backbone=backbone,
@@ -442,7 +448,7 @@ def _swe_call_worker(
     return (
         out["final_summary"] or out["answer"],
         out["tokens_in"], out["tokens_out"],
-        is_local, 0.0, 0,
+        is_local, 0.0, 0, int(out["turns"]),
     )
 
 
@@ -531,6 +537,11 @@ class ToolOrchestraAgent(LocalCloudAgent):
             tokens_cloud = 0
             cost = 0.0
             n_web_searches_total = 0
+            # tool_calls: bash turns from SWE subloops + web_search uses
+            # from GAIA. Orchestrator dispatch turns are NOT counted (they
+            # produce text only — calling a worker is one tool call's worth
+            # of "delegation" but the actual tool action happens inside).
+            tool_calls = 0
             final_answer: Optional[str] = None
             forced_final = False
             parse_failures = 0
@@ -584,12 +595,14 @@ class ToolOrchestraAgent(LocalCloudAgent):
                         continue
                     worker = workers[wid]
                     if swe_mode and shared_workdir is not None:
-                        w_text, w_in, w_out, is_local, extra_cost, n_searches = (
+                        (w_text, w_in, w_out, is_local, extra_cost,
+                         n_searches, bash_turns) = (
                             _swe_call_worker(
                                 worker, str(w_input), cfg, task_meta,
                                 shared_workdir, turn,
                             )
                         )
+                        tool_calls += bash_turns
                     else:
                         w_text, w_in, w_out, is_local, extra_cost, n_searches = (
                             _call_worker(worker, str(w_input), cfg)
@@ -600,6 +613,7 @@ class ToolOrchestraAgent(LocalCloudAgent):
                         tokens_cloud += w_in + w_out
                         cost += self.cost_usd(worker["model"], w_in, w_out) + extra_cost
                     n_web_searches_total += n_searches
+                    tool_calls += n_searches
                     history.append({
                         "role": "worker",
                         "turn": turn,
@@ -629,10 +643,12 @@ class ToolOrchestraAgent(LocalCloudAgent):
                     key=lambda w: PRICES.get(w.get("model", ""), (0.0, 0.0))[1],
                 )
                 if swe_mode and shared_workdir is not None:
-                    ans, w_in, w_out, is_local, extra_cost, _ = _swe_call_worker(
+                    (ans, w_in, w_out, is_local, extra_cost, _,
+                     bash_turns) = _swe_call_worker(
                         worker, question, cfg, task_meta,
                         shared_workdir, max_turns + 1,
                     )
+                    tool_calls += bash_turns
                 else:
                     ans, w_in, w_out, is_local, extra_cost, _ = _call_worker(
                         worker, question, cfg
@@ -671,6 +687,7 @@ class ToolOrchestraAgent(LocalCloudAgent):
                 "cost_usd": cost,
                 "turns": len([h for h in history if h["role"] == "orchestrator"]),
                 "web_search_uses": n_web_searches_total,
+                "tool_calls": int(tool_calls),
                 "traces": {
                     "history": history,
                     "forced_final": forced_final,

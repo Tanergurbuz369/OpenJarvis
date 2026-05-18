@@ -563,11 +563,12 @@ def _swe_worker_step(
     cfg: Dict[str, Any],
     workdir: Path,
     step_idx: int,
-) -> Tuple[str, int, int, bool, int]:
+) -> Tuple[str, int, int, bool, int, int]:
     """Run one Conductor worker step as a mini-SWE-agent subloop on a shared
     workdir. Returns (final_summary_or_diff, tokens_in, tokens_out, is_local,
-    n_web_searches) in the same shape as ``_call_worker``. SWE workers
-    don't use web_search (the bash tool is the only tool they need)."""
+    n_web_searches, bash_turns). SWE workers don't use web_search (the bash
+    tool is the only tool they need); ``bash_turns`` counts the agent-loop
+    turns so the caller can surface ``tool_calls``."""
     ep = (worker.get("endpoint") or "openai").lower()
     if ep == "vllm":
         backbone, model, endpoint, is_local = (
@@ -584,7 +585,8 @@ def _swe_worker_step(
         # backbones today (the loop's tool-call format is Anthropic- or
         # OpenAI-via-vllm-shaped only). Fall back to one-shot for those —
         # SWE-bench-wise they were already weak; this preserves behavior.
-        return _call_worker(worker, prompt, cfg)
+        text, p, c, is_local, n_searches = _call_worker(worker, prompt, cfg)
+        return text, p, c, is_local, n_searches, 0
     out = run_swe_agent_loop(
         task,
         backbone=backbone,
@@ -601,7 +603,7 @@ def _swe_worker_step(
     )
     return (
         out["final_summary"] or out["answer"],
-        out["tokens_in"], out["tokens_out"], is_local, 0,
+        out["tokens_in"], out["tokens_out"], is_local, 0, int(out["turns"]),
     )
 
 
@@ -714,6 +716,9 @@ class ConductorAgent(LocalCloudAgent):
         final_answer = ""
         shared_workdir: Optional[Path] = None
         n_web_searches_total = 0
+        # tool_calls aggregator: bash turns on SWE (per worker subloop) +
+        # web_search uses on GAIA. Conductor planner is text-only.
+        tool_calls = 0
 
         # Web_search opt-in: when enabled, declare the native server-side
         # tool on Anthropic worker calls. GAIA-only — SWE workers use bash
@@ -754,9 +759,12 @@ class ConductorAgent(LocalCloudAgent):
                 })
 
                 if swe_mode:
-                    text, w_in, w_out, is_local, n_searches = _swe_worker_step(
-                        worker, task_meta, prompt, cfg, shared_workdir, i,
+                    text, w_in, w_out, is_local, n_searches, bash_turns = (
+                        _swe_worker_step(
+                            worker, task_meta, prompt, cfg, shared_workdir, i,
+                        )
                     )
+                    tool_calls += bash_turns
                 else:
                     text, w_in, w_out, is_local, n_searches = _call_worker(
                         worker, prompt, cfg, web_search_tool=ws_tool,
@@ -769,6 +777,7 @@ class ConductorAgent(LocalCloudAgent):
                     cost += self.cost_usd(worker["model"], w_in, w_out)
                     cost += n_searches * WEB_SEARCH_COST_PER_CALL
                 n_web_searches_total += n_searches
+                tool_calls += n_searches
                 steps.append({
                     "step_idx": i,
                     "model_id": mid,
@@ -811,6 +820,7 @@ class ConductorAgent(LocalCloudAgent):
             "cost_usd": cost,
             "turns": len(steps) + 1,  # planner + N execution steps
             "web_search_uses": n_web_searches_total,
+            "tool_calls": int(tool_calls),
             "traces": {
                 "steps": traces,
                 "plan": plan,

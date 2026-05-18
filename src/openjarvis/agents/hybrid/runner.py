@@ -380,6 +380,7 @@ def _run_one(agent, bench: str, task: Dict[str, Any], log_dir: str) -> Dict[str,
             "cost_usd": float(meta.get("cost_usd", 0.0)),
             "latency_s": float(meta.get("latency_s", time.time() - t0)),
             "web_search_uses": int(meta.get("web_search_uses", 0)),
+            "tool_calls": int(meta.get("tool_calls", 0)),
             "traces": meta.get("traces", {}),
         }
         if "soft_error" in meta:
@@ -392,6 +393,7 @@ def _run_one(agent, bench: str, task: Dict[str, Any], log_dir: str) -> Dict[str,
             "tokens_local": 0, "tokens_cloud": 0,
             "cost_usd": 0.0, "latency_s": time.time() - t0,
             "web_search_uses": 0,
+            "tool_calls": 0,
             "traces": {},
             "error": f"{type(e).__name__}: {e}\n{traceback.format_exc()}",
         }
@@ -434,6 +436,7 @@ def _write_summary(
     total_local = sum(r.get("tokens_local", 0) for r in rows)
     total_cloud = sum(r.get("tokens_cloud", 0) for r in rows)
     total_web_searches = sum(int(r.get("web_search_uses", 0) or 0) for r in rows)
+    total_tool_calls = sum(int(r.get("tool_calls", 0) or 0) for r in rows)
     elapsed = time.time() - t_start
 
     # Preserve prior wall_time_s on no-op resume so we don't clobber the
@@ -467,6 +470,7 @@ def _write_summary(
         "tokens_local_total": total_local,
         "tokens_cloud_total": total_cloud,
         "web_search_uses_total": total_web_searches,
+        "tool_calls_total": total_tool_calls,
         "cost_usd_total": total_cost,
         "wall_time_s": wall,
         "task_count": len(tasks),

@@ -90,6 +90,8 @@ class BaselineCloudAgent(LocalCloudAgent):
                 "tokens_cloud": out["tokens_in"] + out["tokens_out"],
                 "cost_usd": out["cost_usd"],
                 "turns": out["turns"],
+                # SWE-bench: one bash invocation per agent turn.
+                "tool_calls": int(out["turns"]),
                 "traces": {
                     "backbone": "cloud",
                     "max_turns_hit": out["max_turns_hit"],
@@ -125,6 +127,8 @@ class BaselineCloudAgent(LocalCloudAgent):
                 "cost_usd": cost,
                 "turns": turns,
                 "web_search_uses": n_searches,
+                # GAIA: the only tool is web_search.
+                "tool_calls": int(n_searches),
                 "traces": {
                     "mode": "anthropic_agent_loop",
                     "is_swe": is_swe,
@@ -160,6 +164,8 @@ class BaselineCloudAgent(LocalCloudAgent):
             "cost_usd": estimate_cost(self._cloud_model, p_tok, c_tok),
             "turns": 1,
             "web_search_uses": 0,
+            # GAIA one-shot: zero tool calls (no bash, no web_search).
+            "tool_calls": 0,
             "traces": {
                 "mode": "one_shot",
                 "is_swe": is_swe,
