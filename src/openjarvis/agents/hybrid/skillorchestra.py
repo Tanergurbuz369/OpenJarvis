@@ -43,7 +43,7 @@ from openjarvis.core.registry import AgentRegistry
 # SkillOrchestra learns its taxonomy from execution traces. Without traces
 # we use a hand-curated taxonomy covering the kinds of competences GAIA
 # actually exercises. Per-agent competences are fixed priors calibrated to
-# typical Qwen3.5-27B-FP8 vs Opus 4.7 behavior — what a 1-iteration learn
+# typical Qwen3.5-27B-FP8 vs cloud-model behavior — what a 1-iteration learn
 # would seed before any oracle update.
 
 SKILL_CATALOG: Dict[str, str] = {
@@ -56,31 +56,151 @@ SKILL_CATALOG: Dict[str, str] = {
     "code_or_logic":      "Write or trace code, or apply logical/symbolic constraints precisely.",
 }
 
-DEFAULT_AGENT_COMPETENCE: Dict[str, Dict[str, float]] = {
-    "local-qwen-27b": {
-        "factual_recall":       0.25,
-        "multi_step_reasoning": 0.30,
-        "arithmetic":           0.55,
-        "web_grounding":        0.10,
-        "long_text_extraction": 0.55,
-        "format_compliance":    0.65,
-        "code_or_logic":        0.45,
-    },
-    "cloud-opus-4-7": {
+# Competence priors for the *local* student (Qwen3.5-27B-FP8). Calibrated
+# so that on skill mixes where small models genuinely shine (strict format
+# compliance, arithmetic on supplied values, short factual extraction), the
+# local agent can plausibly beat a cloud model net of cost. Web-grounding /
+# multi-step reasoning stay low — those are the cloud's lane.
+LOCAL_COMPETENCE_PRIOR: Dict[str, float] = {
+    "factual_recall":       0.35,
+    "multi_step_reasoning": 0.30,
+    "arithmetic":           0.65,
+    "web_grounding":        0.10,
+    "long_text_extraction": 0.60,
+    "format_compliance":    0.75,
+    "code_or_logic":        0.50,
+}
+
+# Per-cloud-model competence priors. Tier roughly tracks the n=100 GAIA
+# baseline accuracy gap (opus 0.60 ≫ gemini-pro 0.28 ≫ gpt-5 0.18 ≈ haiku
+# 0.15 ≈ flash 0.16). Stronger models get higher ceilings; weaker / cheaper
+# models get priors that overlap with the local floor on the right skill
+# mix. Floors brought down to ~0.50 so local can win on format-heavy /
+# arithmetic-heavy questions without cost penalty even helping.
+_CLOUD_COMPETENCE_PRIORS: Dict[str, Dict[str, float]] = {
+    "claude-opus-4-7": {
         "factual_recall":       0.85,
         "multi_step_reasoning": 0.88,
-        "arithmetic":           0.85,
+        "arithmetic":           0.80,
         "web_grounding":        0.70,
-        "long_text_extraction": 0.90,
-        "format_compliance":    0.92,
-        "code_or_logic":        0.90,
+        "long_text_extraction": 0.88,
+        "format_compliance":    0.85,
+        "code_or_logic":        0.88,
+    },
+    "claude-haiku-4-5": {
+        "factual_recall":       0.65,
+        "multi_step_reasoning": 0.55,
+        "arithmetic":           0.65,
+        "web_grounding":        0.55,
+        "long_text_extraction": 0.70,
+        "format_compliance":    0.78,
+        "code_or_logic":        0.65,
+    },
+    "gpt-5": {
+        "factual_recall":       0.75,
+        "multi_step_reasoning": 0.78,
+        "arithmetic":           0.75,
+        "web_grounding":        0.60,
+        "long_text_extraction": 0.80,
+        "format_compliance":    0.78,
+        "code_or_logic":        0.82,
+    },
+    "gpt-5-mini": {
+        "factual_recall":       0.60,
+        "multi_step_reasoning": 0.55,
+        "arithmetic":           0.65,
+        "web_grounding":        0.50,
+        "long_text_extraction": 0.70,
+        "format_compliance":    0.72,
+        "code_or_logic":        0.65,
+    },
+    "gemini-2.5-pro": {
+        "factual_recall":       0.75,
+        "multi_step_reasoning": 0.78,
+        "arithmetic":           0.75,
+        "web_grounding":        0.65,
+        "long_text_extraction": 0.85,
+        "format_compliance":    0.75,
+        "code_or_logic":        0.78,
+    },
+    "gemini-2.5-flash": {
+        "factual_recall":       0.60,
+        "multi_step_reasoning": 0.55,
+        "arithmetic":           0.62,
+        "web_grounding":        0.55,
+        "long_text_extraction": 0.75,
+        "format_compliance":    0.70,
+        "code_or_logic":        0.62,
     },
 }
 
-DEFAULT_AGENT_COST_USD: Dict[str, float] = {
-    "local-qwen-27b": 0.0,
-    "cloud-opus-4-7": 0.30,
+# Fallback prior for any cloud model not in the table above. Conservative
+# mid-tier — slightly above local on every skill, no extreme highs.
+_GENERIC_CLOUD_COMPETENCE: Dict[str, float] = {
+    "factual_recall":       0.70,
+    "multi_step_reasoning": 0.65,
+    "arithmetic":           0.70,
+    "web_grounding":        0.55,
+    "long_text_extraction": 0.75,
+    "format_compliance":    0.75,
+    "code_or_logic":        0.70,
 }
+
+# Empirical per-task USD cost on GAIA n=100 (from cloud-only-*-gaia-n100/
+# summary.json, 2026-05-17). Local Qwen at $0 — vLLM is GPU-amortized.
+# Router uses these as the "avg cost" reference in its prompt; the cost
+# penalty in `_score_agents` multiplies by `lambda_cost` (default 2.0).
+MODEL_COST_USD_PER_TASK: Dict[str, float] = {
+    "Qwen/Qwen3.5-27B-FP8":         0.0,
+    "claude-opus-4-7":              0.014,
+    "claude-haiku-4-5":             0.002,
+    "claude-haiku-4-5-20251001":    0.002,
+    "gpt-5":                        0.025,
+    "gpt-5-mini":                   0.003,
+    "gpt-5-mini-2025-08-07":        0.003,
+    "gemini-2.5-pro":               0.002,
+    "gemini-2.5-flash":             0.0006,
+    "gemini-2.5-flash-lite":        0.0002,
+}
+
+
+def _cloud_competence_for(model: str) -> Dict[str, float]:
+    """Look up cloud competence prior; fall back to generic mid-tier."""
+    return dict(_CLOUD_COMPETENCE_PRIORS.get(model, _GENERIC_CLOUD_COMPETENCE))
+
+
+def _cloud_cost_for(model: str) -> float:
+    """Empirical avg per-task USD for the named cloud model. 0 if unknown
+    (treats unknown models as free — caller should add them to the table)."""
+    return MODEL_COST_USD_PER_TASK.get(model, 0.0)
+
+
+def _default_agent_competence(local_model: str, cloud_model: str) -> Dict[str, Dict[str, float]]:
+    """Build per-cell competence dict keyed by `local-<model>` / `cloud-<model>`."""
+    return {
+        f"local-{local_model}": dict(LOCAL_COMPETENCE_PRIOR),
+        f"cloud-{cloud_model}": _cloud_competence_for(cloud_model),
+    }
+
+
+def _default_agent_cost(local_model: str, cloud_model: str) -> Dict[str, float]:
+    return {
+        f"local-{local_model}": MODEL_COST_USD_PER_TASK.get(local_model, 0.0),
+        f"cloud-{cloud_model}": _cloud_cost_for(cloud_model),
+    }
+
+
+# Kept for back-compat with any caller that imported the legacy two-agent
+# default. New cells should rely on the per-cell builders above. Mirrors the
+# pre-2026-05-17 hardcoded Qwen-27B / Opus-4-7 pair.
+DEFAULT_AGENT_COMPETENCE: Dict[str, Dict[str, float]] = _default_agent_competence(
+    "qwen-27b", "claude-opus-4-7"
+)
+DEFAULT_AGENT_COST_USD: Dict[str, float] = _default_agent_cost(
+    "qwen-27b", "claude-opus-4-7"
+)
+
+DEFAULT_LAMBDA_COST: float = 2.0
 
 ROUTER_SYS_MARKER = "<<SKILLORCHESTRA-ROUTER>>"
 
@@ -97,7 +217,7 @@ def _format_agents(
     for aid in competence:
         comp = competence[aid]
         comp_str = ", ".join(f"{k}={v:.2f}" for k, v in comp.items())
-        lines.append(f"- **{aid}** (avg cost ${cost.get(aid, 0.0):.2f}/task)")
+        lines.append(f"- **{aid}** (avg cost ${cost.get(aid, 0.0):.4f}/task)")
         lines.append(f"  Skill competences: {comp_str}")
     return "\n".join(lines)
 
@@ -105,13 +225,14 @@ def _format_agents(
 def _build_router_sys(
     competence: Dict[str, Dict[str, float]],
     cost: Dict[str, float],
+    lambda_cost: float,
 ) -> str:
     return f"""{ROUTER_SYS_MARKER}
 You are a skill-aware model router for a compound AI system (the SkillOrchestra deployment-time orchestrator). For each user question you must:
 
 1. Assign weights over the skill catalog (numbers in [0, 1], summing to ~1.0). \
 The weights reflect how much each skill matters for *this* question.
-2. Score each candidate agent: score(agent) = sum_skill weight_skill * competence(agent, skill) - lambda_cost * avg_cost(agent), with lambda_cost = 0.5.
+2. Score each candidate agent: score(agent) = sum_skill weight_skill * competence(agent, skill) - lambda_cost * avg_cost(agent), with lambda_cost = {lambda_cost:.2f}.
 3. Pick the highest-scoring agent. Tie-break in favor of the cheaper agent.
 
 Skill catalog:
@@ -174,20 +295,48 @@ def _score_agents(
     skill_weights: Dict[str, float],
     competence: Dict[str, Dict[str, float]],
     cost: Dict[str, float],
+    lambda_cost: float = DEFAULT_LAMBDA_COST,
 ) -> Dict[str, Dict[str, float]]:
-    lam = 0.5
     scores: Dict[str, Dict[str, float]] = {}
     for aid, comps in competence.items():
         comp = sum(
-            skill_weights.get(sid, 0.0) * comps[sid] for sid in SKILL_CATALOG
+            skill_weights.get(sid, 0.0) * comps.get(sid, 0.0)
+            for sid in SKILL_CATALOG
         )
-        cost_pen = lam * cost.get(aid, 0.0)
+        cost_pen = lambda_cost * cost.get(aid, 0.0)
         scores[aid] = {
             "competence": comp,
             "cost_penalty": cost_pen,
             "final_score": comp - cost_pen,
         }
     return scores
+
+
+def _merge_competence(
+    defaults: Dict[str, Dict[str, float]],
+    override: Optional[Dict[str, Dict[str, float]]],
+) -> Dict[str, Dict[str, float]]:
+    """Partial-merge: cell-supplied competences win per-agent / per-skill,
+    everything else falls back to the per-cell defaults."""
+    if not override:
+        return defaults
+    merged: Dict[str, Dict[str, float]] = {aid: dict(s) for aid, s in defaults.items()}
+    for aid, skills in override.items():
+        if aid not in merged:
+            merged[aid] = {}
+        merged[aid].update(skills or {})
+    return merged
+
+
+def _merge_cost(
+    defaults: Dict[str, float],
+    override: Optional[Dict[str, float]],
+) -> Dict[str, float]:
+    if not override:
+        return defaults
+    merged = dict(defaults)
+    merged.update(override)
+    return merged
 
 
 @AgentRegistry.register("skillorchestra")
@@ -212,41 +361,76 @@ class SkillOrchestraAgent(LocalCloudAgent):
         cfg = self._cfg
         question = input
 
-        competence: Dict[str, Dict[str, float]] = cfg.get(
-            "agent_competence", DEFAULT_AGENT_COMPETENCE
+        # Per-cell agent keys: `local-<local_model>` and `cloud-<cloud_model>`.
+        # The router prompt now names the actually-configured cloud, so cost
+        # and competence priors match what the cell will pay / call. Cells
+        # can override either with `method_cfg.agent_competence` /
+        # `method_cfg.agent_cost_usd` (partial overrides merge).
+        local_key = f"local-{self._local_model}" if self._local_model else "local"
+        cloud_key = f"cloud-{self._cloud_model}"
+
+        defaults_competence = _default_agent_competence(
+            self._local_model or "qwen-27b", self._cloud_model
         )
-        cost: Dict[str, float] = cfg.get("agent_cost_usd", DEFAULT_AGENT_COST_USD)
+        defaults_cost = _default_agent_cost(
+            self._local_model or "qwen-27b", self._cloud_model
+        )
+        competence: Dict[str, Dict[str, float]] = _merge_competence(
+            defaults_competence, cfg.get("agent_competence")
+        )
+        cost: Dict[str, float] = _merge_cost(
+            defaults_cost, cfg.get("agent_cost_usd")
+        )
+        lambda_cost: float = float(cfg.get("lambda_cost", DEFAULT_LAMBDA_COST))
         agent_ids = list(competence.keys())
-        router_sys = _build_router_sys(competence, cost)
+        router_sys = _build_router_sys(competence, cost, lambda_cost)
         router_schema = _build_router_schema(agent_ids)
 
-        # 1. Route — Anthropic only (output_config schema is Anthropic-specific
-        # in the hybrid adapter). If you need OpenAI routing, swap the prompt
-        # to JSON-mode and bypass output_config.
-        if self._cloud_endpoint != "anthropic":
-            raise ValueError(
-                "SkillOrchestra router requires cloud_endpoint='anthropic'; "
-                f"got {self._cloud_endpoint!r}"
-            )
+        # 1. Route — uses Anthropic's output_config schema by default since
+        # that's how the published paradigm forces strict JSON. For ablation
+        # cells where the *worker* cloud is OpenAI / Gemini, the router can
+        # still stay on Anthropic via the `router_model` + `router_endpoint`
+        # cfg keys (Opus is the cheapest reliable router we have). Falls back
+        # to plain JSON-prompted calls on non-Anthropic endpoints if a cell
+        # explicitly opts in.
+        router_model = cfg.get("router_model") or self._cloud_model
+        router_endpoint = (cfg.get("router_endpoint") or self._cloud_endpoint).lower()
         router_max = int(cfg.get("router_max_tokens", 1024))
-        # Strip temperature for Opus 4.7+; Anthropic's output_config does the schema.
-        if supports_temperature(self._cloud_model):
-            router_text, r_in, r_out, _ = self._call_anthropic(
-                self._cloud_model,
+
+        if router_endpoint == "anthropic":
+            anthropic_kwargs: Dict[str, Any] = dict(
                 user=f"Question:\n{question}",
                 system=router_sys,
                 max_tokens=router_max,
-                temperature=0.0,
                 output_config=router_schema,
+            )
+            if supports_temperature(router_model):
+                anthropic_kwargs["temperature"] = 0.0
+            router_text, r_in, r_out, _ = self._call_anthropic(
+                router_model, **anthropic_kwargs
             )
         else:
-            router_text, r_in, r_out, _ = self._call_anthropic(
-                self._cloud_model,
-                user=f"Question:\n{question}",
-                system=router_sys,
-                max_tokens=router_max,
-                output_config=router_schema,
+            # Fallback path: ask for JSON in the prompt, no schema-enforced
+            # output. Less reliable than Anthropic's output_config but
+            # available for OpenAI / Gemini routers.
+            json_sys = (
+                router_sys
+                + "\n\nReply with ONLY a JSON object matching this shape "
+                "(no prose, no code fence): {\"skill_weights\": {<skill>: <float>}, "
+                "\"chosen_agent\": \"<agent_id>\", \"reasoning\": \"<string>\"}."
             )
+            r_kwargs: Dict[str, Any] = dict(
+                user=f"Question:\n{question}",
+                system=json_sys,
+                max_tokens=router_max,
+                temperature=0.0,
+            )
+            if router_endpoint == "openai":
+                router_text, r_in, r_out = self._call_openai(router_model, **r_kwargs)
+            elif router_endpoint == "gemini":
+                router_text, r_in, r_out = self._call_gemini(router_model, **r_kwargs)
+            else:
+                raise ValueError(f"unsupported router endpoint: {router_endpoint!r}")
 
         decision = _parse_router_json(router_text)
         skill_weights: Dict[str, float] = decision.get("skill_weights") or {}
@@ -254,7 +438,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
             skill_weights.setdefault(sid, 0.0)
         chosen = decision.get("chosen_agent") or ""
 
-        scored = _score_agents(skill_weights, competence, cost)
+        scored = _score_agents(skill_weights, competence, cost, lambda_cost)
         if chosen not in competence:
             chosen = max(scored, key=lambda a: scored[a]["final_score"])
 
@@ -269,7 +453,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
 
         tokens_local = 0
         tokens_cloud = r_in + r_out
-        run_cost = self.cost_usd(self._cloud_model, r_in, r_out)
+        run_cost = self.cost_usd(router_model, r_in, r_out)
 
         # 2. Execute via chosen agent
         task_meta = (context.metadata.get("task") if context is not None else {}) or {}
@@ -279,7 +463,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
             and bool(task_meta.get("repo"))
             and bool(task_meta.get("base_commit"))
         )
-        if chosen == "local-qwen-27b":
+        if chosen.startswith("local-"):
             if not (self._local_model and self._local_endpoint):
                 raise ValueError(
                     "SkillOrchestra route hit local agent but local_model/"
@@ -312,6 +496,8 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 tokens_local += w_in + w_out
             worker_model = self._local_model
         else:
+            # SWE agent loop supports anthropic/openai/gemini (extended
+            # 2026-05-15 — see mini_swe_agent._loop_cloud_{openai,gemini}).
             if swe_mode:
                 out = run_swe_agent_loop(
                     task_meta,
@@ -329,8 +515,7 @@ class SkillOrchestraAgent(LocalCloudAgent):
                 tokens_cloud += out["tokens_in"] + out["tokens_out"]
                 run_cost += out["cost_usd"]
             else:
-                ans, w_in, w_out, _ = self._call_anthropic(
-                    self._cloud_model,
+                ans, w_in, w_out = self._call_cloud(
                     user=question,
                     max_tokens=int(cfg.get("cloud_max_tokens", 4096)),
                     temperature=0.0,
