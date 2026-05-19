@@ -101,10 +101,19 @@ def test_auth_type_is_oauth(connector) -> None:
 
 
 def test_auth_url(connector) -> None:
-    """auth_url() returns a URL pointing to Slack's OAuth endpoint."""
+    """auth_url() returns a URL requesting user-token scopes (not bot scopes).
+
+    The migration to user OAuth tokens means scopes go in ``user_scope``
+    (not ``scope``), and DM/MPIM history scopes are mandatory.
+    """
     url = connector.auth_url()
     assert isinstance(url, str)
     assert "slack.com" in url
+    # User-token install: scopes carried by ``user_scope``, not ``scope``.
+    assert "user_scope=" in url
+    # DM and MPIM history are required for Deep Research over personal DMs.
+    assert "im:history" in url or "im%3Ahistory" in url
+    assert "mpim:history" in url or "mpim%3Ahistory" in url
     assert "channels:history" in url or "channels%3Ahistory" in url
 
 
@@ -129,9 +138,12 @@ def test_sync_yields_documents(
 
     With 2 channels each having 2 messages, we expect exactly 4 documents.
     """
-    # Set up fake credentials so is_connected() returns True
+    # Set up fake credentials so is_connected() returns True. User tokens
+    # (``xoxp-``) are the only shape the connector accepts post-migration.
     creds_path = Path(connector._credentials_path)
-    creds_path.write_text(json.dumps({"token": "fake-access-token"}), encoding="utf-8")
+    creds_path.write_text(
+        json.dumps({"token": "xoxp-fake-user-token"}), encoding="utf-8"
+    )
 
     # Configure mocks
     mock_auth.return_value = _AUTH_TEST_RESPONSE
@@ -240,16 +252,16 @@ def test_sync_includes_dms_and_group_dms(
     connector,
     tmp_path: Path,
 ) -> None:
-    """IMs and MPIMs are synced without a join step and get sensible labels.
+    """IMs and MPIMs are synced with sensible labels — no join, no membership filter.
 
-    The fake ``conversations.list`` returns one public channel, one IM
-    (``is_im`` with the peer's ``user`` field), and one group DM
-    (``is_mpim``). All three yield documents. No ``conversations.join``
-    call is made for IM/MPIM because there's no join concept for them
-    on Slack's API.
+    With a user token, ``conversations.list`` already reflects what the
+    user can see. The connector must NOT call ``conversations.join`` for
+    any conversation type, and must NOT skip non-``is_member`` channels.
     """
     creds_path = Path(connector._credentials_path)
-    creds_path.write_text(json.dumps({"token": "fake-token"}), encoding="utf-8")
+    creds_path.write_text(
+        json.dumps({"token": "xoxp-fake-user-token"}), encoding="utf-8"
+    )
 
     mock_auth.return_value = _AUTH_TEST_RESPONSE
     mock_users.return_value = _USERS_RESPONSE
@@ -258,7 +270,7 @@ def test_sync_includes_dms_and_group_dms(
             {
                 "id": "C001",
                 "name": "general",
-                "is_member": True,
+                # No is_member field — user tokens shouldn't depend on it.
             },
             {
                 "id": "D001",
@@ -283,8 +295,10 @@ def test_sync_includes_dms_and_group_dms(
         ],
         "has_more": False,
     }
-    # _slack_api_with_retry is used for join + any unmocked endpoints.
-    # If sync ever tries to join an IM/MPIM, this records it as a call.
+    # _slack_api_with_retry covers any endpoint not individually mocked
+    # (auth.test, users.list, conversations.list, conversations.history
+    # are intercepted above). A call to ``conversations.join`` here would
+    # mean the connector is back to bot-token behavior.
     mock_retry.return_value = {"ok": False}
 
     docs: List[Document] = list(connector.sync())
@@ -309,8 +323,8 @@ def test_sync_includes_dms_and_group_dms(
     assert mpim_doc.channel == "mpdm-alice--bob-1"
     assert mpim_doc.metadata["channel_type"] == "mpim"
 
-    # Critically, no join was attempted for IM/MPIM (the helper is only
-    # invoked via this mock for `conversations.join`).
+    # User-token sync must NEVER call conversations.join (the user is
+    # already in the conversations the listing returns).
     join_calls = [
         c
         for c in mock_retry.call_args_list
@@ -327,7 +341,9 @@ def test_sync_includes_dms_and_group_dms(
 def test_disconnect(connector, tmp_path: Path) -> None:
     """disconnect() deletes the credentials file."""
     creds_path = Path(connector._credentials_path)
-    creds_path.write_text(json.dumps({"token": "fake-access-token"}), encoding="utf-8")
+    creds_path.write_text(
+        json.dumps({"token": "xoxp-fake-user-token"}), encoding="utf-8"
+    )
     assert connector.is_connected() is True
 
     connector.disconnect()
@@ -397,7 +413,9 @@ def test_end_to_end_ingest_and_search(
     from openjarvis.connectors.store import KnowledgeStore  # noqa: PLC0415
 
     creds_path = Path(connector._credentials_path)
-    creds_path.write_text(json.dumps({"token": "fake-token"}), encoding="utf-8")
+    creds_path.write_text(
+        json.dumps({"token": "xoxp-fake-user-token"}), encoding="utf-8"
+    )
     mock_auth.return_value = _AUTH_TEST_RESPONSE
     mock_users.return_value = _USERS_RESPONSE
     mock_channels.return_value = _CHANNELS_RESPONSE
@@ -434,3 +452,111 @@ def test_end_to_end_ingest_and_search(
     assert _hit_url(target.source, target.document_id) == (
         "https://acme.slack.com/archives/C001/p1710500000000100"
     )
+
+
+# ---------------------------------------------------------------------------
+# Test — bot tokens (xoxb-) are rejected with a clear error at connect time.
+# ---------------------------------------------------------------------------
+
+
+def test_handle_callback_rejects_xoxb(connector) -> None:
+    """handle_callback() refuses bot tokens before writing them to disk."""
+    from openjarvis.connectors.slack_connector import (  # noqa: PLC0415
+        SlackTokenError,
+    )
+
+    with pytest.raises(SlackTokenError) as excinfo:
+        connector.handle_callback("xoxb-some-bot-token")
+
+    msg = str(excinfo.value).lower()
+    assert "xoxb" in msg
+    assert "user oauth token" in msg or "xoxp" in msg
+    # Token must not have been persisted on rejection.
+    assert not Path(connector._credentials_path).exists()
+
+
+def test_handle_callback_rejects_unknown_prefix(connector) -> None:
+    """handle_callback() refuses tokens that don't match the user-token shape."""
+    from openjarvis.connectors.slack_connector import (  # noqa: PLC0415
+        SlackTokenError,
+    )
+
+    with pytest.raises(SlackTokenError):
+        connector.handle_callback("xapp-app-level-token")
+    assert not Path(connector._credentials_path).exists()
+
+
+# ---------------------------------------------------------------------------
+# Test — a stored bot token surfaces an error in sync_status and yields
+# zero documents (defensive guard for credentials written before this
+# migration).
+# ---------------------------------------------------------------------------
+
+
+def test_sync_with_xoxb_token_surfaces_error(connector, tmp_path: Path) -> None:
+    """A leftover bot token must produce an explanatory sync error."""
+    creds_path = Path(connector._credentials_path)
+    creds_path.write_text(json.dumps({"token": "xoxb-bot-token"}), encoding="utf-8")
+
+    docs = list(connector.sync())
+
+    assert docs == []
+    status = connector.sync_status()
+    assert status.error is not None
+    assert "xoxb" in status.error.lower() or "user oauth token" in status.error.lower()
+    assert "xoxp" in status.error.lower()
+
+
+# ---------------------------------------------------------------------------
+# Test — sync logs a per-type channel count before fetching history so
+# operators can see at a glance what the token has access to.
+# ---------------------------------------------------------------------------
+
+
+@patch("openjarvis.connectors.slack_connector._slack_api_auth_test")
+@patch("openjarvis.connectors.slack_connector._slack_api_conversations_list")
+@patch("openjarvis.connectors.slack_connector._slack_api_conversations_history")
+@patch("openjarvis.connectors.slack_connector._slack_api_users_list")
+def test_sync_logs_per_type_channel_counts(
+    mock_users,
+    mock_history,
+    mock_channels,
+    mock_auth,
+    connector,
+    tmp_path: Path,
+    caplog,
+) -> None:
+    """Each sync logs ``Found X public, Y private, Z DMs, W group DMs``.
+
+    The diagnostic is the single fastest way to tell whether a token's
+    scopes are correct without grepping per-channel logs.
+    """
+    creds_path = Path(connector._credentials_path)
+    creds_path.write_text(
+        json.dumps({"token": "xoxp-fake-user-token"}), encoding="utf-8"
+    )
+
+    mock_auth.return_value = _AUTH_TEST_RESPONSE
+    mock_users.return_value = _USERS_RESPONSE
+    mock_channels.return_value = {
+        "channels": [
+            {"id": "C001", "name": "public-1"},
+            {"id": "C002", "name": "public-2"},
+            {"id": "C003", "name": "public-3"},
+            {"id": "P001", "name": "private-1", "is_private": True},
+            {"id": "D001", "is_im": True, "user": "U001"},
+            {"id": "D002", "is_im": True, "user": "U002"},
+            {"id": "G001", "name": "mpdm-x", "is_mpim": True},
+        ],
+        "response_metadata": {"next_cursor": ""},
+    }
+    mock_history.return_value = {"messages": [], "has_more": False}
+
+    with caplog.at_level("INFO", logger="openjarvis.connectors.slack_connector"):
+        list(connector.sync())
+
+    summary = " ".join(r.message for r in caplog.records)
+    assert "Found 3 public channels" in summary
+    assert "1 private channels" in summary
+    assert "2 DMs" in summary
+    assert "1 group DMs" in summary
