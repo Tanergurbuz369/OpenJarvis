@@ -1,0 +1,4 @@
+FROM qwen3:0.6b
+SYSTEM /no_think
+PARAMETER num_predict 512
+PARAMETER num_ctx 2048

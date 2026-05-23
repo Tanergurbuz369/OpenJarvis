@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
+from fastapi import Request
+
 logger = logging.getLogger(__name__)
 
 # Module-level cache of connector instances (keyed by connector_id).
