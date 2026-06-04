@@ -114,6 +114,8 @@ class SearchHit:
     vector_score: float
     thread_id: str = ""
     thread_context: List[Dict[str, Any]] = field(default_factory=list)
+    account: str = ""
+    source_profile: str = ""
     # ``url`` is the connector-provided deep-link, persisted on
     # ``knowledge_chunks.url``. Empty when the source didn't supply one — in
     # that case callers may fall back to a doc_id-based reconstruction (Slack,
@@ -132,6 +134,8 @@ class SearchHit:
             "chunk_idx": self.chunk_idx,
             "thread_id": self.thread_id,
             "thread_context": self.thread_context,
+            "account": self.account,
+            "source_profile": self.source_profile,
         }
 
 
@@ -173,6 +177,22 @@ def _parse_participants(raw: Any) -> List[str]:
         return []
 
 
+def _split_source_accounts(
+    sources: Optional[Sequence[str]],
+) -> Tuple[List[str], List[Tuple[str, str]]]:
+    """Split source filters into plain sources and ``source:account`` pairs."""
+    plain: List[str] = []
+    scoped: List[Tuple[str, str]] = []
+    for source in sources or []:
+        if ":" in source:
+            base, account = source.split(":", 1)
+            if base and account:
+                scoped.append((base, account))
+                continue
+        plain.append(source)
+    return plain, scoped
+
+
 def _snippet(content: str, max_chars: int = 500) -> str:
     flat = content.strip()
     if len(flat) <= max_chars:
@@ -185,7 +205,10 @@ def _query_tokens(query: str) -> set[str]:
 
 
 def _sources_include_gcalendar(sources: Optional[Sequence[str]]) -> bool:
-    return any(str(source).lower() == "gcalendar" for source in sources or [])
+    return any(
+        str(source).lower().split(":", 1)[0] == "gcalendar"
+        for source in sources or []
+    )
 
 
 def _has_upcoming_calendar_intent(
@@ -330,6 +353,7 @@ class HybridSearch:
         person: Optional[str],
         time_range: Optional[Tuple[Optional[datetime], Optional[datetime]]],
         sources: Optional[Sequence[str]],
+        accounts: Optional[Sequence[str]],
         alias: str = "",
     ) -> Tuple[str, List[Any]]:
         """Return ``(where_fragment, params)`` for the structured filters.
@@ -364,9 +388,26 @@ class HybridSearch:
                 params.append(_iso(end))
 
         if sources:
-            placeholders = ",".join("?" for _ in sources)
-            clauses.append(f"{prefix}source IN ({placeholders})")
-            params.extend(sources)
+            plain_sources, scoped_sources = _split_source_accounts(sources)
+            source_clauses: List[str] = []
+            if plain_sources:
+                placeholders = ",".join("?" for _ in plain_sources)
+                source_clauses.append(f"{prefix}source IN ({placeholders})")
+                params.extend(plain_sources)
+            for source, account in scoped_sources:
+                source_clauses.append(
+                    f"({prefix}source = ? AND "
+                    f"json_extract({prefix}metadata, '$.account') = ?)"
+                )
+                params.extend([source, account])
+            clauses.append("(" + " OR ".join(source_clauses) + ")")
+
+        if accounts:
+            placeholders = ",".join("?" for _ in accounts)
+            clauses.append(
+                f"json_extract({prefix}metadata, '$.account') IN ({placeholders})"
+            )
+            params.extend(accounts)
 
         return " AND ".join(clauses), params
 
@@ -552,10 +593,14 @@ class HybridSearch:
         scoped_sources = list(sources) if sources else None
         has_upcoming_intent = _has_upcoming_calendar_intent(query, scoped_sources)
 
-        if has_upcoming_intent and (
-            scoped_sources is None or _sources_include_gcalendar(scoped_sources)
-        ):
+        if has_upcoming_intent and scoped_sources is None:
             scoped_sources = ["gcalendar"]
+        elif has_upcoming_intent and _sources_include_gcalendar(scoped_sources):
+            scoped_sources = [
+                source
+                for source in scoped_sources or []
+                if str(source).lower().split(":", 1)[0] == "gcalendar"
+            ]
 
         if not _sources_include_gcalendar(scoped_sources):
             return time_range, scoped_sources, False, False
@@ -584,6 +629,7 @@ class HybridSearch:
         person: Optional[str],
         time_range: Optional[Tuple[Optional[datetime], Optional[datetime]]],
         sources: Optional[Sequence[str]],
+        accounts: Optional[Sequence[str]],
         limit: int,
     ) -> List[str]:
         """Return gcalendar rows sorted by normalized event start time."""
@@ -591,6 +637,7 @@ class HybridSearch:
             person=person,
             time_range=None,
             sources=sources,
+            accounts=accounts,
         )
         rows = self._store._conn.execute(
             f"""
@@ -664,6 +711,7 @@ class HybridSearch:
         person: Optional[str] = None,
         time_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
         sources: Optional[Sequence[str]] = None,
+        accounts: Optional[Sequence[str]] = None,
         limit: int = 20,
     ) -> List[SearchHit]:
         """Run the hybrid pipeline and return up to ``limit`` hits.
@@ -683,10 +731,17 @@ class HybridSearch:
         recall_time_range = None if calendar_timeline else time_range
 
         bm25_filter_sql, bm25_filter_params = self._build_filters(
-            person=person, time_range=recall_time_range, sources=sources, alias="kc"
+            person=person,
+            time_range=recall_time_range,
+            sources=sources,
+            accounts=accounts,
+            alias="kc",
         )
         unaliased_filter_sql, unaliased_filter_params = self._build_filters(
-            person=person, time_range=recall_time_range, sources=sources
+            person=person,
+            time_range=recall_time_range,
+            sources=sources,
+            accounts=accounts,
         )
 
         bm25 = (
@@ -717,6 +772,7 @@ class HybridSearch:
                     person=person,
                     time_range=time_range,
                     sources=sources,
+                    accounts=accounts,
                     limit=limit,
                 )
                 fused = [(chunk_id, 0.0, 0.0, 0.0) for chunk_id in chunk_ids]
@@ -741,7 +797,7 @@ class HybridSearch:
         meta_rows = self._store._conn.execute(
             f"""
             SELECT id, doc_id, content, source, title, author, participants,
-                   timestamp, thread_id, chunk_index, url
+                   timestamp, thread_id, chunk_index, url, metadata
             FROM knowledge_chunks
             WHERE id IN ({placeholders})
             """,
@@ -754,6 +810,7 @@ class HybridSearch:
             r = by_id.get(chunk_id)
             if r is None:
                 continue
+            metadata = json.loads(r["metadata"]) if r["metadata"] else {}
             hits.append(
                 SearchHit(
                     chunk_id=chunk_id,
@@ -769,6 +826,8 @@ class HybridSearch:
                     vector_score=vec_score,
                     thread_id=r["thread_id"] or "",
                     thread_context=self._thread_context(r["thread_id"] or "", chunk_id),
+                    account=str(metadata.get("account", "") or ""),
+                    source_profile=str(metadata.get("source_profile", "") or ""),
                     url=r["url"] or "",
                 )
             )
