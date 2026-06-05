@@ -80,7 +80,7 @@ def create_connectors_router():
     this package.
     """
     try:
-        from fastapi import APIRouter, HTTPException, Request
+        from fastapi import APIRouter, HTTPException
     except ImportError as exc:
         raise ImportError(
             "fastapi and pydantic are required for the connectors router"
@@ -567,7 +567,7 @@ def create_connectors_router():
                 pipeline=IngestionPipeline(store=store),
             ).get_checkpoint(connector_id)
 
-            # Map connector_id → source field as written by the connector.
+            # Map connector_id -> source field as written by the connector.
             # Most match 1:1, but the IMAP/OAuth Gmail connectors both write
             # source='gmail' so the unified card pulls a single timeline.
             _STORE_SOURCE = {"gmail_imap": "gmail"}
