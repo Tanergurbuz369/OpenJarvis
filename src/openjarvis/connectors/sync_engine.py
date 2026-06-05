@@ -16,9 +16,10 @@ Typical usage::
 
 from __future__ import annotations
 
+import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -99,9 +100,14 @@ class SyncEngine:
         exception is re-raised so callers can handle it.
         """
         connector_id: str = connector.connector_id
+        account = str(getattr(connector, "_account", "") or "").strip()
+        checkpoint_id = f"{connector_id}:{account}" if account else connector_id
 
-        # Load any previous checkpoint so we can resume.
-        checkpoint = self.get_checkpoint(connector_id)
+        # Load any previous checkpoint so we can resume. Named account aliases
+        # must have independent checkpoints; otherwise syncing personal-main
+        # makes work-main resume from personal's last_sync and silently skip
+        # account-specific mail.
+        checkpoint = self.get_checkpoint(checkpoint_id)
         prior_cursor: Optional[str] = checkpoint["cursor"] if checkpoint else None
         prior_items: int = checkpoint["items_synced"] if checkpoint else 0
 
@@ -109,6 +115,17 @@ class SyncEngine:
         if checkpoint and checkpoint.get("last_sync"):
             try:
                 since = datetime.fromisoformat(checkpoint["last_sync"])
+                # Gmail and similar APIs often filter by message Date/internal
+                # timestamp, not by the moment OpenJarvis last polled. A new
+                # email can legitimately have a Date a few minutes before the
+                # checkpoint wall clock, so exact `after:last_sync` polling can
+                # miss it forever. Re-fetch a bounded overlap and rely on the
+                # store natural key to ignore already-ingested documents.
+                lookback_seconds = int(
+                    os.environ.get("OPENJARVIS_SYNC_LOOKBACK_SECONDS", "86400")
+                )
+                if lookback_seconds > 0:
+                    since = since - timedelta(seconds=lookback_seconds)
             except (ValueError, TypeError):
                 pass
 
@@ -139,7 +156,7 @@ class SyncEngine:
                     # successful completion would permanently skip
                     # whatever wasn't reached if the sync then fails (#782).
                     self._save_checkpoint(
-                        connector_id,
+                        checkpoint_id,
                         prior_items + items_ingested,
                         cursor=current_cursor,
                     )
@@ -150,7 +167,7 @@ class SyncEngine:
 
         except Exception as exc:
             self._save_checkpoint(
-                connector_id,
+                checkpoint_id,
                 prior_items + items_ingested,
                 cursor=current_cursor,
                 error=str(exc),
@@ -163,7 +180,7 @@ class SyncEngine:
             # advancing it here could make the next sync skip documents that
             # the cancelled run never reached (#782).
             self._save_checkpoint(
-                connector_id,
+                checkpoint_id,
                 prior_items + items_ingested,
                 cursor=current_cursor,
                 error=None,
@@ -173,7 +190,7 @@ class SyncEngine:
         # Final checkpoint on successful completion — clear any previous
         # error and advance the watermark to when this sync started.
         self._save_checkpoint(
-            connector_id,
+            checkpoint_id,
             prior_items + items_ingested,
             cursor=current_cursor,
             error=None,

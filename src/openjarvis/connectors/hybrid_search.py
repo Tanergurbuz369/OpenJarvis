@@ -762,12 +762,11 @@ class HybridSearch:
         if calendar_timeline:
             fused = self._filter_calendar_timeline_fused(fused, time_range)
 
-        # Metadata-only fallback: empty query, or both legs produced nothing
-        # despite a non-empty query. Calendar timeline requests use start-time
-        # ascending; other searches use recency so the agent still gets a
-        # useful corpus snapshot.
+        # Metadata-only fallback is allowed only for genuinely structured
+        # searches. A non-empty lexical query with no hit must remain empty;
+        # returning unrelated recent rows would violate source/account scope.
         if not fused:
-            if calendar_timeline:
+            if calendar_timeline and metadata_only:
                 chunk_ids = self._calendar_timeline_ids(
                     person=person,
                     time_range=time_range,
@@ -776,7 +775,7 @@ class HybridSearch:
                     limit=limit,
                 )
                 fused = [(chunk_id, 0.0, 0.0, 0.0) for chunk_id in chunk_ids]
-            else:
+            elif not query.strip():
                 sql = f"""
                     SELECT id FROM knowledge_chunks
                     WHERE {unaliased_filter_sql}

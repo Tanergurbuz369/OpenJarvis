@@ -1019,7 +1019,7 @@ def create_connectors_router():
             last_sync_str = None
 
         # Determine effective state
-        if _disconnect_pending(connector_id):
+        if _disconnect_pending(sync_key):
             effective_state = "stopping"
         elif is_bg_running:
             effective_state = "syncing"
