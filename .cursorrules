@@ -1,0 +1,18 @@
+# Güvenlik Kuralları — Zorunlu (Cursor)
+
+Bu depoda üretilen her uygulama, "Güvenlik Öncelikli Vibe Coding Kuralları"na (Yasin Arsal, DOA Topluluğu) uymak zorundadır — istisnasız. Kod üretmeden önce `CLAUDE.md` dosyasındaki kuralların tam metnini oku ve uygula.
+
+Zorunlu başlıklar:
+1. Secret'lar yalnızca `.env`'de; frontend'de ham key yok
+2. Her endpoint'te rate limiting (429 + Retry-After)
+3. Sunucu tarafı input validation (zod/pydantic), parametreli sorgu
+4. Auth: düz metin parola yok (bcrypt/argon2), JWT, AuthN + AuthZ
+5. SQL: ORM/parametreli sorgu; string birleştirme yok
+6. CORS: production'da wildcard yok
+7. HTTP güvenlik header'ları (helmet/CSP/HSTS)
+8. Dosya yükleme: MIME + boyut doğrulama, UUID
+9. Hata yönetimi: istemciye stack trace yok, yapısal log
+10. Bağımlılık: npm audit, sabit versiyon
+11. XSS: dangerouslySetInnerHTML / eval yok
+12. Deploy kontrol listesi
+13. AI/LLM: prompt injection önleme, max_tokens, sunucu tarafı API key, token bütçeleri
