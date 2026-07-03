@@ -964,3 +964,102 @@ export async function denyAction(actionId: string): Promise<void> {
   const res = await fetch(`${getBase()}/v1/approvals/${actionId}/deny`, { method: 'POST' });
   if (!res.ok) throw new Error(`Failed: ${res.status}`);
 }
+
+// ---------------------------------------------------------------------------
+// Fleet — multi-agent orchestration
+// ---------------------------------------------------------------------------
+
+export interface FleetRole {
+  role_id: string;
+  name: string;
+  category: string;
+  icon: string;
+  description: string;
+  keywords: string[];
+  system_prompt: string;
+  tools: string[];
+  builtin: boolean;
+}
+
+export interface FleetSubtask {
+  subtask_id: string;
+  title: string;
+  description: string;
+  role_id: string;
+  depends_on: string[];
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped';
+  output: string;
+  error: string;
+  started_at: number | null;
+  finished_at: number | null;
+  tokens: number;
+}
+
+export interface FleetMission {
+  mission_id: string;
+  objective: string;
+  status: 'pending' | 'planning' | 'running' | 'completed' | 'failed' | 'canceled';
+  final_output: string;
+  error: string;
+  created_at: number;
+  started_at: number | null;
+  finished_at: number | null;
+  subtask_count: number;
+  active_roles: string[];
+  subtasks?: FleetSubtask[];
+}
+
+export interface FleetStatus {
+  roles: number;
+  categories: string[];
+  missions_total: number;
+  missions_active: number;
+  active_roles: string[];
+}
+
+export async function fetchFleetStatus(): Promise<FleetStatus> {
+  const res = await fetch(`${getBase()}/v1/fleet/status`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
+export async function fetchFleetRoles(q = '', category = ''): Promise<FleetRole[]> {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (category) params.set('category', category);
+  const qs = params.toString();
+  const res = await fetch(`${getBase()}/v1/fleet/roles${qs ? `?${qs}` : ''}`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  const data = await res.json();
+  return data.roles || [];
+}
+
+export async function fetchFleetMissions(limit = 50): Promise<FleetMission[]> {
+  const res = await fetch(`${getBase()}/v1/fleet/missions?limit=${limit}`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  const data = await res.json();
+  return data.missions || [];
+}
+
+export async function fetchFleetMission(missionId: string): Promise<FleetMission> {
+  const res = await fetch(`${getBase()}/v1/fleet/missions/${missionId}`);
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
+export async function createFleetMission(objective: string): Promise<FleetMission> {
+  const res = await fetch(`${getBase()}/v1/fleet/missions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ objective }),
+  });
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+  return res.json();
+}
+
+export async function cancelFleetMission(missionId: string): Promise<void> {
+  const res = await fetch(`${getBase()}/v1/fleet/missions/${missionId}/cancel`, {
+    method: 'POST',
+  });
+  if (!res.ok) throw new Error(`Failed: ${res.status}`);
+}

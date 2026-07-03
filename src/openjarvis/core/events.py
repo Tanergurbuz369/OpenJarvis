@@ -77,6 +77,12 @@ class EventType(str, Enum):
     OPTIMIZE_TRIAL_END = "optimize_trial_end"
     OPTIMIZE_RUN_END = "optimize_run_end"
     FEEDBACK_RECEIVED = "feedback_received"
+    # Fleet — automatic multi-agent orchestration
+    FLEET_MISSION_START = "fleet_mission_start"
+    FLEET_MISSION_PLANNED = "fleet_mission_planned"
+    FLEET_MISSION_END = "fleet_mission_end"
+    FLEET_TASK_START = "fleet_task_start"
+    FLEET_TASK_END = "fleet_task_end"
 
 
 @dataclass(slots=True)
