@@ -924,6 +924,14 @@ def include_all_routes(app) -> None:
     except ImportError:
         pass
 
+    # Fleet multi-agent orchestration routes
+    try:
+        from openjarvis.server.fleet_routes import fleet_router  # noqa: PLC0415
+
+        app.include_router(fleet_router)
+    except ImportError:
+        logger.debug("Fleet routes not available", exc_info=True)
+
     # WebSocket bridge for real-time agent events
     try:
         from openjarvis.core.events import get_event_bus

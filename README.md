@@ -147,6 +147,10 @@ OpenJarvis ships with eight built-in agents across three execution modes (on-dem
 
 See the [User Guide](https://open-jarvis.github.io/OpenJarvis/user-guide/morning-digest/) and [Tutorials](https://open-jarvis.github.io/OpenJarvis/tutorials/) for detailed setup instructions.
 
+### Agent Fleet
+
+Beyond the built-in agents, OpenJarvis ships a **fleet** of 90+ specialist agent roles (engineering, research, data, content, marketing, finance, operations, legal, design, personal assistance, ...) that activate automatically. Give the fleet one objective — a mission planner decomposes it, a dispatcher assigns each subtask to the best-suited specialist, subtasks run in parallel, and a chief-of-staff agent synthesizes the final deliverable. Watch it live on the **Fleet** page of the desktop app, or drive it from the API/SDK. Custom roles are plain TOML files in `~/.openjarvis/fleet/roles/`. See the [Fleet guide](docs/user-guide/fleet.md).
+
 Full documentation — including Docker deployment, cloud engines, development setup, and tutorials — at **[open-jarvis.github.io/OpenJarvis](https://open-jarvis.github.io/OpenJarvis/)**.
 
 ## Community

@@ -28,6 +28,11 @@ _AGENT_EVENTS = {
     EventType.TOOL_CALL_END,
     EventType.INFERENCE_START,
     EventType.INFERENCE_END,
+    EventType.FLEET_MISSION_START,
+    EventType.FLEET_MISSION_PLANNED,
+    EventType.FLEET_MISSION_END,
+    EventType.FLEET_TASK_START,
+    EventType.FLEET_TASK_END,
 }
 
 
