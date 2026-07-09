@@ -1,0 +1,10 @@
+.git
+.github
+node_modules
+.next
+.env
+.env.local
+.env.production
+*.md
+*.log
+.DS_Store
