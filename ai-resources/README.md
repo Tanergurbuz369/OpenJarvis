@@ -23,9 +23,9 @@ shut down. Every one of the 1,109 URLs was checked (July 2026); pages that are
 gone — 404s, dead domains, parked/for-sale domains, shutdown notices — are
 flagged **[DEAD]** in the catalog and carry `"status": "dead"` in the JSON.
 
-`"unverified"` marks the handful of sites that could not be conclusively
-checked (aggressive bot walls, region blocks); the link may still work in a
-normal browser.
+Every entry is currently classified live or dead. Sites behind aggressive bot
+walls were checked page-by-page; where a check is ever inconclusive (e.g. after
+a future re-run) the entry carries `"status": "unverified"` instead.
 
 ## How to use it
 
