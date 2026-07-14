@@ -1,20 +1,27 @@
-# 2,500+ ChatGPT Prompt Templates — for Claude Code & agents
+# ChatGPT Prompt Templates — for Claude Code & agents
 
-A structured, searchable library of **1,941 reusable prompt templates** extracted
-from Ignacio Velásquez's free
-["2,500+ ChatGPT Prompt Templates"](https://ignacio-velasquez.notion.site/2-500-ChatGPT-Prompt-Templates-d9541e901b2b4e8f800e819bdc0256da)
-Notion list, wired up so **Claude Code and OpenJarvis agents can actually use
-it** — not just read it.
+A structured, searchable library of reusable prompt templates, wired up so
+**Claude Code and OpenJarvis agents can actually use it** — not just read it.
+Two collections, one shared interface:
+
+- **English (1,941 prompts)** — from Ignacio Velásquez's free
+  ["2,500+ ChatGPT Prompt Templates"](https://ignacio-velasquez.notion.site/2-500-ChatGPT-Prompt-Templates-d9541e901b2b4e8f800e819bdc0256da)
+  Notion list; many carry an *expanded expert* variant.
+- **Turkish (895 prompts)** — from the *"ChatGPT'yi maximumda kullanın"* PDF,
+  across 20 professional categories (Pazarlama, Satış, İK, Mühendisler, …).
 
 | File | What it is |
 |------|-----------|
-| [`catalog.json`](catalog.json) | All entries as structured JSON (`name`, `description`, `prompt`, `automatic_prompt`, `tags`, `platform`, `categories`, `url`) |
-| [`prompts/`](prompts/) | Human-readable Markdown, one file per category |
-| [`scripts/prompt.py`](scripts/prompt.py) | Search / show / fill CLI — the tool agents call |
+| [`catalog.json`](catalog.json) | English entries (`name`, `description`, `prompt`, `automatic_prompt`, `tags`, `platform`, `categories`, `url`) |
+| [`catalog.tr.json`](catalog.tr.json) | Turkish entries (same schema, `lang: "tr"`) |
+| [`prompts/`](prompts/) · [`prompts-tr/`](prompts-tr/) | Human-readable Markdown, one file per category |
+| [`CATALOG.md`](CATALOG.md) · [`CATALOG.tr.md`](CATALOG.tr.md) | Category indexes |
+| [`scripts/prompt.py`](scripts/prompt.py) | Search / show / fill CLI (`--lang en\|tr\|all`) — the tool agents call |
 | [`scripts/fetch_catalog.py`](scripts/fetch_catalog.py) | Regenerates `catalog.json` from the Notion source (stdlib only) |
 
-Each template has a short **prompt** and often an **expanded prompt** — a fuller
-version that sets an expert persona and detailed instructions. Placeholders in
+The CLI auto-loads every `catalog*.json` in this directory, so both languages
+are searchable through one command. Each template has a short **prompt** and
+sometimes an **expanded prompt** (a fuller expert version). Placeholders in
 `[brackets]` are fill-ins; `[PROMPT]` = your topic, `[TARGETLANGUAGE]` = output
 language.
 
@@ -62,11 +69,12 @@ The CLI is the reliable interface — stdlib Python, no dependencies, stable
 `--json` output for programmatic callers:
 
 ```bash
-# Rank templates by a query
+# Rank templates by a query (both languages by default)
 python3 prompt-templates/scripts/prompt.py search "cover letter" --limit 5
 
-# List categories and counts
-python3 prompt-templates/scripts/prompt.py categories
+# Restrict to one language
+python3 prompt-templates/scripts/prompt.py search "pazarlama stratejisi" --lang tr
+python3 prompt-templates/scripts/prompt.py categories --lang tr
 
 # Print a template by id or name (--expanded = the expert variant)
 python3 prompt-templates/scripts/prompt.py show "AIDA Copywriting" --expanded
@@ -88,12 +96,17 @@ python3 prompt-templates/scripts/prompt.py search "blog intro" --json
   guardrail-bypass prompts) was deliberately left out. Those rows stay in
   `catalog.json` flagged `"excluded"` with empty prompt text, and the CLI
   refuses to print them.
-- Counts: 1,941 usable templates across 45 categories; 1,631 carry inline
-  prompt text, the rest are external GPT/tool links (`url`).
+- Counts (English): 1,941 usable templates across 45 categories; 1,631 carry
+  inline prompt text, the rest are external GPT/tool links (`url`).
+- Counts (Turkish): 895 prompts across 20 professional categories. The source
+  PDF's **Satış** section is truncated at item 14, and a few sections are
+  missing their first entries in the export — `catalog.tr.json` / `CATALOG.tr.md`
+  reflect what is actually present, not the headline counts.
 
 ## Credits & license
 
-The prompt list is curated by [Ignacio Velásquez](https://www.notion.com/@theveller)
-and published free on his public Notion site. This directory re-packages the
-public index (names, prompts, descriptions) in a structured, agent-usable form;
-the prompts themselves belong to their author.
+The English prompt list is curated by [Ignacio Velásquez](https://www.notion.com/@theveller)
+and published free on his public Notion site. The Turkish set is extracted from
+the *"ChatGPT'yi maximumda kullanın"* community PDF. This directory re-packages
+those indexes (names, prompts, descriptions) in a structured, agent-usable form;
+the prompts themselves belong to their respective authors.

@@ -1,6 +1,6 @@
 [skill]
 name = "prompt-template-find"
-description = "Find a ready-made ChatGPT/LLM prompt from the bundled library of 1,900+ prompt templates (marketing, business, copywriting, coding, education, copywriting frameworks, expert personas). Use when the user wants a prompt for a task instead of writing one from scratch."
+description = "Find a ready-made ChatGPT/LLM prompt from the bundled library of 2,800+ prompt templates in English and Turkish (marketing, sales, HR, engineering, legal, copywriting frameworks, expert personas, and 20 Turkish professional categories). Use when the user wants a prompt for a task instead of writing one from scratch."
 version = "0.1.0"
 author = "openjarvis"
 

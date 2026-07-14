@@ -24,14 +24,27 @@ import re
 import sys
 from pathlib import Path
 
-CATALOG = Path(__file__).resolve().parent.parent / "catalog.json"
+CATALOG_DIR = Path(__file__).resolve().parent.parent
 
 
 def load():
-    rows = json.loads(CATALOG.read_text(encoding="utf-8"))
+    # Merge the English catalog and any language catalogs (catalog.<lang>.json).
+    rows = []
+    for path in sorted(CATALOG_DIR.glob("catalog*.json")):
+        stem = path.name[len("catalog") : -len(".json")].strip(".")
+        lang = stem or "en"
+        for r in json.loads(path.read_text(encoding="utf-8")):
+            r.setdefault("lang", lang)
+            rows.append(r)
     for i, r in enumerate(rows):
         r["_id"] = i
     return rows
+
+
+def by_lang(rows, lang):
+    if not lang or lang == "all":
+        return rows
+    return [r for r in rows if r.get("lang", "en") == lang]
 
 
 def usable(r):
@@ -66,6 +79,7 @@ def best_prompt(row, expanded):
 
 
 def cmd_search(rows, args):
+    rows = by_lang(rows, getattr(args, "lang", None))
     terms = [t.lower() for t in re.split(r"\s+", args.query.strip()) if t]
     ranked = sorted(
         ((score(r, terms), r) for r in rows if usable(r)),
@@ -101,6 +115,7 @@ def cmd_search(rows, args):
 def cmd_categories(rows, args):
     from collections import Counter
 
+    rows = by_lang(rows, getattr(args, "lang", None))
     c = Counter(
         cat for r in rows if usable(r) for cat in (r["categories"] or ["Uncategorized"])
     )
@@ -189,9 +204,11 @@ def main():
     s = with_json(sub.add_parser("search", help="rank templates by a query"))
     s.add_argument("query")
     s.add_argument("--limit", type=int, default=10)
+    s.add_argument("--lang", help="filter by language: en, tr, all (default all)")
     s.set_defaults(func=cmd_search)
 
     c = with_json(sub.add_parser("categories", help="list categories and counts"))
+    c.add_argument("--lang", help="filter by language: en, tr, all (default all)")
     c.set_defaults(func=cmd_categories)
 
     sh = with_json(sub.add_parser("show", help="print a template by id or name"))
