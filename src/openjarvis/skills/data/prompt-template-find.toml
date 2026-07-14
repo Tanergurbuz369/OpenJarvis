@@ -1,0 +1,25 @@
+[skill]
+name = "prompt-template-find"
+description = "Find a ready-made ChatGPT/LLM prompt from the bundled library of 2,800+ prompt templates in English and Turkish (marketing, sales, HR, engineering, legal, copywriting frameworks, expert personas, and 20 Turkish professional categories). Use when the user wants a prompt for a task instead of writing one from scratch."
+version = "0.1.0"
+author = "openjarvis"
+
+[[skill.steps]]
+tool_name = "shell_exec"
+arguments_template = '{"command": "python3 prompt-templates/scripts/prompt.py search {query} --limit 5 --json"}'
+output_key = "matches"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "From these candidate prompt templates, pick the single best match for the user request {query}. Report its id and name. Candidates: {matches}"}'
+output_key = "choice"
+
+[[skill.steps]]
+tool_name = "shell_exec"
+arguments_template = '{"command": "python3 prompt-templates/scripts/prompt.py show {choice} --expanded"}'
+output_key = "prompt_text"
+
+[[skill.steps]]
+tool_name = "think"
+arguments_template = '{"thought": "Present this prompt template to the user and, if it contains bracketed placeholders like [product/service] or [PROMPT], fill them from the user request {query} or ask for the missing values. Prompt: {prompt_text}"}'
+output_key = "result"

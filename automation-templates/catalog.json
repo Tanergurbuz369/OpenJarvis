@@ -1,0 +1,4245 @@
+[
+ {
+  "name": "Add meeting participant’s information to the next Google Calendar event | Bardeen",
+  "description": "This automation will research your next meeting participants and add their company, job title, and other relevant information for you automatically, right to your calendar.",
+  "url": "https://www.bardeen.ai/playbooks/add-meeting-information-calendar",
+  "tag": "Template",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Copy a Google Jobs listing to Google Sheets, with a right-click | Bardeen",
+  "description": "This playbook allows you to save any Google Jobs post into a Google Sheets spreadsheet with a right-click.",
+  "url": "https://www.bardeen.ai/playbooks/google-jobs-to-sheets-right-click",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy a Google Jobs listing to Notion | Bardeen",
+  "description": "This Playbook will save a Google Jobs listing to a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-google-jobs-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy a LinkedIn job post to Airtable, when I right click | Bardeen",
+  "description": "This playbook will save any LinkedIn job post from search into an Airtable with a right-click.",
+  "url": "https://www.bardeen.ai/playbooks/right-click-save-linkedin-job-to-airtable",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy a LinkedIn job post to Notion, when I right-click. | Bardeen",
+  "description": "This playbook will save any LinkedIn job post into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/right-click-save-linkedin-job-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy a Notion database to a Google Sheet | Bardeen",
+  "description": "This playbook will copy a Notion database into a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/save-notion-database-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy all Google Calendar events during a time frame to Notion | Bardeen",
+  "description": "This playbook will copy all Google Calendar events within a time frame into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/sync-calendar-events-to-notion-timeframe",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy all Notion pages from one database to another | Bardeen",
+  "description": "This playbook will copy all pages from one Notion database into another.",
+  "url": "https://www.bardeen.ai/playbooks/create-recurring-tasks-in-notion",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy all Zoom cloud recording links to Notion | Bardeen",
+  "description": "This playbook will copy all Zoom cloud recording links into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-zoom-recordings-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Storage"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy Google Calendar meetings to Notion | Bardeen",
+  "description": "This automation will copy your Google Calendar meetings to a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-all-meetings-within-a-time-period-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy Google News for a keyword and save results to Google Sheets | Bardeen",
+  "description": "This playbook will extract a number of Google News results for a given keyword and it them to a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/google-news-to-sheets",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy indeed job search results to Google Sheet | Bardeen",
+  "description": "This playbook will copy data from indeed job results page to Google sheet",
+  "url": "https://www.bardeen.ai/playbooks/copy-indeed-job-search-results-to-google-sheet",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy LinkedIn company data to Airtable, when I right-click | Bardeen",
+  "description": "This Autobook will scrape data from a LinkedIn company page and save it directly into an Airtable table.",
+  "url": "https://www.bardeen.ai/playbooks/right-click-linkedin-company-to-airtable",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy LinkedIn company data to Notion | Bardeen",
+  "description": "This playbook will get scrape a LinkedIn company page and save the results in a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/linkedin-company-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy Linkedin profile to a Notion database | Bardeen",
+  "description": "This playbook will copy LinkedIn profile data into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-linkedin-profiles-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy LinkedIn profile to Notion, when I right-click | Bardeen",
+  "description": "This automation will copy LinkedIn profile data into a Notion database with a right-click.",
+  "url": "https://www.bardeen.ai/playbooks/linkedin-profile-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy Notion database to a Google Sheet | Bardeen",
+  "description": "This playbook will copy a Notion database into a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/save-notion-database-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy Product Hunt product data to a Notion database | Bardeen",
+  "description": "This playbook will copy Product Hunt data into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-product-hunt-favorites-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Copy tweets from a profile to Notion | Bardeen",
+  "description": "This playbook will copy all tweets from a profile to a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/tweets-from-profile-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Copy Twitter profile data to a Notion database | Bardeen",
+  "description": "This playbook will copy Twitter profile data into a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/twitter-profile-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Create an email draft using OpenAI | Bardeen",
+  "description": "This automation creates an email draft using OpenAI.",
+  "url": "https://www.bardeen.ai/playbooks/email-draft-openai",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Create Notion page | Bardeen",
+  "description": "This Playbook will create tasks on the fly.",
+  "url": "https://www.bardeen.ai/playbooks/create-notion-page",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Create recurring tasks in Notion | Bardeen",
+  "description": "This Autobook will help you create tasks periodically on Notion.",
+  "url": "https://www.bardeen.ai/playbooks/recurring-tasks-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Enrich email contacts and save to Notion | Bardeen",
+  "description": "This playbook will enrich the information from a list of emails and save them to a Notion Database.",
+  "url": "https://www.bardeen.ai/playbooks/enrich-emails-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Enrich email contacts and save to Notion | Bardeen",
+  "description": "This playbook will enrich the information from a list of emails and save them to a Notion Database.",
+  "url": "https://www.bardeen.ai/playbooks/enrich-emails-to-notion",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Enrich TikTok links and save to Google Sheets | Bardeen",
+  "description": "This playbook will extract data from TikTok profile links and add it to Google Sheets.",
+  "url": "https://www.bardeen.ai/playbooks/enrich-tiktok",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Enrich TikTok links and save to Google Sheets | Bardeen",
+  "description": "This playbook will extract data from TikTok profile links and add it to Google Sheets.",
+  "url": "https://www.bardeen.ai/playbooks/enrich-tiktok",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Find email of the current Github user | Bardeen",
+  "description": "This playbook will find email addresses of a Github user from the currently opened Github profile page.",
+  "url": "https://www.bardeen.ai/playbooks/email-from-github",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get a browser notification 1 min before the event | Bardeen",
+  "description": "This playbook will open a browser notification with the information about your next meeting starting in 1 min.",
+  "url": "https://www.bardeen.ai/playbooks/get-a-browser-notification-1-min-before-the-event",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get a full-page screenshot | Bardeen",
+  "description": "This playbook will automatically take a full-page screenshot of the currently opened browser tab.",
+  "url": "https://www.bardeen.ai/playbooks/full-page-screenshot",
+  "tag": "Template",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get a list of ProductHunt products from the home or topics pages | Bardeen",
+  "description": "This playbook will extract a list of products from the ProductHunt home or topic pages",
+  "url": "https://www.bardeen.ai/playbooks/get-a-list-of-producthunt-products-from-the-home-or-topics-pages",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Get all email addresses on the current page (including non-visible) | Bardeen",
+  "description": "This playbook will find all email addresses on your currently opened page.",
+  "url": "https://www.bardeen.ai/playbooks/find-email-addresses-on-page",
+  "tag": "Template",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get an SMS reminder about the upcoming meeting 5 min before it starts | Bardeen",
+  "description": "",
+  "url": "https://www.bardeen.ai/playbooks/sms-about-the-upcoming-meeting-5-min-before",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Get data from a LinkedIn profile search | Bardeen",
+  "description": "One-click automation: Extract data from a LinkedIn profile search.",
+  "url": "https://www.bardeen.ai/playbooks/get-data-from-a-linkedin-profile-search",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get data from a Tweet and its thread | Bardeen",
+  "description": "This playbook will copy data from a tweet on the currently opened page and scrape it's entire thread",
+  "url": "https://www.bardeen.ai/playbooks/get-data-from-tweet-and-thread",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Get indeed job search results | Bardeen",
+  "description": "This playbook will get data from indeed job results page",
+  "url": "https://www.bardeen.ai/playbooks/get-indeed-job-search-results",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Get Instagram profile data from profile links in Google Sheets | Bardeen",
+  "description": "This playbook will extract profile data from a list of Instagram profile links and add it to a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/enrich-instagram",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get list of ProductHunt products from a topic page in Google Sheets | Bardeen",
+  "description": "This playbook will scrape ProductHunt products from the currently opened topic page and import data to a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/scrape-producthunt-topic",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get list of ProductHunt products from the home page in Google Sheets | Bardeen",
+  "description": "This playbook will extract a list of products from the ProductHunt home page and save the results to Google Sheets",
+  "url": "https://www.bardeen.ai/playbooks/scrape-producthunt",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get Product Hunt product data | Bardeen",
+  "description": "This playbook will get Product Hunt data from a product page",
+  "url": "https://www.bardeen.ai/playbooks/get-product-hunt-product-data",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get social profiles of a Github user | Bardeen",
+  "description": "This playbook will find the social profile links of a Github user on the currently opened profile page. Find LinkedIn profile from Github. Find Twitter from Github.",
+  "url": "https://www.bardeen.ai/playbooks/socials-of-a-github-user",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get social profiles of a Pipedrive contact | Bardeen",
+  "description": "This playbook will find social media links of a Pipedrive contact.",
+  "url": "https://www.bardeen.ai/playbooks/get-social-profiles-of-a-pipedrive-contact",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get social profiles of all email recipients | Bardeen",
+  "description": "This playbook will find social media links of email recipients.",
+  "url": "https://www.bardeen.ai/playbooks/clearbit-enrichment-of-email-recipients",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get summary of the current page using OpenAI | Bardeen",
+  "description": "This playbook will summarize text from the currently opened page using OpenAI's GPT3 API.",
+  "url": "https://www.bardeen.ai/playbooks/summarize-current-page-openai",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get top 3 Google Search results for a keyword & website | Bardeen",
+  "description": "This playbook will find the top 3 Google Search results on a specified website for a given keyword and add the data to a Google Sheet.",
+  "url": "https://www.bardeen.ai/playbooks/competitor-content-research",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Get WhatsApp Web contact data | Bardeen",
+  "description": "This playbook scrapes a WhatsApp Web contact and gets profile information.",
+  "url": "https://www.bardeen.ai/playbooks/get-whatsapp-web-contact-data",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Join meeting and create a Notion page before an event starts | Bardeen",
+  "description": "This Autobook opens your next Google Calendar meeting link and opens a Notion page for notes when a meeting is about to start.",
+  "url": "https://www.bardeen.ai/playbooks/join-meeting-with-notion-notes",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Join the next meeting, 1 min before it starts | Bardeen",
+  "description": "This Autobook will join the next meeting for you automatically a given duration before it's about to start.",
+  "url": "https://www.bardeen.ai/playbooks/when-next-meeting-is-happening-join-it-automatically",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Notify me when website data changes | Bardeen",
+  "description": "This Autobook will send a Slack notification to a given channel when the data on a given Website changes using a newly created Scraper Template.",
+  "url": "https://www.bardeen.ai/playbooks/notify-me-when-website-data-changes",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Remove paywall | Bardeen",
+  "description": "Remove hard paywall.",
+  "url": "https://www.bardeen.ai/playbooks/remove-paywall",
+  "tag": "Template",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Ahrefs keywords to Google Sheets",
+  "description": "",
+  "url": "https://www.bardeen.ai/shared-playbook?id=DUMsCEIBSWhq",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Amazon best seller products to Google Sheets | Bardeen",
+  "description": "This playbook will extract a list of products from Amazon best sellers page and save the data to Google Sheets.",
+  "url": "https://www.bardeen.ai/playbooks/scrape-amazon-best-sellers",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save ClickUp tasks to Notion | Bardeen",
+  "description": "This playbook will save all ClickUp tasks to a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/clickup-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save current tab to Notion | Bardeen",
+  "description": "This playbook will save the currently opened tab to Notion.",
+  "url": "https://www.bardeen.ai/playbooks/save-current-tab-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save eBay products from search to Google Sheets | Bardeen",
+  "description": "This playbook will scrape a list of products from eBay search and save them to Google sheets.",
+  "url": "https://www.bardeen.ai/playbooks/scrape-ebay-products",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Facebook group members to Google Sheets | Bardeen",
+  "description": "This playbook will extract all Facebook people from a group members page and save them to Google Sheets.",
+  "url": "https://www.bardeen.ai/playbooks/facebook-group-to-sheets",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Facebook page to Google Sheets | Bardeen",
+  "description": "This playbook will save the currently opened Facebook business page to Google Sheets.",
+  "url": "https://www.bardeen.ai/playbooks/fb-page-to-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Facebook profile to Notion | Bardeen",
+  "description": "This Playbook will save Facebook profile to Notion.",
+  "url": "https://www.bardeen.ai/playbooks/save-facebook-profile-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Instagram profile to Notion | Bardeen",
+  "description": "This Playbook will save an Instagram profile to Notion.",
+  "url": "https://www.bardeen.ai/playbooks/save-instagram-profile-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save new tweets to Notion | Bardeen",
+  "description": "This playbook will save a new tweet to a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-new-tweets-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Save profiles from LinkedIn search to Notion | Bardeen",
+  "description": "This playbook will scrape each profile from a Linkedin search and save them in a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/save-profiles-from-linkedin-search-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save something to Notion | Bardeen",
+  "description": "This playbook will add something to a Notion database. Input can be any object known to Bardeen.",
+  "url": "https://www.bardeen.ai/playbooks/save-object-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save TikTok profile to Notion | Bardeen",
+  "description": "This Playbook will save a TikTok profile to Notion.",
+  "url": "https://www.bardeen.ai/playbooks/tiktok-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save tweets for a keyword to Notion | Bardeen",
+  "description": "This playbook saves all tweets for a keyword to a Notion database",
+  "url": "https://www.bardeen.ai/playbooks/save-tweets-for-a-keyword-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "dead"
+ },
+ {
+  "name": "Save Upwork Job to Notion | Bardeen",
+  "description": "This playbook will scrape an Upwork job and save it in a Notion database.",
+  "url": "https://www.bardeen.ai/playbooks/upwork-job-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Youtube channel to Notion | Bardeen",
+  "description": "This Playbook will save Youtube channel data to Notion.",
+  "url": "https://www.bardeen.ai/playbooks/save-youtube-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Save Zillow listings (from search) to Google Sheets | Bardeen",
+  "description": "This automation will save Zillow listings from search to a Google Sheet with a shortcut.",
+  "url": "https://www.bardeen.ai/playbooks/zillow-listings-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send an email reminder to all meeting participants 5 min before the event | Bardeen",
+  "description": "This automation will send an email reminder to participants of your Google Calendar event 5 minutes before it starts. This will help ensure that everyone is on time and prepared for the event.",
+  "url": "https://www.bardeen.ai/playbooks/send-an-email-reminder-automatically",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send current page as a PDF via email to meeting participants | Bardeen",
+  "description": "This playbook will upload the current page as a PDF to Google Drive and email the link to participants of a Google Calendar event.",
+  "url": "https://www.bardeen.ai/playbooks/share-current-page-as-pdf-with-meeting-participants",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send the current page URL to a phone as an SMS | Bardeen",
+  "description": "This playbook will send an SMS to a phone number with a specified message.",
+  "url": "https://www.bardeen.ai/playbooks/send-url-as-sms",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send the summary of an email to Slack | Bardeen",
+  "description": "This playbook will send a Slack message with the summary of an email.",
+  "url": "https://www.bardeen.ai/playbooks/send-summary-of-email-to-slack",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Team Chat"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send the Top 10 Product Hunt posts to a Slack channel every day | Bardeen",
+  "description": "This Autobook will Scrape the top 10 posts from ProductHunt.com every day at a given time and send them to your Slack channel of choice.",
+  "url": "https://www.bardeen.ai/playbooks/send-the-top-10-producthunt-posts-to-a-slack-channel-every-day",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Send Zoom cloud recording to participants of an event via Google Drive | Bardeen",
+  "description": "This playbook will upload a Zoom cloud recording to Google Drive and send the link to participants of a Google Calendar event.",
+  "url": "https://www.bardeen.ai/playbooks/send-a-zoom-recording-to-event-participants",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Storage"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Share current page as PDF in Slack | Bardeen",
+  "description": "This playbook will send a Slack message with the PDF of the currently opened page.",
+  "url": "https://www.bardeen.ai/playbooks/share-on-slack",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Team Chat"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Upload a screenshot of a web page to Google Drive periodically | Bardeen",
+  "description": "This playbook will upload a screenshot of a website to a Google Drive folder.",
+  "url": "https://www.bardeen.ai/playbooks/automatic-website-screenshots-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Storage"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Upload current page as a PDF to Dropbox | Bardeen",
+  "description": "This playbook will upload the current page as a PDF to a Dropbox folder.",
+  "url": "https://www.bardeen.ai/playbooks/upload-current-page-to-dropbox",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Upload Zoom cloud recording to Google Drive | Bardeen",
+  "description": "This playbook will upload a Zoom cloud recording to a Google Drive folder.",
+  "url": "https://www.bardeen.ai/playbooks/upload-zoom-recording-to-drive",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "Upload Zoom cloud recordings to Drive when made available | Bardeen",
+  "description": "This automation will upload your new Zoom cloud recordings to Google Drive, when they are made available in Zoom.",
+  "url": "https://www.bardeen.ai/playbooks/upload-zoom-cloud-recordings-to-drive",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Bardeen",
+  "status": "live"
+ },
+ {
+  "name": "GRID.is Integrations | Connect Your Apps with Zapier",
+  "description": "Instantly connect GRID.is with the apps you use everyday. GRID.is integrates with 5,000 other apps on Zapier - it's the easiest way to automate your work.",
+  "url": "https://zapier.com/apps/gridis/integrations",
+  "tag": "App",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Connect Your Apps with Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Automatically create a Discover Weekly archive - IFTTT",
+  "description": "Every Monday, the 30 tracks from your Discover Weekly will be added to a personal 'Discover Weekly Archive' playlist. Never lose a hot track!",
+  "url": "https://ifttt.com/applets/NFRkZeJu-automatically-create-a-discover-weekly-archive",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Automatically sync your Soundcloud likes to your Spotify - IFTTT",
+  "description": "Like a track on Soundcloud to add it to your Spotify My Music collection (subject to track availability; this will add the first search result to your Spotify library).",
+  "url": "https://ifttt.com/applets/hx3BSwhA-automatically-sync-your-soundcloud-likes-to-your-spotify",
+  "tag": "Template",
+  "categories": [
+   "Audio"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Automatically turn your lights on at sunset - IFTTT",
+  "description": "Never be left in the dark. Whenever the sun starts to set, your Philips Hue bulbs will automatically turn on.",
+  "url": "https://ifttt.com/applets/PVkgiLYy-automatically-turn-your-lights-on-at-sunset",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Blink your lights when your doorbell rings - IFTTT",
+  "description": "Your Hue lights will blink whenever somebody rings your doorbell.",
+  "url": "https://ifttt.com/applets/NAiAeMuh-blink-your-lights-when-your-doorbell-rings",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Create a note by telling it to Google Assistant - IFTTT",
+  "description": "Just say \"Hey Google\" and one of the phrases in the Applet (or configure your own!) and whatever you say in the \"$\" will be added as a note in Evernote (the title will be the timestamp). Look at you, you have a personal assistant now!",
+  "url": "https://ifttt.com/applets/jjWFd4ZP-create-a-note-by-telling-it-to-google-assistant",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Create an event on your iPhone's Calendar with Google Home - IFTTT",
+  "description": "Say \"Ok Google, Add to my iOS Calendar...\" then a simple event title as well as the day and time you want the event to start. The rest of the event you can customize below. For example, \"...Haircut tomorrow at 6:00 PM\"",
+  "url": "https://ifttt.com/applets/eX6zn2mD-create-an-event-on-your-iphone-s-calendar-with-google-home",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Get a morning reminder about your first meeting daily - IFTTT",
+  "description": "Every morning at 7am, send a Slack message with the first meeting of the day from Google Calendar so you can adapt your morning routine to your daily schedule.",
+  "url": "https://ifttt.com/connections/WHQ7AjWP-get-a-morning-reminder-about-your-first-meeting-daily",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Get a weekly email with updates from healthy eating blog 101 Cookbooks",
+  "description": "101 Cookbooks is an award-winning food blog by Heidi Swanson. It keeps the focus on foods and recipes that are fresh, seasonal, healthy and delicious. Turn on this Applet to get the latest posts in a convenient Friday digest so you can plan your meals and find inspiration for the week to come!",
+  "url": "https://ifttt.com/applets/xnv2bHpa-get-a-weekly-email-with-updates-from-healthy-eating-blog-101-cookbooks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Get alerts when your company or name is mentioned on Reddit - IFTTT",
+  "description": "This Applet will send you an email and a notification when the name you enter is mentioned on Reddit. Stay on top of your brand!",
+  "url": "https://ifttt.com/applets/Us3pjHdu-get-alerts-when-your-company-or-name-is-mentioned-on-reddit",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Keep your Facebook and Twitter profile pictures in sync - IFTTT",
+  "description": "Keep your accounts in sync by updating your Twitter profile image whenever your Facebook picture is updated.",
+  "url": "https://ifttt.com/applets/jjQzVDps-keep-your-facebook-and-twitter-profile-pictures-in-sync",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Log incoming calls to Google Calendar - IFTTT",
+  "description": "Log incoming calls to Google Calendar",
+  "url": "https://ifttt.com/applets/nJBsxdUw-log-incoming-calls-to-google-calendar",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Mail me free games with Steam keys posted to /r/gamedeals - IFTTT",
+  "description": "Free games on Steam!",
+  "url": "https://ifttt.com/applets/PFpyfCUg-mail-me-free-games-with-steam-keys-posted-to-r-gamedeals",
+  "tag": "Template",
+  "categories": [
+   "Entertainment"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Notify of birthdays in my Google calendar. - IFTTT",
+  "description": "Notify of birthdays in my Google calendar.",
+  "url": "https://ifttt.com/applets/sASdKeEq-notify-of-birthdays-in-my-google-calendar",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Record your daily Fitbit activity in a Google Spreadsheet - IFTTT",
+  "description": "Every time your Fitbit syncs on a new day, the previous day's stats will be added to a new row in a Google Drive spreadsheet.",
+  "url": "https://ifttt.com/applets/pm39scPL-record-your-daily-fitbit-activity-in-a-google-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Remind yourself to meditate every day - IFTTT",
+  "description": "Slow down for 5 minutes! Pick a time and remind yourself to sit quietly and meditate.",
+  "url": "https://ifttt.com/applets/pc2G3bvJ-remind-yourself-to-meditate-every-day",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "RSS > Reddit - IFTTT",
+  "description": "RSS > Reddit",
+  "url": "https://ifttt.com/applets/y9PjtG6S-rss-reddit",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Save your favorite tweets in an Evernote notebook - IFTTT",
+  "description": "Every time you favorite a tweet this Applet will grab it and collect in an Evernote notebook named \"Favorite tweets\"",
+  "url": "https://ifttt.com/applets/uEU2WQtR-save-your-favorite-tweets-in-an-evernote-notebook",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Share photos to Discord - IFTTT",
+  "description": "Send photos you post on Instagram to a Discord channel.",
+  "url": "https://ifttt.com/applets/DKiUTcs8-share-photos-to-discord",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Track your nightly sleep in Google Calendar - IFTTT",
+  "description": "Automatically track your Fitbit sleep information into a Google Calendar.",
+  "url": "https://ifttt.com/applets/wsTcJyNt-track-your-nightly-sleep-in-google-calendar",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Track your work hours in Google Calendar - IFTTT",
+  "description": "All you have to do is set your work location and any time you arrive or leave the area, it will be automatically added to a calendar for easy tracking.",
+  "url": "https://ifttt.com/applets/sFk2WC4r-track-your-work-hours-in-google-calendar",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Turn your lights on automatically as you arrive home - IFTTT",
+  "description": "Center the map on your home's location, and you'll always walk in to a bright home.",
+  "url": "https://ifttt.com/applets/HTak4X5f-turn-your-lights-on-automatically-as-you-arrive-home",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Tweet your Instagrams as native photos on Twitter - IFTTT",
+  "description": "Instagram photos will show up in your Twitter feed as a full image rather than a link. Note: only works for single photo posts.",
+  "url": "https://ifttt.com/applets/aVxGRrtD-tweet-your-instagrams-as-native-photos-on-twitter",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Use Siri to create add items to your Notion To-Do list - IFTTT",
+  "description": "New tasks added to your chosen list in iOS Reminders are also added to your Notion To-Do list!",
+  "url": "https://ifttt.com/applets/w53kvH4x-use-siri-to-create-add-items-to-your-notion-to-do-list",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "When I arrive home from work, dock Roomba® - IFTTT",
+  "description": "This applet will send your robot back to the dock when you get home after 5pm.",
+  "url": "https://ifttt.com/applets/sm4yAuLS-when-i-arrive-home-from-work-dock-roomba",
+  "tag": "Template",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "IFTTT",
+  "status": "live"
+ },
+ {
+  "name": "Beehiiv Integrations: 658 Ready-To-Activate ▶️ Integrations",
+  "description": "Integrate Beehiiv with 1000+  Apps in just 1 Click. 10,000+ Customers. Live Chat Support. 18x - 33x Less Expensive. Try Now For Free!",
+  "url": "https://integrately.com/integrations/beehiiv",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "integrately.com",
+  "status": "live"
+ },
+ {
+  "name": "Add a Mailchimp subscriber to a Twitter list | Workflow Template | Make",
+  "description": "Add a Mailchimp subscriber to a Twitter list - Using this template, Make will automatically enrich a Mailchimp subscriber's data in Clearbit and add him/her to a Twitter list.",
+  "url": "https://www.make.com/en/templates/5442-add-a-mailchimp-subscriber-to-a-twitter-list",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Add a new to row to Google Sheets from a new to-do in Habitica | Workflow Template | Make",
+  "description": "Add a new to row to Google Sheets from a new to-do in Habitica - Every time a new to-do is created in Habitica, a new row will be added to Google Sheets. \n\nThe template is using [this sample](https://docs.google.com/spreadsheets/d/18laiIv3Duiqo1CHt5alWHKhE0qXCLoGnA6BM8FBYRMI/edit#gid=0) Google Sheets spreadsheet - you can make a copy of it.",
+  "url": "https://www.make.com/en/templates/6334-add-a-new-to-row-to-google-sheets-from-a-new-to-do-in-habitica",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add a watermark to a document in iLovePDF and upload it to Google Drive | Workflow Template | Make",
+  "description": "Add a watermark to a document in iLovePDF and upload it to Google Drive - This template loads PDFs from a Google Drive folder, adds a watermark to a documents via iLovePDF and uploads files to a Google Drive folder.",
+  "url": "https://www.make.com/en/templates/10229-add-a-watermark-to-a-document-in-ilovepdf-and-upload-it-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Facebook Pages posts to Notion | Workflow Template | Make",
+  "description": "Add Facebook Pages posts to Notion - Use this template to automatically create a Notion database item (page) when a Facebook Pages post is created.\n\nSee this [database](https://www.notion.so/7a2e25a2ec514bf6808f65dc7481a7de?v=84fdfb5ce849447e8ef96c9df8234626) for reference.",
+  "url": "https://www.make.com/en/templates/6405-add-facebook-pages-posts-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add info and links of Zoom recordings to a Google Sheet and upload to Google Drive | Workflow Template | Make",
+  "description": "Add info and links of Zoom recordings to a Google Sheet and upload to Google Drive - When a recording is completed on Zoom, this scenario instantly receives the details, adds the info and the recording's link to a Google Sheet and uploads the file to Google Drive.\n\nThis template uses this [Google Sheet example.](https://docs.google.com/spreadsheets/d/1JinW-f-vyF2Hsi8-7ZWhvxCPKIbElU-4ETrYke_TEPU/edit?usp=sharing)",
+  "url": "https://www.make.com/en/templates/6629-add-info-and-links-of-zoom-recordings-to-a-google-sheet-and-upload-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Mailchimp subscribers for new Printful orders | Workflow Template | Make",
+  "description": "Add Mailchimp subscribers for new Printful orders - Make will watch for new Printful orders at regular intervals and add customers as subscribers to a specified Mailchimp mailing list.",
+  "url": "https://www.make.com/en/templates/8767-add-mailchimp-subscribers-for-new-printful-orders",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Mailchimp subscribers from new Pipedrive contacts | Workflow Template | Make",
+  "description": "Add Mailchimp subscribers from new Pipedrive contacts - Build your Mailchimp list from new Pipedrive contacts with this automation that retrieves the contacts and sends  them over to Mailchimp for you.",
+  "url": "https://www.make.com/en/templates/5818-add-mailchimp-subscribers-from-new-pipedrive-contacts",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Microsoft Power BI dataset records from new Google Sheets rows | Workflow Template | Make",
+  "description": "Add Microsoft Power BI dataset records from new Google Sheets rows - Every time a new row is added to your Google Sheets spreadsheet, Make will automatically add the corresponding data to your Microsoft Power BI dataset.",
+  "url": "https://www.make.com/en/templates/8596-add-microsoft-power-bi-dataset-records-from-new-google-sheets-rows",
+  "tag": "Template",
+  "categories": [
+   "Analytics"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new collections in Webflow from new rows of data on a Google Sheet | Workflow Template | Make",
+  "description": "Add new collections in Webflow from new rows of data on a Google Sheet - Whenever new rows of data are added on your Google Sheet, Make retrieves the data and creates either a Blog post, category or product in Webflow. Please ensure your sheet has a column labelled 'Item ID'.",
+  "url": "https://www.make.com/en/templates/5232-add-new-collections-in-webflow-from-new-rows-of-data-on-a-google-sheet",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new Google Analytics reports to a Google Sheet and ClickUp as tasks | Workflow Template | Make",
+  "description": "Add new Google Analytics reports to a Google Sheet and ClickUp as tasks - Every time a new report is generated in Google Analytics, Make will automatically add the data to a Google Sheet and create a new task in a ClickUp list of your choice.",
+  "url": "https://www.make.com/en/templates/4675-add-new-google-analytics-reports-to-a-google-sheet-and-clickup-as-tasks",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new Gumroad customers to Mailchimp | Workflow Template | Make",
+  "description": "Add new Gumroad customers to Mailchimp - Every time an item is sold in Gumroad, a new customer will be instantly added to Mailchimp.",
+  "url": "https://www.make.com/en/templates/10220-add-new-gumroad-customers-to-mailchimp",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Payments"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new row in Google Sheets spreadsheet for new Teachable enrollments | Workflow Template | Make",
+  "description": "Add new row in Google Sheets spreadsheet for new Teachable enrollments - Every time a new enrollment is added to Teachable, Make will automatically add a row to the specified Google Sheets spreadsheet. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1ri6QWb_6PwVZ1vMKGv5hMt79fxZIVmsu2efjlLZVAc8/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/5167-add-new-row-in-google-sheets-spreadsheet-for-new-teachable-enrollments",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new rows to Google Sheets with daily RescueTime summary reports | Workflow Template | Make",
+  "description": "Add new rows to Google Sheets with daily RescueTime summary reports - Every time a new daily summary report is created on RescueTime, Make will automatically add it to a new row in a Google Sheet spreadsheet. The template uses [this example spreadsheet.](https://docs.google.com/spreadsheets/d/15i01eD8pktF2uFupezDEjuqPSA4Mx8wCqQ1ExMjLS3I/edit?usp=sharing)",
+  "url": "https://www.make.com/en/templates/6685-add-new-rows-to-google-sheets-with-daily-rescuetime-summary-reports",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new Runkeeper activities to a Google Sheets spreadsheet as a new row | Workflow Template | Make",
+  "description": "Add new Runkeeper activities to a Google Sheets spreadsheet as a new row - Every time you add a new activity on Runkeeper, Make will automatically add it to a new row in your Google Sheet spreadsheet. The template uses this [example spreadsheet](https://goo.gl/fQwlGJ).",
+  "url": "https://www.make.com/en/templates/196-add-new-runkeeper-activities-to-a-google-sheets-spreadsheet-as-a-new-row",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add new Telegram messages to Evernote as notes | Workflow Template | Make",
+  "description": "Add new Telegram messages to Evernote as notes - Every time a new message is received in a specific Telegram chat/channel, Make will automatically add a new note to an Evernote notebook of your choice.",
+  "url": "https://www.make.com/en/templates/2153-add-new-telegram-messages-to-evernote-as-notes",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add records in Airtable from newly created events in Calendly | Workflow Template | Make",
+  "description": "Add records in Airtable from newly created events in Calendly - Every time a new Calendly meeting is scheduled with you, a new record will be created in the Airtable table.\n\nThe template expects your Airtable table to have the following columns:\n1) Event URL \n2) Event name\n3) Attendee name \n4) Attendee email\n\nYou need to have a Calendly premium account to create this integration.",
+  "url": "https://www.make.com/en/templates/7810-add-records-in-airtable-from-newly-created-events-in-calendly",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Reddit posts to Notion | Workflow Template | Make",
+  "description": "Add Reddit posts to Notion - Use this template to automatically create a Notion database item (page) when a reddit post is created. The text content of the post is appended to the database item as page content (if it's less than 2000 characters long which is the Notion API limit).\n\nSee this [database](https://www.notion.so/cb3b814501ca4efa8a3eaf0a071d0b81?v=0f9bd7a03cef4a668a22ae96a7f0993c) for reference.",
+  "url": "https://www.make.com/en/templates/6397-add-reddit-posts-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add RSS feed posts to a Notion database | Workflow Template | Make",
+  "description": "Add RSS feed posts to a Notion database - Retrieve new posts from an RSS feed, create a new page on a Notion database and add the RSS post description as page content.",
+  "url": "https://www.make.com/en/templates/6315-add-rss-feed-posts-to-a-notion-database",
+  "tag": "",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Toggl time tracking reports to Notion | Workflow Template | Make",
+  "description": "Add Toggl time tracking reports to Notion - Use this template to automatically add time tracking reports from Toggl to Notion databases. It retrieves data on how much time was spent on different projects by different individuals for the previous day.\n\nThe template setup assumes you have created Notion databases for each project. Use unique names that include the names of the projects in Toggl. See our Notion [database](https://www.notion.so/89572a3248734024bafa53d30f64a8f6?v=82045f64d13944f0bcbb017fe9664d23) for reference.\n\nThe scenario is scheduled to run every morning at 06:00. You can change it by clicking the clock icon on the first module.",
+  "url": "https://www.make.com/en/templates/6380-add-toggl-time-tracking-reports-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add Waze navigation links to new Google Calendar events | Workflow Template | Make",
+  "description": "Add Waze navigation links to new Google Calendar events - Make will watch for new Google Calendar events at regular intervals, get a geographical coordinates in Google Maps, create a navigation link in Waze and update the event with this link.",
+  "url": "https://www.make.com/en/templates/8687-add-waze-navigation-links-to-new-google-calendar-events",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Add your Tweets to Notion | Workflow Template | Make",
+  "description": "Add your Tweets to Notion - Use this template to automatically create a Notion database item (page) when your Tweets are posted.\n\nSee our [database](https://www.notion.so/aae2228650774cc7a53fc6026f2d513f?v=55f4a58c90f44376a8a53323595e1ceb) for reference.",
+  "url": "https://www.make.com/en/templates/6396-add-your-tweets-to-notion",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Add/Update Mailchimp subscribers for new Circle members | Workflow Template | Make",
+  "description": "Add/Update Mailchimp subscribers for new Circle members - Make will watch your Circle members and add them to your Mailchimp as subscribers.",
+  "url": "https://www.make.com/en/templates/7647-add-update-mailchimp-subscribers-for-new-circle-members",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Airtable Integration | Workflow Automation | Make",
+  "description": "Connect Airtable to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/airtable",
+  "tag": "App",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Alexa Internet Integration | Workflow Automation | Make",
+  "description": "Connect Alexa Internet to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/alexa-internet",
+  "tag": "App",
+  "categories": [
+   "Internet of Thigns"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Analyze sentiment of new mentions from Twitter | Workflow Template | Make",
+  "description": "Analyze sentiment of new mentions from Twitter - Every time a new mention is posted to Twitter, Make automatically analyze sentiment with Google Natural Language and save the result as a new row to Google Sheets. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1GJMzeCdk-Xib1phBPDjyAaGITzk5jGv0BtTU_cCGNtw/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/4926-analyze-sentiment-of-new-mentions-from-twitter",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Apple Push Notifications Integration | Workflow Automation | Make",
+  "description": "Connect Apple Push Notifications to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/apn",
+  "tag": "App",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically send Fireflies.ai transcripts to every meeting participant | Workflow Template | Make",
+  "description": "Automatically send Fireflies.ai transcripts to every meeting participant - This template can be setup at a regular interval (every month, week, hour or on a specific date) to automatically send today's Fireflies.ai transcripts to every meeting participant.",
+  "url": "https://www.make.com/en/templates/8617-automatically-send-fireflies-ai-transcripts-to-every-meeting-participant",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically send Fireflies.ai transcripts to Slack | Workflow Template | Make",
+  "description": "Automatically send Fireflies.ai transcripts to Slack - This template can be setup at a regular interval (every month, week, hour or on a specific date) to automatically send today's Fireflies.ai transcripts in Slack.",
+  "url": "https://www.make.com/en/templates/8613-automatically-send-fireflies-ai-transcripts-to-slack",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically translate new Facebook Messenger messages with DeepL | Workflow Template | Make",
+  "description": "Automatically translate new Facebook Messenger messages with DeepL - Every time a new message is posted in Facebook Messenger Chat, Make will automatically translate it using DeepL and post the translated text back to Facebook Messenger.",
+  "url": "https://www.make.com/en/templates/8663-automatically-translate-new-facebook-messenger-messages-with-deepl",
+  "tag": "Template",
+  "categories": [
+   "Translations"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically translate new Gmail emails with DeepL and send messages to Slack | Workflow Template | Make",
+  "description": "Automatically translate new Gmail emails with DeepL and send messages to Slack - Every time a new email is received in your Gmail inbox, Make will automatically translate it into the language you want using DeepL. The translated text will be then sent to a Slack channel of your choice.",
+  "url": "https://www.make.com/en/templates/8666-automatically-translate-new-gmail-emails-with-deepl-and-send-messages-to-slack",
+  "tag": "Template",
+  "categories": [
+   "Translations"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically translate new Gmail emails with DeepL and send messages to Telegram | Workflow Template | Make",
+  "description": "Automatically translate new Gmail emails with DeepL and send messages to Telegram - Every time a new email is received in your Gmail inbox, Make will automatically translate it into the language you want using DeepL. The translated text will be then sent to a Telegram channel of your choice.",
+  "url": "https://www.make.com/en/templates/8667-automatically-translate-new-gmail-emails-with-deepl-and-send-messages-to-telegram",
+  "tag": "Template",
+  "categories": [
+   "Translations"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Automatically translate new Telegram messages with DeepL | Workflow Template | Make",
+  "description": "Automatically translate new Telegram messages with DeepL - Every time a new message is posted in Telegram, Make will automatically translate it into the language you want using DeepL. The translated text will be then sent to a Telegram channel of your choice.",
+  "url": "https://www.make.com/en/templates/8665-automatically-translate-new-telegram-messages-with-deepl",
+  "tag": "Template",
+  "categories": [
+   "Translations"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Back up contacts from your Apple iOS device to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Back up contacts from your Apple iOS device to a Google Sheets spreadsheet - Every time you add a new contact to your Apple iOS device, Make will automatically add that contact to a Google Sheets spreadsheet as a new row. The template uses this [example spreadsheet](https://goo.gl/boNvUK).",
+  "url": "https://www.make.com/en/templates/1548-back-up-contacts-from-your-apple-ios-device-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Backup contacts from your Android device to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Backup contacts from your Android device to a Google Sheets spreadsheet - Every time you add a new contact to your Android device, Make will automatically add that contact to a new row in a Google Sheets spreadsheet. The template uses this [example spreadsheet](https://goo.gl/boNvUK).",
+  "url": "https://www.make.com/en/templates/1547-backup-contacts-from-your-android-device-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Bitly Integration | Workflow Automation | Make",
+  "description": "Connect Bitly to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/bitly",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Blogger Integration | Workflow Automation | Make",
+  "description": "Connect Blogger to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/blogger",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Buffer and Telegram Bot Integration | Workflow Automation | Make",
+  "description": "Connect Buffer and Telegram Bot to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/buffer/telegram",
+  "tag": "Idea",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Buffer Integration | Workflow Automation | Make",
+  "description": "Connect Buffer to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/buffer",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Buffer your new Spotify saved tracks | Workflow Template | Make",
+  "description": "Buffer your new Spotify saved tracks  - Every time you save a new track on Spotify, Make will automatically add it to your Buffer queue.",
+  "url": "https://www.make.com/en/templates/1101-buffer-your-new-spotify-saved-tracks",
+  "tag": "Template",
+  "categories": [
+   "Audio",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Calendly Integration | Workflow Automation | Make",
+  "description": "Connect Calendly to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/calendly",
+  "tag": "App",
+  "categories": [
+   "Booking"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Call a webservice by a push from Pushcut | Workflow Template | Make",
+  "description": "Call a webservice by a push from Pushcut - Use Pushcut mobile app to trigger a webservice in Make.",
+  "url": "https://www.make.com/en/templates/2964-call-a-webservice-by-a-push-from-pushcut",
+  "tag": "Template",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Circle Integration | Workflow Automation | Make",
+  "description": "Connect Circle to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/circle-so",
+  "tag": "Template",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Convert a File in CloudConvert using method import from URL and upload the files to Google Drive | Workflow Template | Make",
+  "description": "Convert a File in CloudConvert using method import from URL and upload the files to Google Drive - Download files from URLs stored in Google Sheets and convert the files to a specified format. After the conversion, upload the files to Google Drive.",
+  "url": "https://www.make.com/en/templates/3063-convert-a-file-in-cloudconvert-using-method-import-from-url-and-upload-the-files-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Copy messages from one Slack channel to another | Workflow Template | Make",
+  "description": "Copy messages from one Slack channel to another - Every time a new message is posted to a selected Slack channel, Make will automatically copy that message to another channel in Slack.",
+  "url": "https://www.make.com/en/templates/882-copy-messages-from-one-slack-channel-to-another",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a Document from a Template containing data from a record in Airtable | Workflow Template | Make",
+  "description": "Create a Document from a Template containing data from a record in Airtable - When a new record from Airtable is received, a new document from a template and with values from the record is created and then sent to Gmail as PDF.",
+  "url": "https://www.make.com/en/templates/3223-create-a-document-from-a-template-containing-data-from-a-record-in-airtable",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new database item in Notion from a new to-do in Habitica | Workflow Template | Make",
+  "description": "Create a new database item in Notion from a new to-do in Habitica - Every time a new to-do is created in Habitica, a new database item will be created in Notion.\n\nThe template expects your Notion to have a \"Task List\" database.",
+  "url": "https://www.make.com/en/templates/6335-create-a-new-database-item-in-notion-from-a-new-to-do-in-habitica",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new databse item in Notion from new actions in Glide | Workflow Template | Make",
+  "description": "Create a new databse item in Notion from new actions in Glide - Every time a new action happens in Glide, a new database item will be instantly created in Notion.\n\nThe template is creating a list of users in Notion so it expects to receive at least user emails under a \"current_user\" variable - make sure it's called exactly the same in your Glide webhook otherwise you will have to map a different variable during the template setup.\n\nThe template also expects to have an \"Email\" column in your Notion database.",
+  "url": "https://www.make.com/en/templates/7254-create-a-new-databse-item-in-notion-from-new-actions-in-glide",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new meeting in Google Meet from Notion data | Workflow Template | Make",
+  "description": "Create a new meeting in Google Meet from Notion data - Every time a Page Content is created in Notion,  Make automatically creates a meeting in Google Meet from mapped in Notion.",
+  "url": "https://www.make.com/en/templates/7181-create-a-new-meeting-in-google-meet-from-notion-data",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new Memberstack member from a new response in Typeform | Workflow Template | Make",
+  "description": "Create a new Memberstack member from a new response in Typeform - When a new form is submitted in Typeform, a new member is created in Memberstack.",
+  "url": "https://www.make.com/en/templates/4496-create-a-new-memberstack-member-from-a-new-response-in-typeform",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Form Builders"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new presentation with data from a new deal in Pipedrive CRM | Workflow Template | Make",
+  "description": "Create a new presentation with data from a new deal in Pipedrive CRM - In specified intervals, Make checks whether there is a new deal meeting specified criteria. If so, a new presentation from a template is created in Google Slides. This scenario also uploads the images with URL.",
+  "url": "https://www.make.com/en/templates/3178-create-a-new-presentation-with-data-from-a-new-deal-in-pipedrive-crm",
+  "tag": "Template",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new print job in PrintNode from a new PDF file in a Google Drive folder | Workflow Template | Make",
+  "description": "Create a new print job in PrintNode from a new PDF file in a Google Drive folder - This template periodically checks for new files in a Google Drive folder and sends them as a new print job to PrintNode. \n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template by clicking on the clock icon on the first module.",
+  "url": "https://www.make.com/en/templates/7371-create-a-new-print-job-in-printnode-from-a-new-pdf-file-in-a-google-drive-folder",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a new task in Google Tasks for a comment in Figma that hasn't been resolved | Workflow Template | Make",
+  "description": "Create a new task in Google Tasks for a comment in Figma that hasn't been resolved - When a new comment is received and it hasn't been resolved, a task is created in Google Tasks.",
+  "url": "https://www.make.com/en/templates/4267-create-a-new-task-in-google-tasks-for-a-comment-in-figma-that-hasn-t-been-resolved",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a Pipedrive CRM person and a deal from a Facebook Lead Ads form submission | Workflow Template | Make",
+  "description": "Create a Pipedrive CRM person and a deal from a Facebook Lead Ads form submission - Every time a new Facebook Lead Ads form is submitted, Make will automatically create a Pipedrive CRM person and a deal.",
+  "url": "https://www.make.com/en/templates/6127-create-a-pipedrive-crm-person-and-a-deal-from-a-facebook-lead-ads-form-submission",
+  "tag": "Template",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a post in Instagram for new Google sheets rows | Workflow Template | Make",
+  "description": "Create a post in Instagram for new Google sheets rows - Every time a new row is added to your Google Sheets spreadsheet, Make will automatically create a photo post to Instagram from a file from Google Drive. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1Z3puHSSMlTHnWMK3CUGGyuKA-zJkFoKnFdb2w7UvGVg/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/4924-create-a-post-in-instagram-for-new-google-sheets-rows",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a QuickBooks customer from a PayPal payment | Workflow Template | Make",
+  "description": "Create a QuickBooks customer from a PayPal payment - Every time there's a new PayPal payment, Make will automatically create a QuickBooks customer (provided it doesn't already exist).",
+  "url": "https://www.make.com/en/templates/6279-create-a-quickbooks-customer-from-a-paypal-payment",
+  "tag": "Template",
+  "categories": [
+   "Payments"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a QuickBooks invoice from a PayPal invoice | Workflow Template | Make",
+  "description": "Create a QuickBooks invoice from a PayPal invoice - Every time a PayPal invoice is created, Make will automatically create a QuickBooks invoice.",
+  "url": "https://www.make.com/en/templates/6278-create-a-quickbooks-invoice-from-a-paypal-invoice",
+  "tag": "Template",
+  "categories": [
+   "Payments"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a Softr user from a new row in a Google Sheets spreadsheet and send an email invitation | Workflow Template | Make",
+  "description": "Create a Softr user from a new row in a Google Sheets spreadsheet and send an email invitation - Use this template to automatically create a Softr user and send an email invitation when a new Google Sheet row is added.",
+  "url": "https://www.make.com/en/templates/10055-create-a-softr-io-user-from-a-new-row-in-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create a Tweet and post a Discord message from a new followed live stream on Twitch | Workflow Template | Make",
+  "description": "Create a Tweet and post a Discord message from a new followed live stream on Twitch - Use this template to create a Twitter post and a Discord message when a new followed Twitch stream is live.",
+  "url": "https://www.make.com/en/templates/5509-create-a-tweet-and-post-a-discord-message-from-a-new-followed-live-stream-on-twitch",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Create Airtable records for new Tally responses | Workflow Template | Make",
+  "description": "Create Airtable records for new Tally responses - Make will watch your Tally responses at regular intervals and create records in your Airtable . Here's a [table](https://airtable.com/shr9hrZo851pmW3MS) used in this scenario.",
+  "url": "https://www.make.com/en/templates/8007-create-airtable-records-for-new-tally-responses",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Form Builders"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Airtable records from new posts in Product Hunt | Workflow Template | Make",
+  "description": "Create Airtable records from new posts in Product Hunt - This template periodically extracts new posts from Product Hunt and uses the retrieved information to create new records in Airtable.\n\nYour Airtable table should have at least these columns:\n1) Name\n2) Description\n3) URL\n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7707-create-airtable-records-from-new-posts-in-product-hunt",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create an Instagram for Business photo post from a new RSS feed item | Workflow Template | Make",
+  "description": "Create an Instagram for Business photo post from a new RSS feed item - This template allows you to automatically create an Instagram for Business photo post when a new RSS feed item appears in your specified feed.",
+  "url": "https://www.make.com/en/templates/5340-create-an-instagram-for-business-photo-post-from-a-new-rss-feed-item",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create an Instagram for Business video post from a new RSS feed item | Workflow Template | Make",
+  "description": "Create an Instagram for Business video post from a new RSS feed item - This template allows you to automatically create an Instagram for Business video post when a new RSS feed item appears in your specified feed.",
+  "url": "https://www.make.com/en/templates/5341-create-an-instagram-for-business-video-post-from-a-new-rss-feed-item",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Asana tasks from emails matching certain criteria | Workflow Template | Make",
+  "description": "Create Asana tasks from emails matching certain criteria - If your email subject line matches criteria that you set up, Make will create tasks on Asana for you automatically using the information from the email.",
+  "url": "https://www.make.com/en/templates/5693-create-asana-tasks-from-emails-matching-certain-criteria",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create bar codes for listings on Etsy and uploading them as a zip file to Google Drive | Workflow Template | Make",
+  "description": "Create bar codes for listings on Etsy and uploading them as a zip file to Google Drive - Every time a shop's listings are retrieved from Etsy, Make will automatically generate bar codes for them, convert them to an archive zip file, and upload that file to Google Drive.",
+  "url": "https://www.make.com/en/templates/3378-create-bar-codes-for-listings-on-etsy-and-uploading-them-as-a-zip-file-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Barcodes for new Shopify orders | Workflow Template | Make",
+  "description": "Create Barcodes for new Shopify orders - Every time an order is created in your Shopify store, Make will automatically generate a Barcode for it. Then, the Barcode will be saved in a specified Google Drive folder, as a ready-to-print document.",
+  "url": "https://www.make.com/en/templates/3688-create-barcodes-for-new-shopify-orders",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Blogger posts from new Medium publications | Workflow Template | Make",
+  "description": "Create Blogger posts from new Medium publications - Every time a new publication is created on Medium, Make will automatically publish a new post on Blogger.",
+  "url": "https://www.make.com/en/templates/798-create-blogger-posts-from-new-medium-publications",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Create ClickUp tasks from new emails in Gmail | Workflow Template | Make",
+  "description": "Create ClickUp tasks from new emails in Gmail - Every time you receive a new email in Gmail, Make will automatically create a new task in a ClickUp list of your choice.",
+  "url": "https://www.make.com/en/templates/1905-create-clickup-tasks-from-new-emails-in-gmail",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create ClickUp tasks from new Google Drive uploads and send a Slack message | Workflow Template | Make",
+  "description": "Create ClickUp tasks from new Google Drive uploads and send a Slack message - Every time a new file is added to your Google Drive, Make will automatically create a new task in a ClickUp list of your choice and upload the file to Slack.",
+  "url": "https://www.make.com/en/templates/4747-create-clickup-tasks-from-new-google-drive-uploads-and-send-a-slack-message",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Storage",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Discord invites for new Notion database items | Workflow Template | Make",
+  "description": "Create Discord invites for new Notion database items - Every time a new row is added to your Notion database, Make will automatically create a new Discord invite.",
+  "url": "https://www.make.com/en/templates/5834-create-discord-invites-for-new-notion-database-items",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create FreshBooks clients from new rows in Google Sheets | Workflow Template | Make",
+  "description": "Create FreshBooks clients from new rows in Google Sheets - Every time a new row in Google Sheets is created, Make will create a FreshBooks client out of it. To make sure the scenario works fine check if your spreadsheet corresponds to this (example)[https://docs.google.com/spreadsheets/d/1u-lOJ_slHk-2L0j0DosPEqmsd11SO91OhKDdk0NmiLc/edit?usp=sharing].",
+  "url": "https://www.make.com/en/templates/6678-create-freshbooks-clients-from-new-rows-in-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create GIF using GIPHY from Google Calendar events and send a message on Slack | Workflow Template | Make",
+  "description": "Create GIF using GIPHY from Google Calendar events and send a message on Slack - Every time a new Google Calendar event is created, Make will automatically create a random GIF image using GIPHY and send it in a Slack message.",
+  "url": "https://www.make.com/en/templates/3999-create-gif-using-giphy-from-google-calendar-events-and-send-a-message-on-slack",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Google Calendar events from new Telegram messages | Workflow Template | Make",
+  "description": "Create Google Calendar events from new Telegram messages - Every time a new message is received in Telegram, Make will automatically create a new event in Google Calendar.",
+  "url": "https://www.make.com/en/templates/2116-create-google-calendar-events-from-new-telegram-messages",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create items in Webflow from Shopify products | Workflow Template | Make",
+  "description": "Create items in Webflow from Shopify products - Use this template to grab new Shopify products and create items in Webflow automatically.",
+  "url": "https://www.make.com/en/templates/5899-create-items-in-webflow-from-shopify-products",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new Bannerbear images from new Google Sheets spreadsheet rows | Workflow Template | Make",
+  "description": "Create new Bannerbear images from new Google Sheets spreadsheet rows - Every time a new row is added to a Google Sheets spreadsheet, Make will automatically create a new image in Bannerbear. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1rfmN1VIjJIawhwIxLqoKxfSikwVrrkUM6XV3ynBc5Gs/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/9018-create-new-bannerbear-images-from-new-google-sheets-spreadsheet-rows",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Images"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new contacts in ActiveCampaign from replies in ManyChat | Workflow Template | Make",
+  "description": "Create new contacts in ActiveCampaign from replies in ManyChat - This template listens for replies in ManyChat and uses email addresses from replies to create new contacts in ActiveCampaign. \n\nPlease note that the template expects the email address to come in the \"last input text\" variable, i.e. a simple text string answer typed by a user.",
+  "url": "https://www.make.com/en/templates/6973-create-new-contacts-in-activecampaign-from-replies-in-manychat",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new Google Calendar events from Notion database items | Workflow Template | Make",
+  "description": "Create new Google Calendar events from Notion database items - Sync your Notion meetings database with Google Calendar by automatically creating, updating and deleting events.\n\nThe template setup assumes you have a Notion database where all your meeting information is stored. Each item (page) on the database is a new meeting and it includes values for all the properties as showcased in this [example](https://www.notion.so/Create-new-Google-Calendar-events-from-Notion-database-items-87a6c3a697eb4a15ab42544f70abb038).",
+  "url": "https://www.make.com/en/templates/6407-create-new-google-calendar-events-from-notion-database-items",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new Google Sheets rows from Zoho Invoices | Workflow Template | Make",
+  "description": "Create new Google Sheets rows from Zoho Invoices - Every time a new Zoho Invoice item is created, Make will automatically add a new row to Google Sheets. This example uses the spreadsheet in [this link](https://docs.google.com/spreadsheets/d/1yuAuPrWiyK9uA7U17pt36-6D9SmBw6PkvPOLvOeCk94/edit#gid=0).",
+  "url": "https://www.make.com/en/templates/3649-create-new-google-sheets-rows-from-zoho-invoices",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new Google Tasks for new Click Up tasks | Workflow Template | Make",
+  "description": "Create new Google Tasks for new Click Up tasks - Every time a new task is created in ClickUp, Make will automatically add that task to Google Tasks.",
+  "url": "https://www.make.com/en/templates/3639-create-new-google-tasks-for-new-click-up-tasks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new orders in Binance from new rows in a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Create new orders in Binance from new rows in a Google Sheets spreadsheet - This template periodically checks for new rows in a Google Sheets spreadsheet and uses the retrieved information to create new orders in Binance.\n\nThe template is using [this sample](https://docs.google.com/spreadsheets/d/1NJqD-ENdVwP5sjKv5zG_ogNFo4r0FCJ8cPkL7gRgAd8/edit?usp=sharing) Google Sheets spreadsheet as a source of the data. You should make a copy of it before configuring the template.\n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7537-create-new-orders-in-binance-from-new-rows-in-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Finance"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new organization and person in Pipedrive from a new member in Memberstack | Workflow Template | Make",
+  "description": "Create new organization and person in Pipedrive from a new member in Memberstack - When a new member is created in Memberstack, the member is enriched with data from Clearbit. If the member comes from a company a new organization and person is created in Pipedrive CRM. Otherwise only a person is created in Pipedrive CRM.",
+  "url": "https://www.make.com/en/templates/4494-create-new-organization-and-person-in-pipedrive-from-a-new-member-in-memberstack",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create new players in Pointagram from new rows in a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Create new players in Pointagram from new rows in a Google Sheets spreadsheet - This template periodically checks for new rows in a source Google Sheets spreadsheet and uses the retrieved information to create new players in Pointagram. \n\nThe template uses this [example spreadsheet.](https://docs.google.com/spreadsheets/d/1zl2IG094Ql9mDZX2kMTtYwcdJUA25Q0MPWYhJeHAFaY/edit?usp=sharing) You should make a copy of it before configuring the template.\n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/6856-create-new-players-in-pointagram-from-new-rows-in-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Notion database items from new Google Form responses | Workflow Template | Make",
+  "description": "Create Notion database items from new Google Form responses - Every time a new response in received in your Google Form, Make will automatically create a new Notion database item.",
+  "url": "https://www.make.com/en/templates/5824-create-notion-database-items-from-new-google-form-responses",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Databases",
+   "Form Builders"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Notion database items from new Google Sheets rows | Workflow Template | Make",
+  "description": "Create Notion database items from new Google Sheets rows - Every time a new row is added to your Google Sheets spreadsheet, Make will automatically create a new Notion database item.",
+  "url": "https://www.make.com/en/templates/5832-create-notion-database-items-from-new-google-sheets-rows",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Pipedrive CRM contacts from new completed lookups in RocketReach | Workflow Template | Make",
+  "description": "Create Pipedrive CRM contacts from new completed lookups in RocketReach - Every time a new lookup has been completed in RocketReach, Make will automatically create a new contact in Pipedrive CRM.",
+  "url": "https://www.make.com/en/templates/8463-create-pipedrive-crm-contacts-from-new-completed-lookups-in-rocketreach",
+  "tag": "Template",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create QR codes for new Shopify products | Workflow Template | Make",
+  "description": "Create QR codes for new Shopify products - Generate a QR code and save it to a Google Drive folder when a new Shopify product is created.",
+  "url": "https://www.make.com/en/templates/8549-create-qr-codes-for-new-shopify-products",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Slack messages for new Google Tasks | Workflow Template | Make",
+  "description": "Create Slack messages for new Google Tasks - Every time a new task is added to a specified Google Tasks list, Make will automatically create a new message in Slack.",
+  "url": "https://www.make.com/en/templates/3644-create-slack-messages-for-new-google-tasks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Slack messages for new Tally responses | Workflow Template | Make",
+  "description": "Create Slack messages for new Tally responses - Make will watch your Tally responses at regular intervals and create Slack messages.",
+  "url": "https://www.make.com/en/templates/8008-create-slack-messages-for-new-tally-responses",
+  "tag": "Template",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Spotify playlists from RSS feeds | Workflow Template | Make",
+  "description": "Create Spotify playlists from RSS feeds - Use this template to automatically create a Spotify playlist when a new RSS feed item is posted.",
+  "url": "https://www.make.com/en/templates/6473-create-spotify-playlists-from-rss-feeds",
+  "tag": "Template",
+  "categories": [
+   "Audio",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create tasks on Todoist from Slack messages | Workflow Template | Make",
+  "description": "Create tasks on Todoist from Slack messages - This automation watches for messages in a private Slack channel and adds them as tasks on Todoist for you to attend to.",
+  "url": "https://www.make.com/en/templates/5463-create-tasks-on-todoist-from-slack-messages",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Todoist tasks via Gmail messages | Workflow Template | Make",
+  "description": "Create Todoist tasks via Gmail messages - Retrieve new emails in Gmail and create a task in Todoist.",
+  "url": "https://www.make.com/en/templates/6653-create-todoist-tasks-via-gmail-messages",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create Trello cards from new shop receipts on Etsy | Workflow Template | Make",
+  "description": "Create Trello cards from new shop receipts on Etsy - Make will automatically create Trello cards from new shop receipts on Etsy.",
+  "url": "https://www.make.com/en/templates/3419-create-trello-cards-from-new-shop-receipts-on-etsy",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Create tweet with a random image for new Google Sheets rows | Workflow Template | Make",
+  "description": "Create tweet with a random image for new Google Sheets rows - Every time a new row is added to the Google Sheets spreadsheet, Make will automatically search for random photos on Unsplash and create a new tweet on Twitter with this photo.",
+  "url": "https://www.make.com/en/templates/5148-create-tweet-with-a-random-image-for-new-google-sheets-rows",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Create Zoom meetings from new Todoist tasks | Workflow Template | Make",
+  "description": "Create Zoom meetings from new Todoist tasks - Every time a new task is created in Zoom, Make will automatically schedule a new meeting in Zoom.",
+  "url": "https://www.make.com/en/templates/1812-create-zoom-meetings-from-new-todoist-tasks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Discord Integration | Workflow Automation | Make",
+  "description": "Connect Discord to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/discord",
+  "tag": "",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Email new RSS posts containing a specific keyword | Workflow Template | Make",
+  "description": "Email new RSS posts containing a specific keyword  - Every time a new post containing a specific keyword is published to a selected RSS feed, Make will automatically send an email to a specified address.",
+  "url": "https://www.make.com/en/templates/82-email-new-rss-posts-containing-a-specific-keyword",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Email your Google Analytics data and also send it via Slack | Workflow Template | Make",
+  "description": "Email your Google Analytics data and also send it via Slack - Periodically get your Google Analytics data and email it to the intended recipients. Take it one step further and also send it to a Slack channel or person.",
+  "url": "https://www.make.com/en/templates/8899-email-your-google-analytics-data-and-also-send-it-via-slack",
+  "tag": "Template",
+  "categories": [
+   "Analytics",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Etsy Integration | Workflow Automation | Make",
+  "description": "Connect Etsy to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/etsy",
+  "tag": "App",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Export Clockify timesheets to Google Sheets | Workflow Template | Make",
+  "description": "Export Clockify timesheets to Google Sheets - This template helps you export all your Clockify time entries to Google Sheets. The template uses [this example spreadsheet](https://docs.google.com/spreadsheets/d/1csTje1iLCGbdNte6ikHTwDqjstRE5G4ID8Z6Mq7n1nA/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/4312-export-clockify-timesheets-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Export Fireflies.ai transcripts to Google Sheets | Workflow Template | Make",
+  "description": "Export Fireflies.ai transcripts to Google Sheets - This template exports automatically every Fireflies.ai transcript to the Google Sheets spreadsheet of your choice.",
+  "url": "https://www.make.com/en/templates/8615-export-fireflies-ai-transcripts-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Export Google My Business reviews to Google Sheets | Workflow Template | Make",
+  "description": "Export Google My Business reviews to Google Sheets - Every time a new review is added to your Google My Business location, Make will automatically store it in Google Sheets. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1yxB_P2opiY5oS5kK_gqQzIlBR_eBQgJ78jI9ESChT3w/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/4406-export-google-my-business-reviews-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Export MailChimp subscribers to ConvertKit | Workflow Template | Make",
+  "description": "Export MailChimp subscribers to ConvertKit - This template helps you export a MailChimp mailing list to a specified ConvertKit sequence.",
+  "url": "https://www.make.com/en/templates/3994-export-mailchimp-subscribers-to-convertkit",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Facebook Groups Integration | Workflow Automation | Make",
+  "description": "Connect Facebook Groups to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/facebook-groups",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Facebook Pages and Facebook Groups Integration | Workflow Automation | Make",
+  "description": "Connect Facebook Pages and Facebook Groups to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/facebook-pages/facebook-groups",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Facebook Pages Integration | Workflow Automation | Make",
+  "description": "Connect Facebook Pages to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/facebook-pages",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Feedly Integration | Workflow Automation | Make",
+  "description": "Connect Feedly to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/feedly",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Figma Integration | Workflow Automation | Make",
+  "description": "Connect Figma to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/figma",
+  "tag": "App",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Fireflies.ai and Notion Integration | Workflow Automation | Make",
+  "description": "Connect Fireflies.ai and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/fireflies-ai/notion",
+  "tag": "Idea",
+  "categories": [
+   "Collaboration",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Generate a PDF via PDF Generator API from a Typeform response and save it to Google Drive | Workflow Template | Make",
+  "description": "Generate a PDF via PDF Generator API from a Typeform response and save it to Google Drive - This template periodically retrieves new Typeform responses which are used for generating a PDF document via PDF Generator API. The final PDF document is then saved to a Google Drive folder.\n\nThe template is scheduled to run every 15 minutes. You can change this after you set up the template.",
+  "url": "https://www.make.com/en/templates/6585-generate-a-pdf-via-pdf-generator-api-from-a-typeform-response-and-save-it-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Generate an image from Tweets via HTML/CSS and share it on Discord | Workflow Template | Make",
+  "description": "Generate an image from Tweets via HTML/CSS and share it on Discord - Every time a specified Twitter account shares a new tweet, Make will automatically generate an image from the quote. Then, the final picture is posted on a selected Discord channel.",
+  "url": "https://www.make.com/en/templates/3844-generate-an-image-from-tweets-via-html-css-and-share-it-on-discord",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Generate barcode from data in Google Sheets rows and save it to Dropbox | Workflow Template | Make",
+  "description": "Generate barcode from data in Google Sheets rows and save it to Dropbox - When a new row is added in Google Sheets spreadsheet, a new Barcode with data from the row is generated and the output file with the barcode is then uploaded to specified folder in Dropbox.",
+  "url": "https://www.make.com/en/templates/3094-generate-barcode-from-data-in-google-sheets-rows-and-save-it-to-dropbox",
+  "tag": "Template",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Get a Discord notification for a new Zoom meeting | Workflow Template | Make",
+  "description": "Get a Discord notification for a new Zoom meeting - Every time a new Zoom meeting is created, Make will automatically post a Discord message.",
+  "url": "https://www.make.com/en/templates/6070-get-a-discord-notification-for-a-new-zoom-meeting",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Get a Telegram notification for new GoToMeeting meeting | Workflow Template | Make",
+  "description": "Get a Telegram notification for new GoToMeeting meeting - Every time there is a new GoToMeeting meeting, link to the meeting is shortened and Make will automatically post a message in Telegram.",
+  "url": "https://www.make.com/en/templates/6520-get-a-telegram-notification-for-new-gotomeeting-meeting",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Get new Slack messages on Telegram | Workflow Template | Make",
+  "description": "Get new Slack messages on Telegram - Every time you receive a new message in Slack, Make will automatically send a message on Telegram.",
+  "url": "https://www.make.com/en/templates/2136-get-new-slack-messages-on-telegram",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Get random GIF/Stickers with GIPHY when a user is mentioned on Twitter | Workflow Template | Make",
+  "description": "Get random GIF/Stickers with GIPHY when a user is mentioned on Twitter - Every time a user is mentioned on Twitter, Make will automatically get a random Gif image using GIPHY and send it in a tweet.",
+  "url": "https://www.make.com/en/templates/4004-get-random-gif-stickers-with-giphy-when-a-user-is-mentioned-on-twitter",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Get word definition from Urban Dictionary for a new message with the word in Telegram | Workflow Template | Make",
+  "description": "Get word definition from Urban Dictionary for a new message with the word in Telegram - Every time a new message with a word is received on Telegram, Make will automatically get the word definition and send it to a specified Telegram chat/channel.",
+  "url": "https://www.make.com/en/templates/4905-get-word-definition-from-urban-dictionary-for-a-new-message-with-the-word-in-telegram",
+  "tag": "Template",
+  "categories": [
+   "Entertainment",
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Analytics Integration | Workflow Automation | Make",
+  "description": "Connect Google Analytics to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-analytics",
+  "tag": "App",
+  "categories": [
+   "Analytics"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Google Calendar and Notion Integration | Workflow Automation | Make",
+  "description": "Connect Google Calendar and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-calendar/notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Calendar Integration | Workflow Automation | Make",
+  "description": "Connect Google Calendar to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-calendar",
+  "tag": "App",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Contacts and Notion Integration | Workflow Automation | Make",
+  "description": "Connect Google Contacts and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-contacts/notion",
+  "tag": "Idea",
+  "categories": [
+   "CRM",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Contacts Integration | Workflow Automation | Make",
+  "description": "Connect Google Contacts to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-contacts",
+  "tag": "App",
+  "categories": [
+   "CRM"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Drive Integration | Workflow Automation | Make",
+  "description": "Connect Google Drive to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-drive",
+  "tag": "App",
+  "categories": [
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Keep Integration | Workflow Automation | Make",
+  "description": "Connect Google Keep to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-keep",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Tasks and Habitica Integration | Workflow Automation | Make",
+  "description": "Connect Google Tasks and Habitica to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-tasks/habitica",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Tasks and Notion Integration | Workflow Automation | Make",
+  "description": "Connect Google Tasks and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-tasks/notion",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Google Tasks Integration | Workflow Automation | Make",
+  "description": "Connect Google Tasks to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/google-tasks",
+  "tag": "App",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Gumroad and Notion Integration | Workflow Automation | Make",
+  "description": "Connect Gumroad and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/gumroad/notion",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Gumroad Integration | Workflow Automation | Make",
+  "description": "Connect Gumroad to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/gumroad",
+  "tag": "App",
+  "categories": [
+   "Payments"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Hootsuite and Facebook Groups Integration | Workflow Automation | Make",
+  "description": "Connect Hootsuite and Facebook Groups to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/hootsuite/facebook-groups",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Hootsuite Integration | Workflow Automation | Make",
+  "description": "Connect Hootsuite to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/hootsuite",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Import Memberstack members to Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Import Memberstack members to Google Sheets spreadsheet - List all members in Memberstack and send them to Google Sheets spreadsheet.",
+  "url": "https://www.make.com/en/templates/4495-import-memberstack-members-to-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Instagram for Business Integration | Workflow Automation | Make",
+  "description": "Connect Instagram for Business to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/instagram-business",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Instagram Integration | Workflow Automation | Make",
+  "description": "Connect Instagram to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/instagram",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Integration Slack, Telegram Bot | Workflow Template | Make",
+  "description": "Integration Slack, Telegram Bot - {description}",
+  "url": "https://www.make.com/en/templates/7342-integration-slack-telegram-bot",
+  "tag": "",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "LinkedIn Integration | Workflow Automation | Make",
+  "description": "Connect LinkedIn to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/linkedin",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Medium Integration | Workflow Automation | Make",
+  "description": "Connect Medium to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/medium",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Miro Integration | Workflow Automation | Make",
+  "description": "Connect Miro to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/miro",
+  "tag": "App",
+  "categories": [
+   "Collaboration"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Mixpanel Integration | Workflow Automation | Make",
+  "description": "Connect Mixpanel to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/mixpanel",
+  "tag": "App",
+  "categories": [
+   "Analytics"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "New Shortcuts data sent as a Slack message | Workflow Template | Make",
+  "description": "New Shortcuts data sent as a Slack message - When a special Shortcast is triggered on your iPhone or iPad, the Make automatically sends a message to Slack with the details of the Shortcast.",
+  "url": "https://www.make.com/en/templates/8304-new-shortcuts-data-sent-as-a-slack-message",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Notion and Bubble Integration | Workflow Automation | Make",
+  "description": "Connect Notion and Bubble to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/notion/bubble",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Notion and Softr Integration | Workflow Automation | Make",
+  "description": "Connect Notion and Softr to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/notion/softr",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Notion and Webflow Integration | Workflow Automation | Make",
+  "description": "Connect Notion and Webflow to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/notion/webflow",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Patreon Integration | Workflow Automation | Make",
+  "description": "Connect Patreon to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/patreon",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "PayPal Integration | Workflow Automation | Make",
+  "description": "Connect PayPal to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/paypal",
+  "tag": "App",
+  "categories": [
+   "Payments"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post a message with a new tweet from a watched Twitter account in Discord | Workflow Template | Make",
+  "description": "Post a message with a new tweet from a watched Twitter account in Discord - Watch a specified account in Twitter and if there is a new tweet tweeted, post a message with the content of the tweet in DIscord.",
+  "url": "https://www.make.com/en/templates/2972-post-a-message-with-a-new-tweet-from-a-watched-twitter-account-in-discord",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Post Discord messages for new Gmail emails | Workflow Template | Make",
+  "description": "Post Discord messages for new Gmail emails - Every time a new email is received in your Gmail inbox, Make will automatically post it on your Discord server.",
+  "url": "https://www.make.com/en/templates/4748-post-discord-messages-for-new-gmail-emails",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post new RSS feed items containing a specific word to a Facebook Page | Workflow Template | Make",
+  "description": "Post new RSS feed items containing a specific word to a Facebook Page - Every time a new article containing a specific word is posted to a specified RSS feed, Make will automatically create a new post on your Facebook page.",
+  "url": "https://www.make.com/en/templates/1735-post-new-rss-feed-items-containing-a-specific-word-to-a-facebook-page",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post new RSS items to LinkedIn | Workflow Template | Make",
+  "description": "Post new RSS items to LinkedIn - Every time a new item is published in the RSS feed, it will be shared via LinkedIn.",
+  "url": "https://www.make.com/en/templates/3485-post-new-rss-items-to-linkedin",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post new Spotify tracks to Medium | Workflow Template | Make",
+  "description": "Post new Spotify tracks to Medium - Every time you save a new track on Spotify, Make will automatically publish a new post on Medium.com.",
+  "url": "https://www.make.com/en/templates/801-post-new-spotify-tracks-to-medium",
+  "tag": "Template",
+  "categories": [
+   "Audio",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Post new Telegram messages on Discord | Workflow Template | Make",
+  "description": "Post new Telegram messages on Discord - Every time a new message is received on Telegram, Make will automatically post it on your Discord server.",
+  "url": "https://www.make.com/en/templates/3559-post-new-telegram-messages-on-discord",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post OpenWeatherMap forecast for tomorrow in Slack | Workflow Template | Make",
+  "description": "Post OpenWeatherMap forecast for tomorrow in Slack  - Make will automatically send a message with the OpenWeatherMap forecast for  tomorrow to a selected channel in Slack.",
+  "url": "https://www.make.com/en/templates/106-post-openweathermap-forecast-for-tomorrow-in-slack",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Post your weekly E-Commerce revenue on Slack | Workflow Template | Make",
+  "description": "Post your weekly E-Commerce revenue on Slack - Calculate the weekly revenue of your E-Commerce store with sales data from Google Sheets and send it as a message in a Slack channel.",
+  "url": "https://www.make.com/en/templates/5736-post-your-weekly-e-commerce-revenue-on-slack",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Printful Integration | Workflow Automation | Make",
+  "description": "Connect Printful to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/printful",
+  "tag": "App",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Product Hunt Integration | Workflow Automation | Make",
+  "description": "Connect Product Hunt to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/product-hunt",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Reddit Integration | Workflow Automation | Make",
+  "description": "Connect reddit to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/reddit",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Refresh a Chart in Google Slides after a new row is added to corresponding Google spreadsheet | Workflow Template | Make",
+  "description": "Refresh a Chart in Google Slides after a new row is added to corresponding Google spreadsheet - In specified intervals, Make checks whether there is a new row in Google spreadsheet. If so, the corresponding chart is refreshed in the corresponding representation.",
+  "url": "https://www.make.com/en/templates/3176-refresh-a-chart-in-google-slides-after-a-new-row-is-added-to-corresponding-google-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Remove background from images stored in Google Drive | Workflow Template | Make",
+  "description": "Remove background from images stored in Google Drive - When a new image is stored in watched folder in Google Drive, the background of the image is removed by Remove.bg and the image is then uploaded to Google Drive.",
+  "url": "https://www.make.com/en/templates/3856-remove-background-from-images-stored-in-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Images"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Resume creation scenario using Google Sheets, Google Docs. | Workflow Template | Make",
+  "description": "Resume creation scenario using Google Sheets, Google Docs. - Easily edit the Resume with relevant details from [Google sheets](https://docs.google.com/spreadsheets/d/1gyr8jl1ECHFKG9lXmrPAcJoJPfsSDuoc5sU8_UXUoQU/edit?usp=sharing) \n\nThe document template is found on [Google Docs](https://docs.google.com/document/d/1C1GCCweKiJrcWeVPS85s4hrxkT82tZv0lji3KeYA6-w/edit?usp=sharing)",
+  "url": "https://www.make.com/en/templates/5329-resume-creation-scenario-using-google-sheets-google-docs",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Retrieve RSS feed items and post it on Reddit | Workflow Template | Make",
+  "description": "Retrieve RSS feed items and post it on Reddit - This scenario watches for new RSS feed items, retrieves and posts the items in a subreddit of your choice.",
+  "url": "https://www.make.com/en/templates/5065-retrieve-rss-feed-items-and-post-it-on-reddit",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "RSS Integration | Workflow Automation | Make",
+  "description": "Connect RSS to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/rss",
+  "tag": "",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save all photos from Unsplash collections to Google Drive | Workflow Template | Make",
+  "description": "Save all photos from Unsplash collections to Google Drive - Upload all photos from the user's collections in Unsplash to the specified folder in Google Drive.",
+  "url": "https://www.make.com/en/templates/5149-save-all-photos-from-unsplash-collections-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Images",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save Gmail emails and attachments to Google Sheets and Google Drive | Workflow Template | Make",
+  "description": "Save Gmail emails and attachments to Google Sheets and Google Drive - Use this template to save a Gmail message to your Google Sheets spreadsheet as a new row and its attachments to Google Drive.",
+  "url": "https://www.make.com/en/templates/5769-save-gmail-emails-and-attachments-to-google-sheets-and-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save media insight from Instagram to Google sheets | Workflow Template | Make",
+  "description": "Save media insight from Instagram to Google sheets - Get the list of media from your Instagram account and add media insights as a row to Google sheets. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/13CBfkvshCby0EjSDOhmx-wPJfa4c9l3p7-28V1dj6ns/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/4923-save-media-insight-from-instagram-to-google-sheets",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new Discord messages to a Google Sheet spreadsheet. | Workflow Template | Make",
+  "description": "Save new Discord messages to a Google Sheet spreadsheet. - Every time a new message is posted on your Discord channel, Make will automatically add that message to your Google Sheets spreadsheet as a new row. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1ZhCPBXI6irxN1aznrS9PlnsMrW205bzvbI_HdUNxoiE/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/3562-save-new-discord-messages-to-a-google-sheet-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new QuickBooks customers to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Save new QuickBooks customers to a Google Sheets spreadsheet - Every time a new customer is created in QuickBooks, Make will automatically add that customer's info to a new row in your Google Sheets spreadsheet. The template uses this [example spreadsheet]( https://docs.google.com/spreadsheets/d/1e0Tl8oaEQ8YF4HB-kJqu59vpfBocQqGg55gmxfweiBI/edit#gid=0/xxx)",
+  "url": "https://www.make.com/en/templates/4770-save-new-quickbooks-customers-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new QuickBooks invoices to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Save new QuickBooks invoices to a Google Sheets spreadsheet - Every time a new invoice is created or updated in QuickBooks, Make will automatically add that invoice's info to a new row in your Google Sheets spreadsheet.",
+  "url": "https://www.make.com/en/templates/1965-save-new-quickbooks-invoices-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new RocketReach completed lookups to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Save new RocketReach completed lookups to a Google Sheets spreadsheet - Every time a new lookup has been completed in RocketReach,  Make will automatically add data from that lookup to your Google Sheets spreadsheet as a new row. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1UDdKsvKKLbp6bZ3sl2Y1LNRn2cXQZreb4ZdqTE9wrpY/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/8464-save-new-rocketreach-completed-lookups-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new RSS feed items to Pocket and mark them as favorites | Workflow Template | Make",
+  "description": "Save new RSS feed items to Pocket and mark them as favorites - Every time a new item is published in an RSS feed item, Make will automatically add that item to Pocket and mark it as a favorite.",
+  "url": "https://www.make.com/en/templates/1534-save-new-rss-feed-items-to-pocket-and-mark-them-as-favorites",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new RSS feed items to Raindrop.io | Workflow Template | Make",
+  "description": "Save new RSS feed items to Raindrop.io - Every time a new item is published in an RSS feed item, Make will automatically add that item to Raindrop.io as a bookmark.",
+  "url": "https://www.make.com/en/templates/6605-save-new-rss-feed-items-to-raindrop-io",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new Telegram files to Google Drive | Workflow Template | Make",
+  "description": "Save new Telegram files to Google Drive - Every time a new file is posted to your Telegram channel, Make will automatically save that file to a Google Drive folder you specify.",
+  "url": "https://www.make.com/en/templates/1768-save-new-telegram-files-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Storage",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save new Zoho Books invoices to a Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Save new Zoho Books invoices to a Google Sheets spreadsheet - Every time a new invoice is created in Zoho Books, Make will automatically add the invoice's data to a new row in your Google Sheets spreadsheet.",
+  "url": "https://www.make.com/en/templates/3208-save-new-zoho-books-invoices-to-a-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Save your iOS contacts in Airtable | Workflow Template | Make",
+  "description": "Save your iOS contacts in Airtable - Every time you add or edit a contact on your iOS device, it will be saved in Airtable.\nThe Airtable used in this scenario has the following columns:\nName, Organization, Position, Email, Phone, Address. Without them, it will not be possible to succesfully finish building the scenario.",
+  "url": "https://www.make.com/en/templates/3611-save-your-ios-contacts-in-airtable",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a Gmail email from a new Todoist project | Workflow Template | Make",
+  "description": "Send a Gmail email from a new Todoist project - Every time a new Todoist project is created, Make will automatically send a Gmail email.",
+  "url": "https://www.make.com/en/templates/5784-send-a-gmail-email-from-a-new-todoist-project",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a new Twitch live stream to Discord as a message with embedded objects | Workflow Template | Make",
+  "description": "Send a new Twitch live stream to Discord as a message with embedded objects - This template allows you to regularly watch for followed Twitch channels streaming live and send them to Discord as a message with embedded objects.",
+  "url": "https://www.make.com/en/templates/5247-send-a-new-twitch-live-stream-to-discord-as-a-message-with-embedded-objects",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a notification with weather forecast with Pushcut | Workflow Template | Make",
+  "description": "Send a notification with weather forecast with Pushcut - Get a weather forecast for a concrete city and send it in a notification with Pushcut.",
+  "url": "https://www.make.com/en/templates/2961-send-a-notification-with-weather-forecast-with-pushcut",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a Slack notification when a new message is received in Facebook Messenger | Workflow Template | Make",
+  "description": "Send a Slack notification when a new message is received in Facebook Messenger - Every time a new message is received through Facebook Messenger, a notification will automatically be sent through Slack to a channel of your choice.",
+  "url": "https://www.make.com/en/templates/4751-send-a-slack-notification-when-a-new-message-is-received-in-facebook-messenger",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a Telegram message notifying about the best price/ quantity on the order book for a pair in Binance | Workflow Template | Make",
+  "description": "Send a Telegram message notifying about the best price/ quantity on the order book for a pair in Binance - This template periodically checks for the best price/ quantity on the order book for a trading pair in Binance and uses the retrieved information to send a message on Telegram. \n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7536-send-a-telegram-message-notifying-about-the-best-price-quantity-on-the-order-book-for-a-pair-in-binance",
+  "tag": "Template",
+  "categories": [
+   "Finance"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send a Telegram message notifying about the current average price of a trading pair in Binance | Workflow Template | Make",
+  "description": "Send a Telegram message notifying about the current average price of a trading pair in Binance - This template periodically checks for the current average price of a trading pair in Binance and uses the retrieved information to send a message on Telegram. \n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7535-send-a-telegram-message-notifying-about-the-current-average-price-of-a-trading-pair-in-binance",
+  "tag": "Template",
+  "categories": [
+   "Finance"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send an email notifying about open orders in Binance | Workflow Template | Make",
+  "description": "Send an email notifying about open orders in Binance - This template periodically checks for current open orders in Binance and uses the retrieved information to send an email via Gmail.\n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7533-send-an-email-notifying-about-open-orders-in-binance",
+  "tag": "Template",
+  "categories": [
+   "Finance"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Android Push notifications for overdue tasks in Google Tasks | Workflow Template | Make",
+  "description": "Send Android Push notifications for overdue tasks in Google Tasks - Every time a task becomes overdue in Google Tasks, Make will automatically send a push notification to the android device of your choice.",
+  "url": "https://www.make.com/en/templates/3646-send-android-push-notifications-for-overdue-tasks-in-google-tasks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Google Analytics data to a Google Sheet | Workflow Template | Make",
+  "description": "Send Google Analytics data to a Google Sheet - Use this template to automatically send Google Analytics data to a Google Sheet. It's set to fetch the data on a daily basis which you can change in the scheduling menu.",
+  "url": "https://www.make.com/en/templates/8898-send-google-analytics-data-to-a-google-sheet",
+  "tag": "Template",
+  "categories": [
+   "Analytics",
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Google Analytics data to Google Data Studio | Workflow Template | Make",
+  "description": "Send Google Analytics data to Google Data Studio - Create reports in Google Data Studio with Google Analytics data automatically using this template. It's important to follow the steps [here](https://www.Make.com/en/help/app/google-data-studio) to connect your Google Data Studio account with Make.",
+  "url": "https://www.make.com/en/templates/8897-send-google-analytics-data-to-google-data-studio",
+  "tag": "Template",
+  "categories": [
+   "Analytics"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send messages in Slack for new task activities in Habitica | Workflow Template | Make",
+  "description": "Send messages in Slack for new task activities in Habitica - Every time a task is modified in your Habitica, Make will send a message in your Slack with information on it's current state.",
+  "url": "https://www.make.com/en/templates/6648-send-messages-in-slack-for-new-task-activities-in-habitica",
+  "tag": "Template",
+  "categories": [
+   "Productivity",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send messages in Telegram for new task activities in Habitica | Workflow Template | Make",
+  "description": "Send messages in Telegram for new task activities in Habitica - Every time a task is modified in your Habitica, Make will post a message in your Telegram with information on it's current state.",
+  "url": "https://www.make.com/en/templates/6649-send-messages-in-telegram-for-new-task-activities-in-habitica",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send new files from Google Drive to a Telegram channel | Workflow Template | Make",
+  "description": "Send new files from Google Drive to a Telegram channel - Every time a new file is uploaded to your Google Drive,  Make will automatically send that file to Telegram channel you specify.",
+  "url": "https://www.make.com/en/templates/1769-send-new-files-from-google-drive-to-a-telegram-channel",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send new Memberstack members to Google Sheets spreadsheet | Workflow Template | Make",
+  "description": "Send new Memberstack members to Google Sheets spreadsheet - When a new member is created in Google Sheets, a new row with the member's data is created in Google Sheets.",
+  "url": "https://www.make.com/en/templates/4493-send-new-memberstack-members-to-google-sheets-spreadsheet",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send new RSS feed items as messages in Slack | Workflow Template | Make",
+  "description": "Send new RSS feed items as messages in Slack - When there are new RSS feed items on a site you are watching, Make will retrieve the items and send them as messages in Slack automatically.",
+  "url": "https://www.make.com/en/templates/5461-send-new-rss-feed-items-as-messages-in-slack",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack messages for new Pipedrive activities | Workflow Template | Make",
+  "description": "Send Slack messages for new Pipedrive activities  - Every time a new activity is created in Pipedrive, Make will automatically send a message in Slack.",
+  "url": "https://www.make.com/en/templates/975-send-slack-messages-for-new-pipedrive-activities",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack messages for new Runkeeper activities | Workflow Template | Make",
+  "description": "Send Slack messages for new Runkeeper activities - Every time you add a new activity on the Runkeeper app, Make will automatically post a message to Slack.",
+  "url": "https://www.make.com/en/templates/5500-send-slack-messages-for-new-runkeeper-activities",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack messages from new posts on Product Hunt | Workflow Template | Make",
+  "description": "Send Slack messages from new posts on Product Hunt - This template periodically checks for new posts in Product Hunt and uses the retrieved information to send new Slack messages.\n\nThe template is scheduled to run every 15 minutes. You can change the schedule after you set up the template.",
+  "url": "https://www.make.com/en/templates/7709-send-slack-messages-from-new-posts-on-product-hunt",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack messages when a new track is added to a Spotify playlist | Workflow Template | Make",
+  "description": "Send Slack messages when a new track is added to a Spotify playlist - Retrieve the new tracks added to Spotify playlist and post a Slack message.",
+  "url": "https://www.make.com/en/templates/6583-send-slack-messages-when-a-new-track-is-added-to-a-spotify-playlist",
+  "tag": "Template",
+  "categories": [
+   "Audio",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack notification to assignees in a Notion database | Workflow Template | Make",
+  "description": "Send Slack notification to assignees in a Notion database - Use this template to automatically send a Slack message to an assignee in a Notion database.\n\nMake regularly checks the Notion database and retrieves databases items (pages) that meet certain criteria. See our basic [database](https://www.notion.so/0af26523eee3492a87a7868fe8e8be80?v=135293d52bdb4f4cbf4abffe91b5c910) for reference.",
+  "url": "https://www.make.com/en/templates/6395-send-slack-notification-to-assignees-in-a-notion-database",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Telegram messages (incl. attachments) to Slack | Workflow Template | Make",
+  "description": "Send Telegram messages (incl. attachments) to Slack - Every time a new update (message or a file) is sent via Telegram, Make will automatically share that update in a specific Slack channel you choose.",
+  "url": "https://www.make.com/en/templates/1678-send-telegram-messages-incl-attachments-to-slack",
+  "tag": "",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Telegram messages for new Google Tasks | Workflow Template | Make",
+  "description": "Send Telegram messages for new Google Tasks - Every time a new task is added to a specified Google Tasks List, Make will automatically share it to a selected chat in Telegram.",
+  "url": "https://www.make.com/en/templates/3640-send-telegram-messages-for-new-google-tasks",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Telegram messages for new posts in Circle | Workflow Template | Make",
+  "description": "Send Telegram messages for new posts in Circle - Make will watch posts in your Circle and create Telegram messages.",
+  "url": "https://www.make.com/en/templates/7627-send-telegram-messages-for-new-posts-in-circle",
+  "tag": "Template",
+  "categories": [
+   "CRM",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send Telegram messages for Steam app news | Workflow Template | Make",
+  "description": "Send Telegram messages for Steam app news - Make will list news for a selected Steam game and send them via your Telegram bot.",
+  "url": "https://www.make.com/en/templates/8582-send-telegram-messages-for-steam-app-news",
+  "tag": "Template",
+  "categories": [
+   "Entertainment"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Send your Google Analytics reports as Slack messages | Workflow Template | Make",
+  "description": "Send your Google Analytics reports as Slack messages - This template will automatically retrieve data from your Google Analytics account for the past 24 hours and send the report as a Slack message.",
+  "url": "https://www.make.com/en/templates/6181-send-your-google-analytics-reports-as-slack-messages",
+  "tag": "Template",
+  "categories": [
+   "Analytics",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "SendFox and Notion Integration | Workflow Automation | Make",
+  "description": "Connect SendFox and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/sendfox/notion",
+  "tag": "",
+  "categories": [
+   "Collaboration",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "SendFox Integration | Workflow Automation | Make",
+  "description": "Connect SendFox to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/sendfox",
+  "tag": "",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Share new Asana tasks on Discord | Workflow Template | Make",
+  "description": "Share new Asana tasks on Discord - Every time a new task is added to a specified Asana project, Make will automatically share it on your Discord channel.",
+  "url": "https://www.make.com/en/templates/3590-share-new-asana-tasks-on-discord",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Shortcuts Integration | Workflow Automation | Make",
+  "description": "Connect Shortcuts to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/shortcuts",
+  "tag": "App",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Shorten an RSS link with Bitly and send it as a Discord message | Workflow Template | Make",
+  "description": "Shorten an RSS link with Bitly and send it as a Discord message - Use this template to automatically shorten a new RSS feed item link with Bitly and post it as a Discord message.",
+  "url": "https://www.make.com/en/templates/5780-shorten-an-rss-link-with-bitly-and-send-it-as-a-discord-message",
+  "tag": "",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Slack Integration | Workflow Automation | Make",
+  "description": "Connect Slack to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/slack",
+  "tag": "App",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Softr Integration | Workflow Automation | Make",
+  "description": "Connect Softr to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/softr",
+  "tag": "App",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "SoundCloud Automation: Learn What You Can Do with Make | Make",
+  "description": "Use Integromat to develop your own SoundCloud automation and improve workflows related to audio production, distribution, and promotion.",
+  "url": "https://www.make.com/en/use-cases/soundcloud-automation-integromat",
+  "tag": "App",
+  "categories": [
+   "Audio"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Spotify Integration | Workflow Automation | Make",
+  "description": "Connect Spotify to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/spotify",
+  "tag": "App",
+  "categories": [
+   "Audio"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Tally Integration | Workflow Automation | Make",
+  "description": "Connect Tally to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/tally",
+  "tag": "App",
+  "categories": [
+   "Form Builders"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Telegram Bot and Slack and Discord Integration | Workflow Automation | Make",
+  "description": "Connect Telegram Bot and Slack and Discord to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/telegram/slack/discord",
+  "tag": "Idea",
+  "categories": [
+   "Marketing",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Telegram Bot Integration | Workflow Automation | Make",
+  "description": "Connect Telegram Bot to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/telegram",
+  "tag": "",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "TikTok and Notion Integration | Workflow Automation | Make",
+  "description": "Connect TikTok and Notion to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/tiktok/notion",
+  "tag": "Template",
+  "categories": [
+   "Collaboration",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "TikTok Integration | Workflow Automation | Make",
+  "description": "Connect TikTok to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/tiktok",
+  "tag": "App",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Translate Google Sheet with Google Translate | Workflow Template | Make",
+  "description": "Translate Google Sheet with Google Translate - With this scenario you can create a bilingual content in Google sheet. Have the original text in column A and Make will use Google Translate and add the translated to text to column B of the same Google Sheet file. Every time you add new rows, Make will pick them up (within scheduled intervals) and translate them. In this scenario, we use a Google sheet with a header in the first row with the 'source' in column A and a target language code in column B.",
+  "url": "https://www.make.com/en/templates/5490-translate-google-sheet-with-google-translate",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Translations"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Trigger GrowSurf referrals from new Memberstack members | Workflow Template | Make",
+  "description": "Trigger GrowSurf referrals from new Memberstack members - Every time a new member is created in Memberstack, Make will automatically trigger a new referral in GrowSurf.",
+  "url": "https://www.make.com/en/templates/4502-trigger-growsurf-referrals-from-new-memberstack-members",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Tumblr Integration | Workflow Automation | Make",
+  "description": "Connect Tumblr to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/tumblr",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Tweet new Typeform entries | Workflow Template | Make",
+  "description": "Tweet new Typeform entries - Every time someone answers a selected Typeform question, Make will automatically post a new tweet on Twitter.",
+  "url": "https://www.make.com/en/templates/5275-tweet-new-typeform-entries",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Twitter Integration | Workflow Automation | Make",
+  "description": "Connect Twitter to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/twitter",
+  "tag": "",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "dead"
+ },
+ {
+  "name": "Typeform Integration | Workflow Automation | Make",
+  "description": "Connect Typeform to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/typeform",
+  "tag": "App",
+  "categories": [
+   "Form Builders"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Unsplash Integration | Workflow Automation | Make",
+  "description": "Connect Unsplash to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/unsplash",
+  "tag": "App",
+  "categories": [
+   "Images"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Update Telegram subscribers with latest articles via the RSS module | Workflow Template | Make",
+  "description": "Update Telegram subscribers with latest articles via the RSS module - Regularly inform your Telegram subscribers automatically from the RSS module. Keeping them up to date with your latest articles.",
+  "url": "https://www.make.com/en/templates/2304-update-telegram-subscribers-with-latest-articles-via-the-rss-module",
+  "tag": "Template",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Upload a new invoice from QuickBooks to Google Drive. | Workflow Template | Make",
+  "description": "Upload a new invoice from QuickBooks to Google Drive. - When a new invoice is created in Quickbooks, the PDF is downloaded and then uploaded to Google Drive.",
+  "url": "https://www.make.com/en/templates/3144-upload-a-new-invoice-from-quickbooks-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Upload Discord attachments to Google Drive | Workflow Template | Make",
+  "description": "Upload Discord attachments to Google Drive - Every time a new message is sent to a selected Discord Channel, Make will automatically save the attached file to Google Drive.",
+  "url": "https://www.make.com/en/templates/3580-upload-discord-attachments-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Upload music files from Google Drive to SoundClound | Workflow Template | Make",
+  "description": "Upload music files from Google Drive to SoundClound - Whenever a new audio file is added to a selected Google Drive folder, Make will automatically upload it SoundCloud.",
+  "url": "https://www.make.com/en/templates/28-upload-music-files-from-google-drive-to-soundclound",
+  "tag": "Template",
+  "categories": [
+   "Audio",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Upload new Bannerbear images to Google Drive | Workflow Template | Make",
+  "description": "Upload new Bannerbear images to Google Drive - Every time a new image is created in Bannerbear, Make will automatically upload that image to a Google Drive folder you specify.",
+  "url": "https://www.make.com/en/templates/9019-upload-new-bannerbear-images-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Images"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Verify an email address by MailerCheck and send an email from a new Typeform response | Workflow Template | Make",
+  "description": "Verify an email address by MailerCheck and send an email from a new Typeform response - Every time a new response is submitted in Typeform, an email address will be verified in MailerCheck and if the email address is valid an email will be sent via Gmail.\n\nThis template expects your Typeform form to collect at least Email addresses.",
+  "url": "https://www.make.com/en/templates/8993-verify-an-email-address-by-mailercheck-and-send-an-email-from-a-new-typeform-response",
+  "tag": "Template",
+  "categories": [
+   "Form Builders",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Verify emails in a Google Sheets spreadsheet using Hunter | Workflow Template | Make",
+  "description": "Verify emails in a Google Sheets spreadsheet using Hunter - Every time a new row added to a specified Google Sheets spreadsheet, Make will automatically check the email containing in this record using Hunter and update a row with information about validity of the email. The template uses this [example spreadsheet](https://docs.google.com/spreadsheets/d/1VlaaXTQfkNj2x3SAnvwi2z7FAZ_JQhUwNPLfTKIUOXM/edit?usp=sharing).",
+  "url": "https://www.make.com/en/templates/7564-verify-emails-in-a-google-sheets-spreadsheet-using-hunter",
+  "tag": "Template",
+  "categories": [
+   "Databases"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Watch for new media on Instagram and create a new Listing on Etsy | Workflow Template | Make",
+  "description": "Watch for new media on Instagram and create a new Listing on Etsy - Every time new media is added to Instagram, Make will automatically filter this media by type, create new listings on Etsy and upload the images from Instagram to them.",
+  "url": "https://www.make.com/en/templates/3418-watch-for-new-media-on-instagram-and-create-a-new-listing-on-etsy",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Marketing"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Watch for new media on Instagram and upload it to Google Drive | Workflow Template | Make",
+  "description": "Watch for new media on Instagram and upload it to Google Drive - Every time new media is added on Instagram, if the media type is image or video, Make will automatically save that as a file to Google Drive. If the media type is carousel album Make will create an archive of that album and upload it to Google Drive.",
+  "url": "https://www.make.com/en/templates/3319-watch-for-new-media-on-instagram-and-upload-it-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Marketing",
+   "Storage"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Webflow Integration | Workflow Automation | Make",
+  "description": "Connect Webflow to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/webflow",
+  "tag": "App",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "WhatsApp Business Cloud Integration | Workflow Automation | Make",
+  "description": "Connect WhatsApp Business Cloud to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/whatsapp-business-cloud",
+  "tag": "App",
+  "categories": [
+   "Team Chat"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Zapier Integration | Workflow Automation | Make",
+  "description": "Connect Zapier to sync data between apps and create powerful automated workflows. Integrate over 1000 apps on Make.",
+  "url": "https://www.make.com/en/integrations/zapier",
+  "tag": "App",
+  "categories": [
+   "Tools & Connectors"
+  ],
+  "platform": "Make",
+  "status": "live"
+ },
+ {
+  "name": "Oura Ring to Airtable FREE Integrations | Pabbly Connect",
+  "description": "Oura Ring and Airtable Integrations - Connect Oura Ring & Airtable using 1500+ ready-to-use automation workflows. Try now for FREE!",
+  "url": "https://www.pabbly.com/connect/integrations/oura-ring/airtable/",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Pabbly Connect",
+  "status": "live"
+ },
+ {
+  "name": "Oura Ring to Microsoft Excel FREE Integrations | Pabbly Connect",
+  "description": "Oura Ring and Microsoft Excel Integrations - Connect Oura Ring & Microsoft Excel using 1500+ ready-to-use automation workflows. Try now for FREE!",
+  "url": "https://www.pabbly.com/connect/integrations/oura-ring/microsoft-excel/",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Pabbly Connect",
+  "status": "live"
+ },
+ {
+  "name": "Oura Ring to Notion FREE Integrations | Pabbly Connect",
+  "description": "Oura Ring and Notion Integrations - Connect Oura Ring & Notion using 1500+ ready-to-use automation workflows. Try now for FREE!",
+  "url": "https://www.pabbly.com/connect/integrations/oura-ring/notion/",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Pabbly Connect",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: API Docs",
+  "description": "Share custom API docs for your product.",
+  "url": "https://www.whalesync.com/template-packs/api-docs",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: API Docs",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: ATS",
+  "description": "Track applicants to your job listings across Webflow and Airtable.",
+  "url": "https://www.whalesync.com/template-packs/ats",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: ATS",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Blog",
+  "description": "Take your Webflow blog to the next level by managing posts in Airtable.",
+  "url": "https://www.whalesync.com/template-packs/blog",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Blog",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Changelog",
+  "description": "Share product updates with your customers with a changelog.",
+  "url": "https://www.whalesync.com/template-packs/changelog",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Changelog",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: CRM",
+  "description": "Create a lightweight CRM (eg. Salesforce) using Airtable and Notion.",
+  "url": "https://www.whalesync.com/template-packs/crm",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: CRM",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Investor CRM",
+  "description": "Track conversations with potential investors across Airtable and Notion.",
+  "url": "https://www.whalesync.com/template-packs/investor-crm",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Investor CRM",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Job Board",
+  "description": "Build a custom job board using Airtable and Webflow.",
+  "url": "https://www.whalesync.com/template-packs/job-board",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Job Board",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Marketplace",
+  "description": "Manage your own Clothing Marketplace with Bubble and Airtable.",
+  "url": "https://www.whalesync.com/template-packs/marketplace",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Marketplace",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: ProductHunt",
+  "description": "Create a ProductHunt clone backed by an Airtable database.",
+  "url": "https://www.whalesync.com/template-packs/product-hunt",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: ProductHunt",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Resource List",
+  "description": "Build a curated resource list to share with your community.",
+  "url": "https://www.whalesync.com/template-packs/resource-list",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Resource List",
+  "status": "live"
+ },
+ {
+  "name": "Whalesync | Template Packs: Wall of Love",
+  "description": "Add a testimonials section to your company's Webflow site.",
+  "url": "https://www.whalesync.com/template-packs/wall-of-love",
+  "tag": "Template",
+  "categories": [
+   "Development Tools"
+  ],
+  "platform": "Template Packs: Wall of Love",
+  "status": "live"
+ },
+ {
+  "name": "Add new Kajabi customers as Mailchimp subscribers",
+  "description": "Staying in touch with your customers is important, which is what makes this Kajabi-Mailchimp integration handy. Whenever a customer purchases your content on Kajabi, Zapier can add their info to your...",
+  "url": "https://zapier.com/apps/kajabi/integrations/mailchimp/12903/add-new-kajabi-customers-as-mailchimp-subscribers",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add new MapMyFitness workouts as events in a Google Calendar",
+  "description": "Can't remember how many times you went for a run last week? Use this Zapier integration to automatically log your workouts to a calendar. Every time you log an activity in MapMyFitness, an event will...",
+  "url": "https://zapier.com/apps/google-calendar/integrations/mapmyfitness/14217/add-new-mapmyfitness-workouts-as-events-in-a-google-calendar",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "dead"
+ },
+ {
+  "name": "Add new PartnerStack customers as Mailchimp subscribers",
+  "description": "You no longer need to manually add new PartnerStack partners to your Mailchimp mailing list. With this PartnerStack-Mailchimp integration, you will automatically add new PartnerStack customers to you...",
+  "url": "https://zapier.com/apps/mailchimp/integrations/partnerstack/31084/add-new-partnerstack-customers-as-mailchimp-subscribers",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add new Revue subscribers to Mailchimp",
+  "description": "Rather than manually adding your Revue personal newsletter subscribers to Mailchimp, use this Zapier integration to do it for you. Any time a subscriber subscribes to your Revue personal newsletter, ...",
+  "url": "https://zapier.com/apps/mailchimp/integrations/revue/15065/add-new-revue-subscribers-to-mailchimp",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "dead"
+ },
+ {
+  "name": "Add new RSS feed articles to Instapaper",
+  "description": "Want to make sure your latest RSS feed articles are available on Instapaper when you find the time to read them? Set up this Zap and we'll forward all of them for you. It will watch your RSS feed for...",
+  "url": "https://zapier.com/apps/instapaper/integrations/rss/7474/add-new-rss-feed-articles-to-instapaper",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add new RSS feed items to Short.cm as links",
+  "description": "RSS feeds are a great way to spot new content. Make sure you can share that content easily by creating short links for every new URL. Now you can create short links for items from your RSS feed autom...",
+  "url": "https://zapier.com/apps/rss/integrations/short-io/20550/add-new-rss-feed-items-to-shortcm-as-links",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add new Runkeeper activities to MapMyFitness",
+  "description": "If your training buddies use one fitness tracking app, but you prefer another, it can be frustrating to see everyone's progress at a glance. With this Zapier integration, you can share training data ...",
+  "url": "https://zapier.com/apps/mapmyfitness/integrations/runkeeper/14321/add-new-runkeeper-activities-to-mapmyfitness",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "dead"
+ },
+ {
+  "name": "Add pins to your Pinterest boards from new RSS feed items",
+  "description": "Whether you maintain an RSS feed or just want to share the great content you find on someone else's, this integration will take care of the whole thing. Once it's active, whenever a new item is poste...",
+  "url": "https://zapier.com/apps/pinterest/integrations/rss/11909/add-pins-to-your-pinterest-boards-from-new-rss-feed-items",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add saved Feedly articles to Instapaper",
+  "description": "Getting all your reading material through Feedly, but don't have the time to keep up with it? Let us take care of it for you. Once this Feedly Instapaper integration is active, it will watch for new ...",
+  "url": "https://zapier.com/apps/feedly/integrations/instapaper/7480/add-saved-feedly-articles-to-instapaper",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add Todoist tasks using Google Assistant voice commands",
+  "description": "Need to remind yourself of something, but too busy to reach for you phone or head to the computer? Set up this integration, and we'll help. From then on when you open Google Assistant say, \"Ok Google...",
+  "url": "https://zapier.com/apps/google-assistant/integrations/todoist/91407/add-todoist-tasks-using-google-assistant-voice-commands",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Add/update Mailchimp subscribers for new eBay orders",
+  "description": "You can now send emails to the people that buy your products automatically thanks to this integration. It will automatically add/update Mailchimp subscribers for new eBay orders using this integratio...",
+  "url": "https://zapier.com/apps/ebay/integrations/mailchimp/47717/addupdate-mailchimp-subscribers-for-new-ebay-orders",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create a RSS feed for new YouTube channel videos",
+  "description": "There's a never ending stream of amazing content on YouTube, keeping up with it all is a giant task. Let Zapier help! Any time a new video is posted to a specific YouTube channel, easily be alerted v...",
+  "url": "https://zapier.com/apps/rss/integrations/youtube/7234/create-a-rss-feed-for-new-youtube-channel-videos",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create Airtable records for new eBay orders",
+  "description": "Keep your workflow organized from purchase to tracking in Airtable by sending your new eBay orders as new Airtable records. With this integration, you can automatically create Airtable records for ne...",
+  "url": "https://zapier.com/apps/airtable/integrations/ebay/47763/create-airtable-records-for-new-ebay-orders",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Databases"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create Airtable records for new Twitch followers",
+  "description": "Keep track of your followers on Twitch in Airtable automatically so that you can follow along with who is watching you and what they care about. This integration lets you automatically create Airtabl...",
+  "url": "https://zapier.com/apps/airtable/integrations/twitch/40253/create-airtable-records-for-new-twitch-followers",
+  "tag": "Template",
+  "categories": [
+   "Databases",
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create Asana tasks from new Google Assistant voice commands",
+  "description": "Ever have more ideas than free hands? Automatically create tasks in Asana on the fly by opening Google Assistant, saying \"Ok Google, talk to Zapier\", then \"Create a task\" and follow the prompts. Adju...",
+  "url": "https://zapier.com/apps/asana/integrations/google-assistant/91402/create-asana-tasks-from-new-google-assistant-voice-commands",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create Google Sheet rows for new orders in Amazon Seller Central",
+  "description": "Sometimes you'll need to organize your new order details on a spreadsheet. Zapier helps by creating a row on your Google Sheet when you have a new order from Amazon Seller Central. You won't have to ...",
+  "url": "https://zapier.com/apps/amazon-seller-central/integrations/google-sheets/158431/create-google-sheet-rows-for-new-orders-in-amazon-seller-central",
+  "tag": "Template",
+  "categories": [
+   "Commerce"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Create Typefully drafts from new RSS feed items",
+  "description": "Automatically create drafts in Typefully from new items in an RSS feed. The content from the RSS feed will automatically split into multiple tweets, so you can tweak it and publish it without much ef...",
+  "url": "https://zapier.com/apps/rss/integrations/typefully/1030142/create-typefully-drafts-from-new-rss-feed-items",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Execute HomeKit Scenes in Pushcut from new trigger phrases spoken in Amazon Alexa",
+  "description": "Tell Alexa to set a HomeKit scene with Pushcut. Just say the word and Alexa will set the correct scene in your HomeKit home - safely handled by the Pushcut Automation Server.",
+  "url": "https://zapier.com/apps/amazon-alexa/integrations/pushcut/136256/execute-homekit-scenes-in-pushcut-from-new-trigger-phrases-spoken-in-amazon-alexa",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Execute Pushcut shortcuts from new trigger phrases spoken to Alexa",
+  "description": "Do you like Shortcuts and say \"Alexa\" a lot? With the Pushcut Automation Server you can execute iOS shortcuts via Alexa voice commands.",
+  "url": "https://zapier.com/apps/amazon-alexa/integrations/pushcut/136258/execute-pushcut-shortcuts-from-new-trigger-phrases-spoken-to-alexa",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Grant new Mailchimp subscribers access to an offer on Kajabi",
+  "description": "If you add subscribers to a particular email list, you can use that segmentation to tailor your product offerings, and Zapier can do all the work for you, too. Set up this integration, and it will tr...",
+  "url": "https://zapier.com/apps/kajabi/integrations/mailchimp/12441/grant-new-mailchimp-subscribers-access-to-an-offer-on-kajabi",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Personalize new MapMyFitness workout summaries with Wordsmith and Tweet them",
+  "description": "Create workout summaries and tweet them! MapMyFitness, Wordsmith, and Twitter work together, powered by Zapier, to keep you or your favorite audience up to date on your workout goals and progress. Us...",
+  "url": "https://zapier.com/apps/mapmyfitness/integrations/twitter/12127/personalize-new-mapmyfitness-workout-summaries-with-wordsmith-and-tweet-them",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Post new Pinterest pins to Slack channels",
+  "description": "You've found exactly what you're looking for online, so you save it to Pinterest. Is there anyone else you'd like to see it, like other team members of yours? Send those pins to Slack, and keep every...",
+  "url": "https://zapier.com/apps/pinterest/integrations/slack/10666/post-new-pinterest-pins-to-slack-channels",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Quick add new Google Calendar events with the Zapier Chrome extension",
+  "description": "You're working in your browser when you remember an upcoming appointment, or want to remind yourself of something that needs done in the near future. Zapier can add that as a new event in Google Cale...",
+  "url": "https://zapier.com/apps/google-calendar/integrations/zapier-chrome-extension/13418/quick-add-new-google-calendar-events-with-the-zapier-chrome-extension",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Send messages to Slack from new triggers of Zapier's Chrome Extension",
+  "description": "Need a quick way to send a message to Slack right from Chrome—perhaps to share an idea without opening Slack, or to impersonate a Slack bot without your teammates knowing? Zapier's Chrome extension i...",
+  "url": "https://zapier.com/apps/slack/integrations/zapier-chrome-extension/13408/send-messages-to-slack-from-new-triggers-of-zapiers-chrome-extension",
+  "tag": "Template",
+  "categories": [
+   "Productivity"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Send new YouTube videos in a channel to a Facebook Page",
+  "description": "There's new video content being created and shared constantly, it is so hard to keep up! Cut out a the tedious work of sending new YouTube videos to your Facebook page by automating all of that work....",
+  "url": "https://zapier.com/apps/facebook-pages/integrations/youtube/7236/send-new-youtube-videos-in-a-channel-to-a-facebook-page",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Send new YouTube videos in a channel to Slack",
+  "description": "If your company owns a YouTube channel, or if there is an important channel to your industry, keeping up with those new videos across the team can be virtually impossible. Zapier can help keep everyo...",
+  "url": "https://zapier.com/apps/slack/integrations/youtube/7233/send-new-youtube-videos-in-a-channel-to-slack",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Send Slack channel messages for new video testimonials in Testimonial",
+  "description": "Easily stay on top of your Testimonial campaign with this template. Once the template is active, it will send a message to a chosen Slack channel every time a new video testimonial is received.",
+  "url": "https://zapier.com/apps/slack/integrations/testimonial/1029847/send-slack-channel-messages-for-new-video-testimonials-in-testimonial",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Share new Instagram photos to Facebook Groups",
+  "description": "So you just took a great photo and want to share it with your Instagram and Facebook followers? Don't worry about posting it to your Facebook timeline because this integration automatically shares ne...",
+  "url": "https://zapier.com/apps/facebook-groups/integrations/instagram/23866/share-new-instagram-photos-to-facebook-groups",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "dead"
+ },
+ {
+  "name": "Tweet new videos in YouTube channels",
+  "description": "Creating great content takes a lot of time. Unfortunately, that's not where the work ends! Let this integration handle some tedious work for you, automatically sending out a tweet for each for new Yo...",
+  "url": "https://zapier.com/apps/twitter/integrations/youtube/7235/tweet-new-videos-in-youtube-channels",
+  "tag": "Template",
+  "categories": [
+   "Marketing"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ },
+ {
+  "name": "Upload new video testimonials in Testimonial to Google Drive",
+  "description": "Save time uploading new video testimonials to Google Drive with this integration. Every time when a new video testimonial is received, the video will be automatically uploaded to a specified folder i...",
+  "url": "https://zapier.com/apps/google-drive/integrations/testimonial/1029860/upload-new-video-testimonials-in-testimonial-to-google-drive",
+  "tag": "Template",
+  "categories": [
+   "Commerce",
+   "Marketing",
+   "Storage"
+  ],
+  "platform": "Zapier",
+  "status": "live"
+ }
+]
