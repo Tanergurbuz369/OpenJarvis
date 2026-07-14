@@ -463,6 +463,32 @@ When an agent is configured (e.g., `--agent orchestrator`), non-streaming reques
 
 ---
 
+## Running `jarvis serve` in tmux
+
+`jarvis serve` (and long-running commands like `jarvis channel status --watch`) stay attached to
+your terminal by default — closing the terminal kills the process. Running it inside
+[tmux](https://github.com/tmux/tmux/wiki) keeps the server alive after you disconnect, and lets
+you split panes to watch logs alongside a client session.
+
+```bash
+tmux new -s jarvis            # start a new session named "jarvis"
+jarvis serve --port 8000      # runs inside the session
+
+# useful tmux commands
+tmux new -s jarvis            # start a new session
+Ctrl+b, %                     # split pane vertically
+Ctrl+b, "                     # split pane horizontally
+Ctrl+b, d                     # detach (leave the session running, return to your shell)
+tmux attach -t jarvis         # reattach to the session
+tmux ls                       # list running sessions
+```
+
+Detaching with `Ctrl+b, d` leaves `jarvis serve` running in the background even after you log out
+of the machine — reattach any time with `tmux attach -t jarvis` to see its output or stop it with
+`Ctrl+c`.
+
+---
+
 ## LLM-guided spec search (no CLI yet)
 
 LLM-guided spec search (the frontier-driven harness-learning subsystem)
