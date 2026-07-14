@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lead Scraper & Enrichment — DOA Demo</title>
+<style>
+  :root {
+    --bg: #0f1220; --card: #191d2e; --line: #2a3050; --ink: #e8ebf5;
+    --muted: #9aa3c0; --accent: #6d8bff; --good: #3ddc97; --chip: #232842;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 -apple-system, Segoe UI, Roboto, sans-serif;
+         background: radial-gradient(1200px 600px at 80% -10%, #1c2340, var(--bg)); color: var(--ink); }
+  header { padding: 28px 32px 8px; }
+  h1 { margin: 0; font-size: 22px; letter-spacing: .2px; }
+  h1 span { color: var(--accent); }
+  .sub { color: var(--muted); margin-top: 4px; font-size: 13px; }
+  .wrap { padding: 20px 32px 48px; max-width: 1180px; margin: 0 auto; }
+  .bar { display: flex; gap: 10px; margin: 18px 0 22px; flex-wrap: wrap; }
+  input, button { font: inherit; }
+  input {
+    flex: 1; min-width: 260px; background: var(--card); border: 1px solid var(--line);
+    color: var(--ink); padding: 12px 14px; border-radius: 10px; outline: none;
+  }
+  input:focus { border-color: var(--accent); }
+  button {
+    background: var(--accent); color: #0b0e1a; border: 0; font-weight: 700;
+    padding: 12px 20px; border-radius: 10px; cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 22px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .stat .n { font-size: 26px; font-weight: 800; }
+  .stat .l { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .6px; }
+  table { width: 100%; border-collapse: collapse; background: var(--card);
+          border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  th, td { text-align: left; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: 0; }
+  .who { display: flex; align-items: center; gap: 10px; }
+  .who img { width: 34px; height: 34px; border-radius: 50%; background: #333; }
+  .who a { color: var(--ink); text-decoration: none; font-weight: 600; }
+  .who small { color: var(--muted); display: block; }
+  .chip { background: var(--chip); color: var(--muted); border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+  .score { font-weight: 800; color: var(--good); }
+  .muted { color: var(--muted); }
+  .foot { color: var(--muted); font-size: 12px; margin-top: 18px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2,1fr); } .hideSm { display:none; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1>🎯 Lead Scraper <span>&amp; Enrichment</span></h1>
+    <div class="sub">DOA tarzı "müşteri çıkar → zenginleştir → skorla" sistemi · canlı public veri</div>
+  </header>
+  <div class="wrap">
+    <div class="bar">
+      <input id="q" value="John" placeholder="İsim / anahtar kelime ile lead ara (ör. Emily, boş bırak = ilk leadler)" />
+      <button id="go">Leadleri Çıkar</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="s-count">—</div><div class="l">Bulunan Lead</div></div>
+      <div class="stat"><div class="n" id="s-avg">—</div><div class="l">Ort. Skor</div></div>
+      <div class="stat"><div class="n" id="s-top">—</div><div class="l">En Yüksek Skor</div></div>
+      <div class="stat"><div class="n" id="s-reach">—</div><div class="l">Toplam Erişim</div></div>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Lead</th><th>Şirket</th><th class="hideSm">Ünvan</th>
+        <th class="hideSm">Konum</th><th>Erişim</th><th>Skor</th>
+      </tr></thead>
+      <tbody id="rows"><tr><td colspan="6" class="muted">Başlamak için "Leadleri Çıkar"a bas…</td></tr></tbody>
+    </table>
+    <div class="foot" id="foot">Kaynak: GitHub Search API (public) · skor = erişim + aktivite</div>
+  </div>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString("tr-TR");
+async function run() {
+  const q = $("q").value.trim();
+  $("go").disabled = true; $("go").textContent = "Çıkarılıyor…";
+  $("rows").innerHTML = '<tr><td colspan="6" class="muted">Scraping + enrichment çalışıyor…</td></tr>';
+  try {
+    const r = await fetch("/api/leads?limit=12&q=" + encodeURIComponent(q));
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    const L = d.leads;
+    $("s-count").textContent = L.length;
+    $("s-avg").textContent = L.length ? Math.round(L.reduce((a,x)=>a+x.score,0)/L.length) : 0;
+    $("s-top").textContent = L.length ? L[0].score : 0;
+    $("s-reach").textContent = fmt(L.reduce((a,x)=>a+x.followers,0));
+    $("rows").innerHTML = L.map(x => `
+      <tr>
+        <td><div class="who">
+          <img src="${x.avatar}" alt="" />
+          <div><a href="${x.profile}">${x.name}</a><small>@${x.handle}</small></div>
+        </div></td>
+        <td>${x.company}</td>
+        <td class="hideSm muted">${x.title}</td>
+        <td class="hideSm muted">${x.location}</td>
+        <td>${fmt(x.followers)}</td>
+        <td><span class="score">${x.score}</span></td>
+      </tr>`).join("");
+    $("foot").textContent = `${L.length} lead · sorgu: "${d.query || "(tümü)"}" · kaynak: public directory API`;
+  } catch (e) {
+    $("rows").innerHTML = '<tr><td colspan="6" class="muted">Hata: ' + e.message + '</td></tr>';
+  } finally {
+    $("go").disabled = false; $("go").textContent = "Leadleri Çıkar";
+  }
+}
+$("go").addEventListener("click", run);
+$("q").addEventListener("keydown", (e) => { if (e.key === "Enter") run(); });
+</script>
+</body>
+</html>
