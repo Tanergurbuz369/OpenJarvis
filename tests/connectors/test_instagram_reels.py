@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
+import httpx
 import pytest
 
 from openjarvis.connectors._stubs import Document
@@ -118,8 +119,6 @@ def test_sync_with_explicit_reels():
 
 def test_sync_skips_http_errors(connector):
     """A reel that fails to fetch is skipped, not fatal."""
-    import httpx
-
     with patch(
         "openjarvis.connectors.instagram_reels._fetch_reel_html",
         side_effect=httpx.HTTPError("boom"),
@@ -127,3 +126,130 @@ def test_sync_skips_http_errors(connector):
         docs = list(connector.sync())
 
     assert docs == []
+
+
+# --------------------------------------------------------------------------- #
+# Fetch-strategy chain: Apify + oEmbed
+# --------------------------------------------------------------------------- #
+
+_APIFY_ITEM = {
+    "shortCode": "Dasea7gNCB2",
+    "caption": "Building a local AI agent in 60 seconds",
+    "ownerUsername": "cooldev",
+    "displayUrl": "https://cdn/thumb.jpg",
+    "videoUrl": "https://cdn/reel.mp4",
+    "likesCount": 12_300,
+    "commentsCount": 456,
+}
+
+_OEMBED_RESPONSE = {
+    "author_name": "cooldev",
+    "title": "Building a local AI agent",
+    "thumbnail_url": "https://cdn/oembed-thumb.jpg",
+    "html": "<blockquote>...</blockquote>",
+}
+
+
+def test_normalize_apify_item():
+    from openjarvis.connectors.instagram_reels import _normalize_apify_item
+
+    meta = _normalize_apify_item(_APIFY_ITEM)
+    assert meta["author"] == "cooldev"
+    assert meta["caption"] == "Building a local AI agent in 60 seconds"
+    assert meta["video_url"] == "https://cdn/reel.mp4"
+    assert meta["likes"] == 12_300
+    assert meta["comments"] == 456
+
+
+def test_normalize_oembed():
+    from openjarvis.connectors.instagram_reels import _normalize_oembed
+
+    meta = _normalize_oembed(_OEMBED_RESPONSE)
+    assert meta["author"] == "cooldev"
+    assert meta["caption"] == "Building a local AI agent"
+    assert meta["thumbnail_url"] == "https://cdn/oembed-thumb.jpg"
+    assert meta["video_url"] == ""  # oEmbed has no video URL
+
+
+def test_sync_prefers_apify_when_token_set():
+    """With an Apify token, sync uses the Apify strategy (not scraping)."""
+    from openjarvis.connectors.instagram_reels import (
+        InstagramReelsConnector,
+        _normalize_apify_item,
+    )
+
+    conn = InstagramReelsConnector(
+        reels=["https://www.instagram.com/reel/Dasea7gNCB2/"],
+        config_path="/nonexistent/instagram_reels.json",
+        apify_token="apify-xyz",
+    )
+    with (
+        patch(
+            "openjarvis.connectors.instagram_reels._fetch_via_apify",
+            return_value=_normalize_apify_item(_APIFY_ITEM),
+        ) as mock_apify,
+        patch("openjarvis.connectors.instagram_reels._fetch_reel_html") as mock_scrape,
+    ):
+        docs = list(conn.sync())
+
+    mock_apify.assert_called_once()
+    mock_scrape.assert_not_called()
+    assert docs[0].metadata["source_method"] == "apify"
+    assert docs[0].metadata["video_url"] == "https://cdn/reel.mp4"
+
+
+def test_sync_falls_back_to_oembed_then_opengraph():
+    """oEmbed is used when only its token is set; scraping stays the fallback."""
+    from openjarvis.connectors.instagram_reels import (
+        InstagramReelsConnector,
+        _normalize_oembed,
+    )
+
+    conn = InstagramReelsConnector(
+        reels=["https://www.instagram.com/reel/Dasea7gNCB2/"],
+        config_path="/nonexistent/instagram_reels.json",
+        oembed_token="fb-token",
+    )
+    with (
+        patch(
+            "openjarvis.connectors.instagram_reels._fetch_via_oembed",
+            return_value=_normalize_oembed(_OEMBED_RESPONSE),
+        ) as mock_oembed,
+        patch("openjarvis.connectors.instagram_reels._fetch_reel_html") as mock_scrape,
+    ):
+        docs = list(conn.sync())
+
+    mock_oembed.assert_called_once()
+    mock_scrape.assert_not_called()
+    assert docs[0].metadata["source_method"] == "oembed"
+    assert docs[0].author == "cooldev"
+
+
+def test_apify_failure_falls_through_to_opengraph():
+    """If Apify errors, the connector falls back to Open Graph scraping."""
+    conn_with_token = _connector_with_apify_token()
+    with (
+        patch(
+            "openjarvis.connectors.instagram_reels._fetch_via_apify",
+            side_effect=httpx.HTTPError("apify down"),
+        ),
+        patch(
+            "openjarvis.connectors.instagram_reels._fetch_reel_html",
+            return_value=_SAMPLE_HTML,
+        ),
+    ):
+        docs = list(conn_with_token.sync())
+
+    assert len(docs) == 1
+    assert docs[0].metadata["source_method"] == "opengraph"
+    assert docs[0].author == "cooldev"
+
+
+def _connector_with_apify_token():
+    from openjarvis.connectors.instagram_reels import InstagramReelsConnector
+
+    return InstagramReelsConnector(
+        reels=["https://www.instagram.com/reel/Dasea7gNCB2/"],
+        config_path="/nonexistent/instagram_reels.json",
+        apify_token="apify-xyz",
+    )
