@@ -132,3 +132,8 @@ try:
     import openjarvis.connectors.news_rss  # noqa: F401
 except ImportError:
     pass
+
+try:
+    import openjarvis.connectors.instagram_reels  # noqa: F401
+except ImportError:
+    pass
