@@ -15,7 +15,8 @@ from typing import List
 from openjarvis.fleet.registry import FleetRoleRegistry
 from openjarvis.fleet.roles import FleetRole
 
-_WORD_RE = re.compile(r"[a-z0-9']+")
+# \w keeps non-ASCII letters so Turkish keywords (ürün, dilekçe, ...) tokenize.
+_WORD_RE = re.compile(r"[\w']+")
 
 # Roles never auto-picked by scoring — they are meta roles the coordinator
 # invokes explicitly (planning and synthesis).
