@@ -18,10 +18,18 @@ A curated list of community-contributed content — videos, tutorials, and walkt
 
     ---
 
-    A walkthrough of how to use Claude Code for free. Community-contributed, **Turkish-language** :flag_tr:.
+    A walkthrough of using hosted AI coding models for free by bridging through OpenRouter. Community-contributed, **Turkish-language** :flag_tr:.
 
     By [İsa Nurdoğdu](https://www.youtube.com/@isanurdogdu)
 
     [:octicons-arrow-right-24: Watch on YouTube](https://youtube.com/shorts/qAa6v3Wo-RE)
 
 </div>
+
+!!! tip "Want the same thing in OpenJarvis?"
+    OpenJarvis has built-in OpenRouter support, so you can run the whole stack on
+    free hosted models with no local GPU. See
+    [Free Cloud Models via OpenRouter](../getting-started/openrouter-free.md) for
+    a step-by-step setup, and the ready-made
+    [`openrouter-free.toml`](https://github.com/open-jarvis/OpenJarvis/blob/main/configs/openjarvis/examples/openrouter-free.toml)
+    config.
