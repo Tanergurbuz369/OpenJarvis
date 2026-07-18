@@ -19,6 +19,7 @@ import logging
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from openjarvis.fleet.packs import pack_roles
 from openjarvis.fleet.roles import FleetRole, builtin_roles
 
 try:  # Python 3.11+
@@ -36,7 +37,7 @@ class FleetRoleRegistry:
 
     def __init__(self, *, custom_roles_dir: Optional[Path] = None) -> None:
         self._roles: Dict[str, FleetRole] = {}
-        for role in builtin_roles():
+        for role in [*builtin_roles(), *pack_roles()]:
             self._roles[role.role_id] = role
         self._custom_dir = (
             Path(custom_roles_dir) if custom_roles_dir else DEFAULT_CUSTOM_ROLES_DIR

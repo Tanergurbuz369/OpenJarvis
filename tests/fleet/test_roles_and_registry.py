@@ -39,7 +39,7 @@ class TestBuiltinCatalog:
 class TestRegistry:
     def test_loads_builtins(self, tmp_path: Path):
         reg = FleetRoleRegistry(custom_roles_dir=tmp_path)
-        assert len(reg) == len(BUILTIN_ROLES)
+        assert len(reg) >= len(BUILTIN_ROLES)
         assert "web_researcher" in reg
 
     def test_custom_role_from_toml(self, tmp_path: Path):
@@ -64,9 +64,10 @@ tools = ["web_search"]
         assert role.tools == ["web_search"]
 
     def test_invalid_toml_is_skipped(self, tmp_path: Path):
+        baseline = len(FleetRoleRegistry(custom_roles_dir=tmp_path / "empty"))
         (tmp_path / "broken.toml").write_text("not [ valid", encoding="utf-8")
         reg = FleetRoleRegistry(custom_roles_dir=tmp_path)
-        assert len(reg) == len(BUILTIN_ROLES)
+        assert len(reg) == baseline
 
     def test_search(self, tmp_path: Path):
         reg = FleetRoleRegistry(custom_roles_dir=tmp_path)
