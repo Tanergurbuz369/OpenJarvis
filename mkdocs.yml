@@ -155,6 +155,8 @@ nav:
       - Scheduled Personal Ops: tutorials/scheduled-ops.md
       - Messaging Hub: tutorials/messaging-hub.md
       - Code Companion: tutorials/code-companion.md
+  - Resources:
+      - Community Resources: resources/community.md
   - Architecture:
       - Overview: architecture/overview.md
       - Intelligence: architecture/intelligence.md
