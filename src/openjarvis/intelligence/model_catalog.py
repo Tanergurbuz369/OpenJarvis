@@ -935,6 +935,25 @@ BUILTIN_MODELS: List[ModelSpec] = [
         },
     ),
     # -----------------------------------------------------------------------
+    # Cloud models — Moonshot AI (Kimi)
+    # -----------------------------------------------------------------------
+    ModelSpec(
+        model_id="kimi-k3",
+        name="Kimi K3",
+        parameter_count_b=0.0,
+        context_length=1048576,
+        supported_engines=("cloud",),
+        provider="moonshot",
+        requires_api_key=True,
+        metadata={
+            "architecture": "proprietary",
+            "pricing_input": 3.00,
+            "pricing_output": 15.00,
+            "auth": "MOONSHOT_API_KEY",
+            "url": "https://platform.kimi.ai/docs/guide/kimi-k3-quickstart",
+        },
+    ),
+    # -----------------------------------------------------------------------
     # Cloud models — Google
     # -----------------------------------------------------------------------
     ModelSpec(
