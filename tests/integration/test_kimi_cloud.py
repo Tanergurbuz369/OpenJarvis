@@ -1,0 +1,60 @@
+"""Integration test for Kimi (Moonshot AI) cloud provider.
+
+Requires MOONSHOT_API_KEY environment variable to be set.
+Run with: pytest tests/integration/test_kimi_cloud.py -v
+"""
+
+from __future__ import annotations
+
+import os
+
+import pytest
+
+from openjarvis.core.registry import EngineRegistry
+from openjarvis.core.types import Message, Role
+from openjarvis.engine.cloud import CloudEngine
+
+_MOONSHOT_KEY = os.environ.get("MOONSHOT_API_KEY", "")
+_skip_no_key = pytest.mark.skipif(
+    not _MOONSHOT_KEY,
+    reason="MOONSHOT_API_KEY not set",
+)
+
+
+@_skip_no_key
+class TestKimiCloudIntegration:
+    """Live integration tests against Moonshot AI's Kimi Cloud API."""
+
+    @pytest.fixture()
+    def engine(self, monkeypatch: pytest.MonkeyPatch) -> CloudEngine:
+        monkeypatch.setenv("MOONSHOT_API_KEY", _MOONSHOT_KEY)
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        monkeypatch.delenv("GEMINI_API_KEY", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+        if not EngineRegistry.contains("cloud"):
+            EngineRegistry.register_value("cloud", CloudEngine)
+        return CloudEngine()
+
+    def test_k3_basic_chat(self, engine: CloudEngine) -> None:
+        """Send a simple message via kimi-k3 and verify non-empty response."""
+        result = engine.generate(
+            [Message(role=Role.USER, content="Reply with exactly: hello world")],
+            model="kimi-k3",
+            temperature=0.01,
+            max_tokens=32,
+        )
+        assert result["content"], "Expected non-empty content"
+        assert result["usage"]["prompt_tokens"] > 0
+        assert result["usage"]["completion_tokens"] > 0
+        assert result["finish_reason"] in ("stop", "length")
+
+    def test_k3_health(self, engine: CloudEngine) -> None:
+        """Engine health should be True when MOONSHOT_API_KEY is set."""
+        assert engine.health() is True
+
+    def test_k3_list_models(self, engine: CloudEngine) -> None:
+        """Kimi models should appear in list_models."""
+        models = engine.list_models()
+        assert "kimi-k3" in models
