@@ -1,0 +1,44 @@
+# OpenRouter (free cloud models) — no local GPU, no Ollama required
+# Copy to ~/.openjarvis/config.toml
+#
+# This routes OpenJarvis through OpenRouter, giving access to 70+ hosted
+# models. The models below are OpenRouter's *free* tier (":free" suffix),
+# so you can run the full stack without a local model or paid API.
+#
+# Setup (one time):
+#   1. Create a key at https://openrouter.ai/keys
+#   2. Export it so OpenJarvis can find it:
+#        export OPENROUTER_API_KEY="sk-or-..."
+#      (add the line to ~/.bashrc / ~/.zshrc to make it persistent)
+#   3. Use this config:
+#        jarvis ask "Explain quantum computing" --config openrouter-free.toml
+#      or copy it to ~/.openjarvis/config.toml and just run `jarvis ask ...`.
+#
+# NOTE: OpenRouter's free model catalog changes over time and free models are
+# rate-limited. Browse the current free list (price = $0) here:
+#   https://openrouter.ai/models?max_price=0
+# Model IDs use OpenRouter's "org/model:free" format — OpenJarvis detects the
+# "/" and routes them to OpenRouter automatically.
+
+[engine]
+default = "ollama"                  # local fallback slug; ignored while a cloud model is selected
+
+[intelligence]
+# A strong, free general/coding model. Swap for any ":free" model you prefer.
+default_model = "deepseek/deepseek-chat-v3-0324:free"
+provider = "openrouter"
+# Other good free options (uncomment one):
+# default_model = "deepseek/deepseek-r1:free"                     # reasoning
+# default_model = "meta-llama/llama-3.3-70b-instruct:free"        # general
+# default_model = "qwen/qwen-2.5-coder-32b-instruct:free"         # coding
+# default_model = "google/gemini-2.0-flash-exp:free"             # fast, long context
+# default_model = "mistralai/mistral-small-3.1-24b-instruct:free"
+temperature = 0.7
+max_tokens = 2048
+
+[agent]
+default_agent = "simple"           # single-turn chat; use "native_openhands" for tool use
+
+[server]
+host = "0.0.0.0"
+port = 8000
