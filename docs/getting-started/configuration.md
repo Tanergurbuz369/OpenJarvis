@@ -1048,6 +1048,7 @@ OpenJarvis respects the following environment variables:
 | `ANTHROPIC_API_KEY` | API key for Anthropic cloud inference. Required for the `cloud` engine with Claude models. |
 | `GOOGLE_API_KEY` | API key for Google Gemini inference. Required for the `google` engine. |
 | `MINIMAX_API_KEY` | API key for MiniMax cloud inference. Required for the `cloud` engine with MiniMax models (MiniMax-M2.7, MiniMax-M2.7-highspeed, MiniMax-M2.5, MiniMax-M2.5-highspeed). |
+| `MOONSHOT_API_KEY` | API key for Moonshot AI's Kimi K-series cloud inference. Required for the `cloud` engine with Kimi models (e.g. `kimi-k3`). Get one from the [API key console](https://platform.kimi.ai/console/api-keys). |
 | `TAVILY_API_KEY` | API key for the Tavily web search tool. Required for the `web_search` tool. |
 
 ## Next Steps

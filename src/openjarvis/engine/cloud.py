@@ -48,6 +48,7 @@ PRICING: Dict[str, tuple[float, float]] = {
     "MiniMax-M2.7-highspeed": (0.60, 2.40),
     "MiniMax-M2.5": (0.30, 1.20),
     "MiniMax-M2.5-highspeed": (0.60, 2.40),
+    "kimi-k3": (3.00, 15.00),
 }
 
 # Well-known model IDs per provider
@@ -83,6 +84,9 @@ _MINIMAX_MODELS = [
     "MiniMax-M2.5",
     "MiniMax-M2.5-highspeed",
 ]
+_KIMI_MODELS = [
+    "kimi-k3",
+]
 
 # OpenRouter models — prefixed with "openrouter/" so they can be identified
 _OPENROUTER_POPULAR = [
@@ -109,6 +113,10 @@ _CODEX_MODELS = [
 
 def _is_minimax_model(model: str) -> bool:
     return model.lower().startswith("minimax")
+
+
+def _is_kimi_model(model: str) -> bool:
+    return model.lower().startswith("kimi")
 
 
 def _is_openrouter_model(model: str) -> bool:
@@ -255,6 +263,7 @@ class CloudEngine(InferenceEngine):
         self._google_client: Any = None
         self._openrouter_client: Any = None
         self._minimax_client: Any = None
+        self._kimi_client: Any = None
         self._codex_client: Any = None
         # Gemini thought_signatures: tool_call_id -> signature bytes
         self._thought_sigs: Dict[str, bytes] = {}
@@ -304,6 +313,17 @@ class CloudEngine(InferenceEngine):
                 self._minimax_client = openai.OpenAI(
                     base_url="https://api.minimax.io/v1",
                     api_key=minimax_key,
+                )
+            except ImportError:
+                pass
+        moonshot_key = os.environ.get("MOONSHOT_API_KEY")
+        if moonshot_key:
+            try:
+                import openai
+
+                self._kimi_client = openai.OpenAI(
+                    base_url="https://api.moonshot.ai/v1",
+                    api_key=moonshot_key,
                 )
             except ImportError:
                 pass
@@ -928,6 +948,77 @@ class CloudEngine(InferenceEngine):
             ]
         return result
 
+    def _generate_kimi(
+        self,
+        messages: Sequence[Message],
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        **kwargs: Any,
+    ) -> Dict[str, Any]:
+        """Generate via Moonshot AI's Kimi K-series (OpenAI-compatible API)."""
+        if self._kimi_client is None:
+            raise EngineConnectionError(
+                "Kimi client not available — set MOONSHOT_API_KEY"
+            )
+        response_format = kwargs.pop("response_format", None)
+        create_kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages_to_dicts(messages),
+            "max_completion_tokens": max_tokens,
+            "temperature": temperature,
+            **kwargs,
+        }
+
+        if response_format is not None:
+            from openjarvis.engine._stubs import ResponseFormat
+
+            if isinstance(response_format, ResponseFormat):
+                if response_format.type == "json_schema" and response_format.schema:
+                    create_kwargs["response_format"] = {
+                        "type": "json_schema",
+                        "json_schema": {
+                            "name": "response",
+                            "schema": response_format.schema,
+                            "strict": True,
+                        },
+                    }
+                else:
+                    create_kwargs["response_format"] = {"type": "json_object"}
+            else:
+                create_kwargs["response_format"] = response_format
+
+        t0 = time.monotonic()
+        resp = self._kimi_client.chat.completions.create(**create_kwargs)
+        elapsed = time.monotonic() - t0
+        choice = resp.choices[0]
+        usage = resp.usage
+        prompt_tokens = usage.prompt_tokens if usage else 0
+        completion_tokens = usage.completion_tokens if usage else 0
+        result: Dict[str, Any] = {
+            "content": choice.message.content or "",
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": (usage.total_tokens if usage else 0),
+            },
+            "model": resp.model,
+            "finish_reason": choice.finish_reason or "stop",
+            "cost_usd": estimate_cost(model, prompt_tokens, completion_tokens),
+            "ttft": elapsed,
+        }
+        if hasattr(choice.message, "tool_calls") and choice.message.tool_calls:
+            result["tool_calls"] = [
+                {
+                    "id": tc.id,
+                    "name": tc.function.name,
+                    "arguments": tc.function.arguments,
+                }
+                for tc in choice.message.tool_calls
+            ]
+        return result
+
     def generate(
         self,
         messages: Sequence[Message],
@@ -949,6 +1040,8 @@ class CloudEngine(InferenceEngine):
             return self._generate_openrouter(messages, **kw)
         if _is_minimax_model(model):
             return self._generate_minimax(messages, **kw)
+        if _is_kimi_model(model):
+            return self._generate_kimi(messages, **kw)
         if _is_anthropic_model(model):
             return self._generate_anthropic(messages, **kw)
         if _is_google_model(model):
@@ -978,6 +1071,9 @@ class CloudEngine(InferenceEngine):
                 yield token
         elif _is_minimax_model(model):
             async for token in self._stream_minimax(messages, **kw):
+                yield token
+        elif _is_kimi_model(model):
+            async for token in self._stream_kimi(messages, **kw):
                 yield token
         elif _is_anthropic_model(model):
             async for token in self._stream_anthropic(messages, **kw):
@@ -1190,6 +1286,31 @@ class CloudEngine(InferenceEngine):
             if delta and delta.content:
                 yield delta.content
 
+    async def _stream_kimi(
+        self,
+        messages: Sequence[Message],
+        *,
+        model: str,
+        temperature: float,
+        max_tokens: int,
+        **kwargs: Any,
+    ) -> AsyncIterator[str]:
+        if self._kimi_client is None:
+            raise EngineConnectionError("Kimi client not available")
+        create_kwargs: Dict[str, Any] = {
+            "model": model,
+            "messages": messages_to_dicts(messages),
+            "max_completion_tokens": max_tokens,
+            "temperature": temperature,
+            "stream": True,
+            **kwargs,
+        }
+        resp = self._kimi_client.chat.completions.create(**create_kwargs)
+        for chunk in resp:
+            delta = chunk.choices[0].delta if chunk.choices else None
+            if delta and delta.content:
+                yield delta.content
+
     # -- stream_full: rich streaming with tool_calls support ----------------
 
     async def _stream_full_openai(
@@ -1239,6 +1360,18 @@ class CloudEngine(InferenceEngine):
                 "model": model,
                 "messages": messages_to_dicts(messages),
                 "max_tokens": max_tokens,
+                "temperature": temperature,
+                "stream": True,
+                **kwargs,
+            }
+        elif _is_kimi_model(model):
+            client = self._kimi_client
+            if client is None:
+                raise EngineConnectionError("Kimi client not available")
+            create_kwargs = {
+                "model": model,
+                "messages": messages_to_dicts(messages),
+                "max_completion_tokens": max_tokens,
                 "temperature": temperature,
                 "stream": True,
                 **kwargs,
@@ -1409,6 +1542,8 @@ class CloudEngine(InferenceEngine):
             models.extend(_OPENROUTER_POPULAR)
         if self._minimax_client is not None:
             models.extend(_MINIMAX_MODELS)
+        if self._kimi_client is not None:
+            models.extend(_KIMI_MODELS)
         if self._codex_client is not None:
             models.extend(_CODEX_MODELS)
         return models
@@ -1420,6 +1555,7 @@ class CloudEngine(InferenceEngine):
             or self._google_client is not None
             or self._openrouter_client is not None
             or self._minimax_client is not None
+            or self._kimi_client is not None
             or self._codex_client is not None
         )
 
@@ -1442,8 +1578,19 @@ class CloudEngine(InferenceEngine):
             if hasattr(self._minimax_client, "close"):
                 self._minimax_client.close()
             self._minimax_client = None
+        if self._kimi_client is not None:
+            if hasattr(self._kimi_client, "close"):
+                self._kimi_client.close()
+            self._kimi_client = None
         if self._codex_client is not None:
             self._codex_client = None
 
 
-__all__ = ["CloudEngine", "PRICING", "_annotate_anthropic_cache", "estimate_cost"]
+__all__ = [
+    "CloudEngine",
+    "PRICING",
+    "_KIMI_MODELS",
+    "_annotate_anthropic_cache",
+    "_is_kimi_model",
+    "estimate_cost",
+]
