@@ -1,0 +1,267 @@
+{
+  "meta": {
+    "instanceId": "cb9a1e5321767b6316634728341237e564b2587ab15b74ca0a89eb02a53484d6",
+    "owner": "DevCode Journey",
+    "source": "n8n.io template library",
+    "templateId": 8615
+  },
+  "nodes": [
+    {
+      "id": "edc0b0da-3e56-4b56-acd4-a4229ea6fc49",
+      "name": "Message a model",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "position": [
+        2144,
+        -192
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "d79df4cc-cfbe-4dbc-9476-e5aecd36d49d",
+      "name": "Send a text message",
+      "type": "n8n-nodes-base.telegram",
+      "position": [
+        2528,
+        -192
+      ],
+      "webhookId": "3111e55e-41d3-4e3b-863c-bfda700bba92",
+      "parameters": {},
+      "typeVersion": 1.2
+    },
+    {
+      "id": "c1722531-4561-4931-89ac-4523f72e3eda",
+      "name": "Get a document in Google Docs",
+      "type": "n8n-nodes-base.googleDocsTool",
+      "position": [
+        2496,
+        64
+      ],
+      "parameters": {},
+      "typeVersion": 2
+    },
+    {
+      "id": "3af1e6d6-5e7a-42f7-a0b9-96de39d2ca82",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "position": [
+        1536,
+        -208
+      ],
+      "webhookId": "05fcff6f-5e32-4599-9b29-c585878352d8",
+      "parameters": {},
+      "typeVersion": 1.2
+    },
+    {
+      "id": "d8521089-0cca-45bb-a35b-9ef9d59ff19c",
+      "name": "Wait 1s",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        2800,
+        -192
+      ],
+      "webhookId": "8223d68f-b3b2-4c42-a6d2-473a19e2904c",
+      "parameters": {},
+      "typeVersion": 1.1
+    },
+    {
+      "id": "f263dd74-fe7a-49e5-9dd3-4fab35510f32",
+      "name": "Message a model in Google Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGeminiTool",
+      "position": [
+        2304,
+        64
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "f80de8b8-2844-4827-b17e-0802546c4cea",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequestTool",
+      "position": [
+        2080,
+        64
+      ],
+      "parameters": {},
+      "typeVersion": 4.2
+    },
+    {
+      "id": "2dc68b6a-157e-48b1-a564-644b9ca96394",
+      "name": "Loop Over Items1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "position": [
+        1792,
+        -208
+      ],
+      "parameters": {},
+      "typeVersion": 3
+    },
+    {
+      "id": "96ae7f1c-42ec-4cee-b2f2-5d3b801783a4",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        160,
+        -256
+      ],
+      "parameters": {
+        "content": ""
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "7c5bddc4-3b0a-4d0f-a81f-ffa1c1fd062f",
+      "name": "Message a model1",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "position": [
+        2144,
+        -432
+      ],
+      "parameters": {},
+      "typeVersion": 1.8
+    },
+    {
+      "id": "76e37376-51cb-42c2-9aaf-29046ffc3110",
+      "name": "Extract text in Mistral AI",
+      "type": "n8n-nodes-base.mistralAiTool",
+      "position": [
+        2304,
+        272
+      ],
+      "parameters": {},
+      "typeVersion": 1
+    },
+    {
+      "id": "8c25f18e-1c4e-4e2f-9bbf-eec37279dc79",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        2144,
+        -528
+      ],
+      "parameters": {
+        "content": ""
+      },
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wait 1s": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Message a model1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "Wait 1s",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract text in Mistral AI": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a document in Google Docs": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "Message a model1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model in Google Gemini": {
+      "ai_tool": [
+        [
+          {
+            "node": "Message a model",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "name": "Build a Telegram chatbot with Gemini",
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false
+}

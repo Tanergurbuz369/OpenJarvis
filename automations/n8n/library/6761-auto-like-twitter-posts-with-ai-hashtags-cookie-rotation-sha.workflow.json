@@ -1,0 +1,1019 @@
+{
+  "id": "IssChuEML9y0rKDs",
+  "meta": {
+    "instanceId": "2cf742429c2e3ee4e5a20069d3d8a75208519303b864f026a79464efa726bd95",
+    "templateCredsSetupCompleted": true,
+    "owner": "plemeo",
+    "source": "n8n.io template library",
+    "templateId": 6761
+  },
+  "name": "Twitter Auto Liking - Creators Hub",
+  "tags": [],
+  "nodes": [
+    {
+      "id": "f437df51-38a0-4d8e-b347-546ac86b28b8",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -1168,
+        -1216
+      ],
+      "webhookId": "a354a0c9-f9fd-4ec4-b5c6-ceee828f65a9",
+      "parameters": {
+        "amount": 30
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "32b2c52c-63b8-434c-89d5-b77761c72fee",
+      "name": "Wait1",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -208,
+        -848
+      ],
+      "webhookId": "cdb8a2f8-fb60-4bcb-baf4-4d1e38361c45",
+      "parameters": {
+        "amount": 15
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "83142945-b28d-4509-bd21-878799b715ff",
+      "name": "Get Random Post",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -2528,
+        -848
+      ],
+      "parameters": {
+        "jsCode": "const data = $input.all().map(item => item.json);\n\nif (!data || data.length === 0) {\n  throw new Error('No Instagram posts data found');\n}\n\n// Get a random post\nconst randomPost = data[Math.floor(Math.random() * data.length)];\n\n// Return only postUrl and description\nreturn {\n  json: {\n    postUrl: randomPost.tweetUrl\n  }\n};"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "80a98113-51d6-4891-b14a-5475d31f0035",
+      "name": "Create CSV Binary",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1072,
+        -832
+      ],
+      "parameters": {
+        "jsCode": "// Extract correct values\nconst tweetUrl = $('Get Random Post').first().json.postUrl;\n\n// Clean utility\nconst clean = str => String(str || \"\").replace(/[\\u200B-\\u200D\\uFEFF]/g, \"\").trim();\n\n// Escape and quote single data row\nconst row = [\n  `\"${clean(tweetUrl).replace(/\"/g, '\"\"')}\"`\n];\n\n// Convert to buffer without header or BOM\nconst csvBuffer = Buffer.from(row.join(\",\") + \"\\n\", \"utf8\");\n\n// Return binary file\nreturn [\n  {\n    binary: {\n      data: {\n        data: csvBuffer,\n        mimeType: \"text/csv\",\n        fileName: \"phantombuster_clean.csv\"\n      }\n    }\n  }\n];\n"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "bd1d28b2-9429-496f-9960-4a5d1ff8785e",
+      "name": "Upload CSV",
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "position": [
+        -912,
+        -832
+      ],
+      "parameters": {
+        "site": {
+          "__rl": true,
+          "mode": "list",
+          "value": "plemeo.sharepoint.com,f304c34c-1252-4b99-a852-059c2036c718,c3bf26ab-bf44-4334-8e5b-e8b680bb9e1d",
+          "cachedResultName": "plemeo"
+        },
+        "folder": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWAY4RSXX7PGSC5CL27V2Y7XYSNQZ",
+          "cachedResultName": "Phantombuster"
+        },
+        "fileName": "twitter_posts_to_like.csv",
+        "operation": "upload",
+        "fileContents": "data",
+        "requestOptions": {}
+      },
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "jZkLTQXyVEzxtmp3",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "42a6a3a4-73af-4b51-b5ad-f0a278aebd4e",
+      "name": "Get Posts",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -928,
+        -1216
+      ],
+      "parameters": {
+        "agentId": "6571313343751226",
+        "operation": "getOutput",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "226de940-2446-4c56-ac38-d5e4c9feba25",
+      "name": "Get Response",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        0,
+        -848
+      ],
+      "parameters": {
+        "agentId": "7281446865767808",
+        "operation": "getOutput",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "7f0c28d1-9b5d-460d-a69d-1c4665e61a4a",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2256,
+        -1360
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 1528,
+        "height": 400,
+        "content": "## Get Twitter Posts By Custom Hashtag\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "cf2e990e-b3e4-4d7f-8d18-5fa7a5add634",
+      "name": "Sticky Note1",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2768,
+        -944
+      ],
+      "parameters": {
+        "color": 3,
+        "width": 2040,
+        "height": 300,
+        "content": "## Get Random Post, Check if Already Liked and Upload to SharePoint\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "4de76e10-3419-4aeb-b0b5-3ebda9416a27",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        -944
+      ],
+      "parameters": {
+        "width": 932,
+        "height": 300,
+        "content": "## Launch Autoliking Agent to Like Tweet\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "cda82277-18a3-4d1b-bcad-e6787f11a086",
+      "name": "Get Autoliking Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -624,
+        -848
+      ],
+      "parameters": {
+        "agentId": "275516550112020",
+        "operation": "get"
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "4ed1422d-e5cf-43c2-9ae6-18ff3b7983cb",
+      "name": "Launch AL Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -416,
+        -848
+      ],
+      "parameters": {
+        "agentId": "275516550112020",
+        "jsonParameters": true,
+        "additionalFields": {
+          "argumentsJson": "={\n  \"spreadsheetUrl\": \"{{$('Upload CSV').item.json['@content.downloadUrl']}}\",\n  \"sessionCookie\": \"{{ $('Set ENV Variables').first().json.ENV_SESSION_COOKIE }}\"\n}"
+        }
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "95e1628b-4a83-4d1a-a3a3-0e7b242354e0",
+      "name": "Set ENV Variables",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -1840,
+        -1216
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e24e8c1a-c6c9-4ae2-a0ef-e0e7369dc262",
+              "name": "ENV_SEARCH_HASHTAGS",
+              "type": "string",
+              "value": "={{ $json.output.parseJson().hashtag }}"
+            },
+            {
+              "id": "cf050595-8ad9-4f78-bca4-f463e8b9982e",
+              "name": "ENV_SESSION_COOKIE",
+              "type": "string",
+              "value": "={{ $('Select Cookie').first().json.output.parseJson().session_cookie }}"
+            },
+            {
+              "id": "f695d98c-0abc-464d-b153-047ff32b0053",
+              "name": "ENV_SEARCH_RESULTS_PER_LAUNCH",
+              "type": "string",
+              "value": "10"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "fb3fe67f-cd49-49de-831e-1f50fea0422b",
+      "name": "Get Hashtag Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -1616,
+        -1216
+      ],
+      "parameters": {
+        "agentId": "6571313343751226",
+        "operation": "get"
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5c01de6b-6af7-4ded-b9ea-94a8f70c1709",
+      "name": "Launch Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -1376,
+        -1216
+      ],
+      "parameters": {
+        "agentId": "={{ $json.id }}",
+        "jsonParameters": true,
+        "additionalFields": {
+          "argumentsJson": "={\n  \"numberOfPostsPerLaunch\": {{$('Set ENV Variables').item.json.ENV_SEARCH_RESULTS_PER_LAUNCH}},\n  \"sessionCookie\": \"{{$('Set ENV Variables').item.json.ENV_SESSION_COOKIE}}\",\n  \"spreadsheetUrl\": \"{{$('Set ENV Variables').item.json.ENV_SEARCH_HASHTAGS}}\"\n}"
+        }
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "da7cfcde-be68-47cc-abe0-02a1897dc5a9",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -2048,
+        -1648
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtMinute": 5
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "96454093-8b30-4acf-8ee5-a5f0f35a3303",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -2208,
+        -1216
+      ],
+      "parameters": {
+        "text": "Can you generate a single random hashtag related to Artificial Intelligence and Business Process Automation, suitable for fetching Instagram posts?\nThe hashtag should be human like and realistic to appear in posts. Something like \"AIBizAutomation\" is not realistic. The hashtag should not be a combination of multiple words, for example \"smartautomation\" or \"intelligentworkflows\".\nYou can be very vague and also use IT companies as hashtag.\n\nPlease respond only with a **valid, raw JSON object**, like this:\n{\n  \"hashtag\": \"Automation\"\n}",
+        "options": {},
+        "promptType": "define"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "0cf1fa43-3543-4d08-ac9f-9b3ff5141a0d",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -2208,
+        -1072
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "chatgpt-4o-latest",
+          "cachedResultName": "chatgpt-4o-latest"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "E4PFATctY0kV00hl",
+          "name": "OpenAi account"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "ec2fc71b-bba4-4fd3-8c5a-121f10c6d823",
+      "name": "Update file",
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "position": [
+        -1232,
+        -832
+      ],
+      "parameters": {
+        "file": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWA3IDDODOJRNIRH3WEA77A27CBYU",
+          "cachedResultName": "twitter_posts_already_liked.csv"
+        },
+        "site": {
+          "__rl": true,
+          "mode": "list",
+          "value": "plemeo.sharepoint.com,f304c34c-1252-4b99-a852-059c2036c718,c3bf26ab-bf44-4334-8e5b-e8b680bb9e1d",
+          "cachedResultName": "plemeo"
+        },
+        "folder": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWAY4RSXX7PGSC5CL27V2Y7XYSNQZ",
+          "cachedResultName": "Phantombuster"
+        },
+        "fileName": "twitter_posts_already_liked.csv",
+        "operation": "update",
+        "fileContents": "data",
+        "requestOptions": {},
+        "changeFileContent": true
+      },
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "jZkLTQXyVEzxtmp3",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "d81beb85-9f07-43c3-9cc5-847e2af176f1",
+      "name": "Download file",
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "position": [
+        -2368,
+        -848
+      ],
+      "parameters": {
+        "file": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWA3IDDODOJRNIRH3WEA77A27CBYU",
+          "cachedResultName": "twitter_posts_already_liked.csv"
+        },
+        "site": {
+          "__rl": true,
+          "mode": "list",
+          "value": "plemeo.sharepoint.com,f304c34c-1252-4b99-a852-059c2036c718,c3bf26ab-bf44-4334-8e5b-e8b680bb9e1d",
+          "cachedResultName": "plemeo"
+        },
+        "folder": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWAY4RSXX7PGSC5CL27V2Y7XYSNQZ",
+          "cachedResultName": "Phantombuster"
+        },
+        "requestOptions": {}
+      },
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "jZkLTQXyVEzxtmp3",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "dfc87f0d-5d24-4b0a-b9dd-74e115be4569",
+      "name": "Check if in List",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1968,
+        -848
+      ],
+      "parameters": {
+        "jsCode": "const randomPost = normalizeUrl($('Get Random Post').first().json.postUrl);\nconst allItems = $('Extract from File').all();\n\nif (!allItems || allItems.length === 0) {\n  return [{ json: { isDuplicate: false } }];\n}\n\nfunction normalizeUrl(url) {\n  if (typeof url !== 'string') {\n    console.log(\"🚨 NOT A STRING:\", url);\n    return '';\n  }\n  return url.trim().toLowerCase().replace(/\\/$/, '');\n}\n\n// Helper function to get postUrl value regardless of BOM\nfunction getPostUrl(item) {\n  const json = item.json;\n  // Try normal field name first\n  if (json.postUrl) return json.postUrl;\n  \n  // Look for any field containing \"postUrl\"\n  const postUrlKey = Object.keys(json).find(key => key.includes('postUrl'));\n  return postUrlKey ? json[postUrlKey] : null;\n}\n\nconsole.log(\"✅ randomPost:\", randomPost);\nconsole.log(\"✅ allItems:\", allItems);\n\nlet isDuplicate = false;\n\nfor (const item of allItems) {\n  const candidateRaw = getPostUrl(item);\n  const candidate = normalizeUrl(candidateRaw);\n\n  console.log(`🟠 Comparing:\\n→ raw: ${candidateRaw}\\n→ normalized: ${candidate}\\n→ target: ${randomPost}`);\n\n  if (candidate === randomPost) {\n    isDuplicate = true;\n    break;\n  }\n}\n\nreturn [{ json: { isDuplicate } }];"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "eab4af07-9b5d-490d-8fdf-6524cb44f8b9",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        -1792,
+        -848
+      ],
+      "parameters": {
+        "options": {},
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "bcef43b3-e773-45ba-b245-19ab3fc1e508",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $('Check if in List').first().json.isDuplicate }}",
+              "rightValue": ""
+            }
+          ]
+        }
+      },
+      "typeVersion": 2.2
+    },
+    {
+      "id": "d7e59f1e-698e-41a9-a4d9-a5b5bcb9837f",
+      "name": "Wait2",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -2688,
+        -848
+      ],
+      "webhookId": "499cb06a-f212-4f08-b086-d20292061e51",
+      "parameters": {},
+      "typeVersion": 1.1
+    },
+    {
+      "id": "d479e681-d28d-4943-a33b-baa6ca9a64d6",
+      "name": "Prepare Updated Data",
+      "type": "n8n-nodes-base.code",
+      "position": [
+        -1584,
+        -832
+      ],
+      "parameters": {
+        "jsCode": "const existingUrls = $('Extract from File').all().map(item => {\n  // Get the first key (which has the BOM) and use its value\n  const firstKey = Object.keys(item.json)[0];\n  return { postUrl: item.json[firstKey] };\n});\n\nconsole.log(\"existingUrls: \", existingUrls);\n\nconst randomPost = $('Get Random Post').first().json.postUrl;\nconsole.log(\"randomPost: \", randomPost);\n\nreturn [\n  ...existingUrls,\n  { postUrl: randomPost }\n].map(entry => ({ json: entry }));"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "b8f271ab-4173-4746-9fce-63fdc3fbc0f0",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "position": [
+        -2176,
+        -848
+      ],
+      "parameters": {
+        "options": {
+          "headerRow": true
+        }
+      },
+      "typeVersion": 1,
+      "alwaysOutputData": true
+    },
+    {
+      "id": "a5721c7d-5e12-440d-81f2-8c1408cacd42",
+      "name": "Convert to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "position": [
+        -1408,
+        -832
+      ],
+      "parameters": {
+        "options": {}
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "01657d66-092c-4af9-8b4d-59ccd6d83189",
+      "name": "Get Available Session Cookies",
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "position": [
+        -1792,
+        -1648
+      ],
+      "parameters": {
+        "file": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWA34GI5X5O5IFVHKQPOE25PSALOH",
+          "cachedResultName": "twitter_session_cookies.txt"
+        },
+        "site": {
+          "__rl": true,
+          "mode": "list",
+          "value": "plemeo.sharepoint.com,f304c34c-1252-4b99-a852-059c2036c718,c3bf26ab-bf44-4334-8e5b-e8b680bb9e1d",
+          "cachedResultName": "plemeo"
+        },
+        "folder": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWAY4RSXX7PGSC5CL27V2Y7XYSNQZ",
+          "cachedResultName": "Phantombuster"
+        },
+        "requestOptions": {}
+      },
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "jZkLTQXyVEzxtmp3",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "f75ca3e8-3a9a-4b69-a70d-e23cf8239702",
+      "name": "Extract Cookies",
+      "type": "n8n-nodes-base.extractFromFile",
+      "position": [
+        -1568,
+        -1648
+      ],
+      "parameters": {
+        "options": {},
+        "operation": "text"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "787ef531-55f9-41f7-9ce7-449e0fc53354",
+      "name": "Select Cookie",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1344,
+        -1648
+      ],
+      "parameters": {
+        "text": "=##################  PROMPT  ##################\n\n**ROLE:**  You are a session-cookie selector.\n\n**CURRENT BERLIN TIME**  \nDate & time : {{ $now.setZone('Europe/Berlin').format('DD HH:mm:ss') }}  \nHour (00-23): {{ $now.setZone('Europe/Berlin').format('HH') }}\n\n**SESSION COOKIES (keep order):**  \n{{ $json.data }}\n\n**SELECTION LOGIC**\n\n1. Let  \n   • N = number of cookies in the list (2 ≤ N ≤ 4).  \n   • H = current hour as an integer (0–23).  \n   • W = 24 ÷ N  (the width of each time slice in hours, always an integer).\n\n2. Determine the slice index:  \n   sliceIndex = floor(H ÷ W)  // 0-based\n\n3. Choose the cookie at position *(sliceIndex + 1)* in the list.  \n   • Example when N = 4 (W = 6):  \n     00-05 → 1st, 06-11 → 2nd, 12-17 → 3rd, 18-23 → 4th  \n   • Example when N = 3 (W = 8):  \n     00-07 → 1st, 08-15 → 2nd, 16-23 → 3rd  \n   • Example when N = 2 (W = 12):  \n     00-11 → 1st, 12-23 → 2nd\n\n**OUTPUT FORMAT**  \nReturn only the selected session cookie value in a valid JSON-Field called \"session_cookie\", nothing else.\n\n##############################################",
+        "options": {},
+        "promptType": "define"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "da8d0286-6739-4a88-9152-217a72663cf6",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -1344,
+        -1504
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "chatgpt-4o-latest",
+          "cachedResultName": "chatgpt-4o-latest"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "E4PFATctY0kV00hl",
+          "name": "OpenAi account"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "b377226b-6782-40f8-8e13-84ade01bde7c",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2256,
+        -1760
+      ],
+      "parameters": {
+        "color": 4,
+        "width": 1528,
+        "height": 384,
+        "content": "## Start Workflow and Retrieve Session Cookie\n\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "009f2d85-7750-4a1b-a690-520c242176ef",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2640,
+        -1760
+      ],
+      "parameters": {
+        "width": 352,
+        "height": 256,
+        "content": "### 1) Hashtag & Cookie Selection  \n**What it does**  \n• Downloads cookie list → **Select Cookie** (GPT-4o) picks one based on time slice.  \n• **AI Agent** creates a realistic AI/BPA hashtag.\n\n**Credentials**  \nOpenAI + SharePoint OAuth2.\n\n**Tweaks**  \n• Edit prompt for different niches.  \n• Add/remove cookies in SharePoint file."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "290c9d17-4702-430c-a980-62b094224348",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2704,
+        -1360
+      ],
+      "parameters": {
+        "width": 432,
+        "height": 304,
+        "content": "### 2) Tweet Scraping & Deduplication  \n**What it does**  \n• Runs Phantombuster Hashtag Agent → gets ~10 tweets.  \n• Chooses one at random, compares with `twitter_posts_already_liked.csv`.\n\n**Credentials**  \nPhantombuster API + SharePoint OAuth2.\n\n**Tweaks**  \n• Increase `ENV_SEARCH_RESULTS_PER_LAUNCH` to scan more tweets.  \n• Change duplicate logic inside **Check if in List**."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5e2eb2d6-8d08-4671-b3b0-ed98803a1d41",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2768,
+        -624
+      ],
+      "parameters": {
+        "width": 464,
+        "height": 272,
+        "content": "### 3) CSV Upload & Auto-like Launch  \n**What it does**  \n• Creates a 1-row CSV with the chosen tweet URL.  \n• Uploads it to SharePoint and passes the public link to the Autolike Agent.\n\n**Credentials**  \nSharePoint OAuth2 + Phantombuster API.\n\n**Tweaks**  \n• Change file/folder names in **Upload CSV**.  \n• Replace SharePoint with another storage provider."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "f9132891-210d-4f65-9d1b-c2828165f8c5",
+      "name": "Sticky Note8",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -704,
+        -624
+      ],
+      "parameters": {
+        "width": 400,
+        "height": 288,
+        "content": "### 4) Rate Limiting & Scheduling  \n**What it does**  \n• Hourly **Schedule Trigger** plus **Wait** nodes throttle launches to ≈1 000 likes/day.\n\n**Credentials**  \nNone\n\n**Tweaks**  \n• Edit the cron rule or `Wait` durations to meet your own limits.  \n• Remove **Wait** nodes if Phantombuster limits are higher on your plan."
+      },
+      "typeVersion": 1
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "714b54cc-6f36-4e71-910b-bca7267e0153",
+  "connections": {
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Updated Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Posts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "Get Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait2": {
+      "main": [
+        [
+          {
+            "node": "Get Random Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Set ENV Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Posts": {
+      "main": [
+        [
+          {
+            "node": "Wait2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload CSV": {
+      "main": [
+        [
+          {
+            "node": "Get Autoliking Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update file": {
+      "main": [
+        [
+          {
+            "node": "Create CSV Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Cookie": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Update file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Cookies": {
+      "main": [
+        [
+          {
+            "node": "Select Cookie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Random Post": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch AL Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if in List": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Available Session Cookies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CSV Binary": {
+      "main": [
+        [
+          {
+            "node": "Upload CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Check if in List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hashtag Agent": {
+      "main": [
+        [
+          {
+            "node": "Launch Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set ENV Variables": {
+      "main": [
+        [
+          {
+            "node": "Get Hashtag Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Select Cookie",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Autoliking Agent": {
+      "main": [
+        [
+          {
+            "node": "Launch AL Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Updated Data": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Available Session Cookies": {
+      "main": [
+        [
+          {
+            "node": "Extract Cookies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
