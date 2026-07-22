@@ -22,8 +22,26 @@ Before starting each new item: re-run the existing checks. Catching "item 4 brok
 ## Fighting context drift
 
 - **Re-read the original request** at every major milestone, slowly, as if new. Long sessions bend tasks toward what's interesting; the original words are the anchor. Drift's signature failure: confidently completing a subtly different task.
-- **Keep a lessons file** when you hit non-obvious discoveries ("the dev server caches routes; restart after adding one", "tests need TZ=UTC"). One line each. Future sessions read it first; this is the cheapest performance upgrade a long project can buy.
+- **Keep a lessons file** when you hit non-obvious discoveries ("the dev server caches routes; restart after adding one", "tests need TZ=UTC"). One line each, with a one-line summary at the top. Update an existing entry in place rather than adding a near-duplicate, and delete a note once it turns out to be wrong. Future sessions read it first; this is the cheapest performance upgrade a long project can buy.
 - **Log decisions** made on your own judgment in the progress file. When the human returns, they audit decisions, not diffs.
+
+## Automating the loop with `/goal`
+
+Claude Code has a built-in mechanism for exactly the "stay on this until it's actually done" problem this guide covers. `/goal <condition>` sets a completion condition and keeps working across turns until it holds; after each turn a separate evaluator checks the condition against what actually happened in the transcript (it does not re-run commands itself), and won't hand control back until it's satisfied. Requires Claude Code v2.1.139+.
+
+```
+/goal npm test exits 0, npm run build succeeds, and no old jQuery imports remain (grep-verified) — or stop after 40 turns and report what's left
+```
+
+A condition is only as good as what it asks for, since the evaluator can only read your own reported evidence:
+
+1. **One measurable end-state** — a test result, a build exit code, a file count, an empty queue — not "make it good".
+2. **Named evidence** — "`npm test` exits 0", "`git status` is clean" — something checkable, not just asserted.
+3. **What must NOT change** — "no other test file is modified" — so a technically-met condition can't come with unwanted side effects.
+
+Always include a turn or time cap ("...or stop after N turns and report"); an unmet condition otherwise runs indefinitely. `/goal` with no argument shows progress (turn count, tokens, the evaluator's last reasoning); `/goal clear` (or `stop`/`off`/`cancel`) removes it early.
+
+`/goal` supplies the loop; it doesn't supply honesty inside the loop. The finishing protocol (core §6) and the evidence rule (core §1) are what keep each turn's "condition met" claim grounded instead of gamed.
 
 ## Session boundaries
 

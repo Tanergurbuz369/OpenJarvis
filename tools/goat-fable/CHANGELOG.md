@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-07-22)
+
+- `guides/long-tasks.md`: document `/goal`, Claude Code's built-in completion-condition loop, for unattended long-running work; tighten the lessons-file rule (update entries in place, delete disproven ones)
+- `core/CLAUDE-CORE.md`: add a communication rule against re-planning or re-litigating once there's enough information to act
+
+Sourced from a community Fable 5 prompting guide; merged only after cross-checking `/goal` and effort-level claims against Anthropic's live Claude Code docs.
+
 ## 0.1.0 (2026-07-06)
 
 Initial release.
