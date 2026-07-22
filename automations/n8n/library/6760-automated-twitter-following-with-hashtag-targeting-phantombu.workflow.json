@@ -1,0 +1,675 @@
+{
+  "id": "h0HSEoUOlkkXl3G2",
+  "meta": {
+    "instanceId": "2cf742429c2e3ee4e5a20069d3d8a75208519303b864f026a79464efa726bd95",
+    "templateCredsSetupCompleted": true,
+    "owner": "plemeo",
+    "source": "n8n.io template library",
+    "templateId": 6760
+  },
+  "name": "Twitter Auto Following - Creators Hub",
+  "tags": [],
+  "nodes": [
+    {
+      "id": "2f1af686-3715-4613-ac41-ae2b95c0cbc7",
+      "name": "Get Response",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -672,
+        -976
+      ],
+      "parameters": {
+        "agentId": "6919025484779828",
+        "operation": "getOutput",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "e2c10bab-84ac-4dd8-8b3f-9831b27ad9ec",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1520,
+        -1760
+      ],
+      "parameters": {
+        "color": 5,
+        "width": 1284,
+        "height": 620,
+        "content": "## Get List of Accounts Trough Hashtag Search\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "d4fdee18-e789-486d-b005-260ed5bdedc5",
+      "name": "Sticky Note2",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1520,
+        -1120
+      ],
+      "parameters": {
+        "width": 1284,
+        "height": 396,
+        "content": "## Launch Autofollow Agent to Follow Accounts\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "339816fd-a68d-4557-81cb-c2bd6e84744c",
+      "name": "Get Autofollow Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -1280,
+        -976
+      ],
+      "parameters": {
+        "agentId": "6919025484779828",
+        "operation": "get"
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5e65ab1b-8493-4465-b8e1-a13b0670bd4e",
+      "name": "Wait for result",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -864,
+        -976
+      ],
+      "webhookId": "2168a8b2-a27c-4da7-a7b3-59b285db1da2",
+      "parameters": {
+        "amount": 30
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "925719ca-7b4d-4854-b913-d38d81c4e44b",
+      "name": "Set ENV Variables",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -1104,
+        -1552
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e24e8c1a-c6c9-4ae2-a0ef-e0e7369dc262",
+              "name": "ENV_SEARCH_HASHTAGS",
+              "type": "string",
+              "value": "={{ $json.output.parseJson().hashtag }}"
+            },
+            {
+              "id": "cf050595-8ad9-4f78-bca4-f463e8b9982e",
+              "name": "ENV_SESSION_COOKIE",
+              "type": "string",
+              "value": "={{ $('Select Cookie').first().json.output.parseJson().session_cookie }}"
+            },
+            {
+              "id": "d6ef25a4-fccb-47b0-8d75-97283168c4fb",
+              "name": "ENV_SEARCH_RESULTS_PER_LAUNCH",
+              "type": "string",
+              "value": "1"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "662276f3-ea58-45e9-9e82-b2f47915d268",
+      "name": "Launch AF Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -1072,
+        -976
+      ],
+      "parameters": {
+        "agentId": "6919025484779828",
+        "jsonParameters": true,
+        "additionalFields": {
+          "argumentsJson": "={\n  \"actionToPerform\": \"follow\",\n  \"numberOfAddsPerLaunch\": 1,\n  \"spreadsheetUrl\": \"{{ $('Set Item').item.json.twitterProfile }}\",\n  \"columnName\": \"twitterProfile\",\n  \"sessionCookie\": \"{{ $('Set ENV Variables').item.json.ENV_SESSION_COOKIE }}\"\n}"
+        }
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "402534bc-4a5f-4d77-a64b-72991aed5aeb",
+      "name": "Wait",
+      "type": "n8n-nodes-base.wait",
+      "position": [
+        -576,
+        -1552
+      ],
+      "webhookId": "6edce7b6-417d-4fad-9392-1cd4c8ccbca5",
+      "parameters": {
+        "amount": 30
+      },
+      "typeVersion": 1.1
+    },
+    {
+      "id": "30114cfa-2f64-453b-ad4a-6190d7614365",
+      "name": "Get Hashtag Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -928,
+        -1552
+      ],
+      "parameters": {
+        "agentId": "6571313343751226",
+        "operation": "get"
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5d2953f0-17b4-44fe-a991-76889c4075a0",
+      "name": "Launch Agent",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -752,
+        -1552
+      ],
+      "parameters": {
+        "agentId": "={{ $json.id }}",
+        "jsonParameters": true,
+        "additionalFields": {
+          "argumentsJson": "={\n  \"numberOfPostsPerLaunch\": {{$('Set ENV Variables').item.json.ENV_SEARCH_RESULTS_PER_LAUNCH}},\n  \"sessionCookie\": \"{{$('Set ENV Variables').item.json.ENV_SESSION_COOKIE}}\",\n  \"spreadsheetUrl\": \"{{$('Set ENV Variables').item.json.ENV_SEARCH_HASHTAGS}}\"\n}"
+        }
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "2d00e806-365d-4a17-9146-4471bc58cb8e",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -1472,
+        -1552
+      ],
+      "parameters": {
+        "text": "Can you generate a single random hashtag related to Artificial Intelligence and Business Process Automation, suitable for fetching Instagram posts?\nThe hashtag should be human like and realistic to appear in posts. Something like \"AIBizAutomation\" is not realistic. The hashtag should not be a combination of multiple words, for example \"smartautomation\" or \"intelligentworkflows\".\nYou can be very vague and also use IT companies as hashtag.\n\nPlease respond only with a **valid, raw JSON object**, like this:\n{\n  \"hashtag\": \"Automation\"\n}",
+        "options": {},
+        "promptType": "define"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "a5d261a2-f85a-4eed-bdcd-8363b2e3799c",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -1472,
+        -1376
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "chatgpt-4o-latest",
+          "cachedResultName": "chatgpt-4o-latest"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "E4PFATctY0kV00hl",
+          "name": "OpenAi account"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "fdb51f94-c815-422b-8011-ffd50b361ed5",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "position": [
+        -1376,
+        -2112
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtMinute": 45
+            }
+          ]
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "84a149dc-4e63-41ab-8af9-3e69a10ff261",
+      "name": "Set Item",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        -1472,
+        -976
+      ],
+      "parameters": {
+        "options": {},
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6a32bb78-ad82-4aab-82d8-c9b6a35b6409",
+              "name": "twitterProfile",
+              "type": "string",
+              "value": "={{ $json.twitterProfile }}"
+            }
+          ]
+        }
+      },
+      "typeVersion": 3.4
+    },
+    {
+      "id": "74c573e7-4c9b-4069-b610-f8da2b0d6daa",
+      "name": "Get Available Session Cookies",
+      "type": "n8n-nodes-base.microsoftSharePoint",
+      "position": [
+        -1184,
+        -2112
+      ],
+      "parameters": {
+        "file": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWA34GI5X5O5IFVHKQPOE25PSALOH",
+          "cachedResultName": "twitter_session_cookies.txt"
+        },
+        "site": {
+          "__rl": true,
+          "mode": "list",
+          "value": "plemeo.sharepoint.com,f304c34c-1252-4b99-a852-059c2036c718,c3bf26ab-bf44-4334-8e5b-e8b680bb9e1d",
+          "cachedResultName": "plemeo"
+        },
+        "folder": {
+          "__rl": true,
+          "mode": "list",
+          "value": "01M45PWAY4RSXX7PGSC5CL27V2Y7XYSNQZ",
+          "cachedResultName": "Phantombuster"
+        },
+        "requestOptions": {}
+      },
+      "credentials": {
+        "microsoftSharePointOAuth2Api": {
+          "id": "jZkLTQXyVEzxtmp3",
+          "name": "Microsoft SharePoint account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "6e3afbe5-1e19-481a-8d32-6e80b0ebc310",
+      "name": "Extract Cookies",
+      "type": "n8n-nodes-base.extractFromFile",
+      "position": [
+        -992,
+        -2112
+      ],
+      "parameters": {
+        "options": {},
+        "operation": "text"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "abf9dde2-e817-4f01-8ae8-e17ded81130f",
+      "name": "Select Cookie",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "position": [
+        -768,
+        -2112
+      ],
+      "parameters": {
+        "text": "=##################  PROMPT  ##################\n\n**ROLE:**  You are a session-cookie selector.\n\n**CURRENT BERLIN TIME**  \nDate & time : {{ $now.setZone('Europe/Berlin').format('DD HH:mm:ss') }}  \nHour (00-23): {{ $now.setZone('Europe/Berlin').format('HH') }}\n\n**SESSION COOKIES (keep order):**  \n{{ $json.data }}\n\n**SELECTION LOGIC**\n\n1. Let  \n   • N = number of cookies in the list (2 ≤ N ≤ 4).  \n   • H = current hour as an integer (0–23).  \n   • W = 24 ÷ N  (the width of each time slice in hours, always an integer).\n\n2. Determine the slice index:  \n   sliceIndex = floor(H ÷ W)  // 0-based\n\n3. Choose the cookie at position *(sliceIndex + 1)* in the list.  \n   • Example when N = 4 (W = 6):  \n     00-05 → 1st, 06-11 → 2nd, 12-17 → 3rd, 18-23 → 4th  \n   • Example when N = 3 (W = 8):  \n     00-07 → 1st, 08-15 → 2nd, 16-23 → 3rd  \n   • Example when N = 2 (W = 12):  \n     00-11 → 1st, 12-23 → 2nd\n\n**OUTPUT FORMAT**  \nReturn only the selected session cookie value in a valid JSON-Field called \"session_cookie\", nothing else.\n\n##############################################",
+        "options": {},
+        "promptType": "define"
+      },
+      "typeVersion": 2
+    },
+    {
+      "id": "c3a5d0e6-5c3e-4121-942d-5a9dac6eb05b",
+      "name": "OpenAI Chat Model2",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        -768,
+        -1952
+      ],
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "chatgpt-4o-latest",
+          "cachedResultName": "chatgpt-4o-latest"
+        },
+        "options": {}
+      },
+      "credentials": {
+        "openAiApi": {
+          "id": "E4PFATctY0kV00hl",
+          "name": "OpenAi account"
+        }
+      },
+      "typeVersion": 1.2
+    },
+    {
+      "id": "88b3f9c1-2010-4f70-a702-64ee8dd6f5d9",
+      "name": "Sticky Note3",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1520,
+        -2240
+      ],
+      "parameters": {
+        "color": 6,
+        "width": 1284,
+        "height": 460,
+        "content": "## Start Workflow and Retrieve Session Cookie\n\n"
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "55fa25aa-fff0-488c-bc14-34e88fa3ff13",
+      "name": "Sticky Note4",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -2240
+      ],
+      "parameters": {
+        "width": 400,
+        "height": 288,
+        "content": "### 1) Cookie & Hashtag Selection  \n**What it does**  \n• Downloads cookie list ➜ **Select Cookie** (GPT-4o) chooses one by time slice.  \n• **AI Agent** outputs a realistic AI/BPA hashtag.\n\n**Credentials**  \nOpenAI + SharePoint OAuth2.\n\n**Tweaks**  \n• Edit the prompt for another industry.  \n• Add/remove cookies in SharePoint file."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "c994abe0-5df3-422f-a510-186b8ed0c956",
+      "name": "Sticky Note5",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1952,
+        -1760
+      ],
+      "parameters": {
+        "width": 416,
+        "height": 272,
+        "content": "### 2) Scrape Profiles  \n**What it does**  \n• **Phantombuster Hashtag Agent** searches Twitter for the hashtag and collects recent profiles.  \n• **Launch Agent** runs with `numberOfPostsPerLaunch`.\n\n**Credentials**  \nPhantombuster API.\n\n**Tweaks**  \n• Increase `ENV_SEARCH_RESULTS_PER_LAUNCH`.  \n• Change filter options inside the Phantombuster agent UI."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "5ebd149a-646e-44d6-b610-241e3d8eb734",
+      "name": "Sticky Note6",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2000,
+        -1120
+      ],
+      "parameters": {
+        "width": 464,
+        "height": 304,
+        "content": "### 3) Auto-follow Execution  \n**What it does**  \n• **Set Item** creates a one-row CSV with the target profile.  \n• **Launch AF Agent** calls Phantombuster Auto-follow agent to follow that account.\n\n**Credentials**  \nPhantombuster API + SharePoint OAuth2 (for cookie link if you store spreadsheets there).\n\n**Tweaks** \n• Swap SharePoint for Drive/Dropbox to host the CSV."
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "dbb30d48-1117-453f-8e4e-55047699b608",
+      "name": "Get Profiles",
+      "type": "n8n-nodes-base.phantombuster",
+      "position": [
+        -400,
+        -1552
+      ],
+      "parameters": {
+        "agentId": "6571313343751226",
+        "operation": "getOutput",
+        "additionalFields": {}
+      },
+      "credentials": {
+        "phantombusterApi": {
+          "id": "Zf0AAqqdjBFfyW4W",
+          "name": "Phantombuster account"
+        }
+      },
+      "typeVersion": 1
+    },
+    {
+      "id": "0722ea5e-d967-48d8-a634-5335bd3a6771",
+      "name": "Sticky Note7",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -208,
+        -1120
+      ],
+      "parameters": {
+        "width": 464,
+        "height": 256,
+        "content": "### 4) Rate Limiting & Scheduling  \n**What it does**  \n• Hourly **Schedule Trigger** + **Wait** nodes keep total follows within 50-80/day.\n\n**Credentials**  \nNone\n\n**Tweaks**  \n• Edit cron rule or wait times to match your risk tolerance and plan limits."
+      },
+      "typeVersion": 1
+    }
+  ],
+  "active": false,
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2ec5cc52-1eb4-4b37-9f47-3ae7f6aa3cb0",
+  "connections": {
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Get Profiles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Set ENV Variables",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Item": {
+      "main": [
+        [
+          {
+            "node": "Get Autofollow Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Profiles": {
+      "main": [
+        [
+          {
+            "node": "Set Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Response": {
+      "main": [
+        []
+      ]
+    },
+    "Launch Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Select Cookie": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Cookies": {
+      "main": [
+        [
+          {
+            "node": "Select Cookie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Launch AF Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait for result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for result": {
+      "main": [
+        [
+          {
+            "node": "Get Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Available Session Cookies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Hashtag Agent": {
+      "main": [
+        [
+          {
+            "node": "Launch Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set ENV Variables": {
+      "main": [
+        [
+          {
+            "node": "Get Hashtag Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Select Cookie",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Autofollow Agent": {
+      "main": [
+        [
+          {
+            "node": "Launch AF Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Available Session Cookies": {
+      "main": [
+        [
+          {
+            "node": "Extract Cookies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
