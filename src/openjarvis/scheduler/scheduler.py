@@ -217,7 +217,13 @@ class TaskScheduler:
         error_text = ""
 
         try:
-            if self._system is not None:
+            job_name = (task.metadata or {}).get("job")
+            if job_name:
+                # Non-LLM maintenance job (e.g. n8n_sync) — no agent involved.
+                from openjarvis.scheduler.jobs import run_job
+
+                result_text = run_job(job_name, task.metadata or {})
+            elif self._system is not None:
                 raw_tools = (
                     task.tools
                     if isinstance(task.tools, list)
