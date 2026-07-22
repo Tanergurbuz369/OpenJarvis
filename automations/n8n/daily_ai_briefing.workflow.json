@@ -1,0 +1,234 @@
+{
+  "name": "Günlük Yapay Zeka Brifingi (Mert Durmazer)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "a1c0f001-0000-4000-8000-000000000001",
+      "name": "Her Sabah 08:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "AI"
+            },
+            {
+              "name": "tags",
+              "value": "story"
+            },
+            {
+              "name": "numericFilters",
+              "value": "points>100"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "a1c0f001-0000-4000-8000-000000000002",
+      "name": "Haberleri Getir (Hacker News)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -200,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hacker News Algolia yanıtından en yüksek puanlı 5 hikâyeyi seç ve\n// Slack markdown formatında Türkçe bir brifing metni hazırla.\nconst data = $input.first().json || {};\nconst hits = (data.hits || [])\n  .filter((h) => h && h.title)\n  .sort((a, b) => (b.points || 0) - (a.points || 0))\n  .slice(0, 5);\n\nconst today = new Date().toLocaleDateString('tr-TR', {\n  day: '2-digit',\n  month: 'long',\n  year: 'numeric',\n});\n\nconst lines = [`*🤖 Günlük Yapay Zeka & Teknoloji Brifingi — ${today}*`, ''];\nhits.forEach((h, i) => {\n  const link = h.url || `https://news.ycombinator.com/item?id=${h.objectID}`;\n  const points = h.points || 0;\n  const comments = h.num_comments || 0;\n  lines.push(`${i + 1}. <${link}|${h.title}> — ${points} puan · ${comments} yorum`);\n});\nlines.push('');\nlines.push('_Kaynak: Hacker News · OpenJarvis n8n otomasyonu · Sahip: Mert Durmazer_');\n\nreturn [\n  {\n    json: {\n      count: hits.length,\n      message: lines.join('\\n'),\n    },\n  },\n];"
+      },
+      "id": "a1c0f001-0000-4000-8000-000000000003",
+      "name": "Brifingi Hazırla",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-count-gt-zero",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "a1c0f001-0000-4000-8000-000000000004",
+      "name": "Sonuç Var mı?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        260,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "",
+          "mode": "name",
+          "cachedResultName": ""
+        },
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "mrkdwn": true
+        }
+      },
+      "id": "a1c0f001-0000-4000-8000-000000000005",
+      "name": "Slack'e Gönder",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        500,
+        120
+      ],
+      "webhookId": "a1c0f001-0000-4000-8000-0000000000aa",
+      "notes": "Bir Slack kimlik bilgisi (credential) bağlayın ve 'channelId' alanına hedef kanalı yazın."
+    },
+    {
+      "parameters": {},
+      "id": "a1c0f001-0000-4000-8000-000000000006",
+      "name": "Bugün Haber Yok",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "a1c0f001-0000-4000-8000-000000000007",
+      "name": "Hata Yakalandı",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        40,
+        460
+      ],
+      "notes": "HTTP isteği 3 denemeden sonra da başarısız olursa akış buraya düşer. İsterseniz buraya bir Slack/e-posta uyarı node'u ekleyin."
+    }
+  ],
+  "connections": {
+    "Her Sabah 08:00": {
+      "main": [
+        [
+          {
+            "node": "Haberleri Getir (Hacker News)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Haberleri Getir (Hacker News)": {
+      "main": [
+        [
+          {
+            "node": "Brifingi Hazırla",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hata Yakalandı",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Brifingi Hazırla": {
+      "main": [
+        [
+          {
+            "node": "Sonuç Var mı?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sonuç Var mı?": {
+      "main": [
+        [
+          {
+            "node": "Slack'e Gönder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Bugün Haber Yok",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "owner": "Mert Durmazer",
+    "source": "OpenJarvis · automations/n8n",
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "openjarvis"
+    },
+    {
+      "name": "briefing"
+    }
+  ]
+}
