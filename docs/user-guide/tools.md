@@ -205,6 +205,14 @@ All built-in tools are registered via `@ToolRegistry.register()` and are availab
 | **Scheduler** | `resume_scheduled_task` | Resume a paused scheduled task |
 | **Scheduler** | `cancel_scheduled_task` | Cancel a scheduled task permanently |
 | **Integration** | `mcp_adapter` | Bridge to external MCP tool servers (see [External MCP Servers](mcp-external-servers.md)) |
+| **iOS Simulator** | `ios_simulator_boot` | Boot an iOS Simulator device |
+| **iOS Simulator** | `ios_simulator_install_app` | Install a built `.app` bundle onto the simulator |
+| **iOS Simulator** | `ios_simulator_launch_app` | Launch an installed app by bundle identifier |
+| **iOS Simulator** | `ios_simulator_screenshot` | Take a screenshot of the simulator screen |
+| **iOS Simulator** | `ios_simulator_tap` | Tap a point on the simulator screen |
+| **iOS Simulator** | `ios_simulator_swipe` | Swipe from one point to another |
+| **iOS Simulator** | `ios_simulator_type_text` | Type text into the focused field |
+| **iOS Simulator** | `ios_simulator_describe_ui` | Return the accessibility tree of the current screen |
 
 ---
 
@@ -394,6 +402,138 @@ Executes Python code snippets in a sandboxed environment and returns the output.
 | Parameter | Type   | Required | Description                              |
 |-----------|--------|----------|------------------------------------------|
 | `code`    | string | Yes      | Python code to execute                   |
+
+---
+
+## iOS Simulator Tools
+
+The iOS Simulator tools let an agent boot an iOS Simulator, install and launch an app, and drive its UI — the same loop a developer follows to manually verify a change, automated as tool calls.
+
+!!! info "macOS + Xcode required"
+    Lifecycle tools (`ios_simulator_boot`, `ios_simulator_install_app`, `ios_simulator_launch_app`, `ios_simulator_screenshot`) call `xcrun simctl`, which ships with Xcode Command Line Tools. UI-interaction tools (`ios_simulator_tap`, `ios_simulator_swipe`, `ios_simulator_type_text`, `ios_simulator_describe_ui`) additionally require [idb](https://fbidb.io):
+
+    ```bash
+    brew tap facebook/fb && brew install idb-companion
+    pip install fb-idb
+    ```
+
+    On any other platform, or if `idb` is missing, every tool returns a `success=False` result with a clear setup hint instead of raising.
+
+### Typical flow
+
+```python
+from openjarvis import Jarvis
+
+j = Jarvis()
+result = j.ask_full(
+    "Boot the iPhone 17 Pro simulator, install and launch"
+    " build/Debug-iphonesimulator/Soyary.app (bundle id com.acme.field),"
+    " tap the 'Water now' button, then take a screenshot to confirm.",
+    agent="orchestrator",
+    tools=[
+        "ios_simulator_boot",
+        "ios_simulator_install_app",
+        "ios_simulator_launch_app",
+        "ios_simulator_describe_ui",
+        "ios_simulator_tap",
+        "ios_simulator_screenshot",
+    ],
+)
+j.close()
+```
+
+A device UDID resolves in this order: an explicit `udid` parameter, then the last device booted via `ios_simulator_boot` in the same process, then whichever simulator is currently booted on the machine. Most calls can omit `udid` entirely once one simulator is booted.
+
+### ios_simulator_boot
+
+**Registry key:** `ios_simulator_boot` | **Category:** `ios_simulator`
+
+Boots an iOS Simulator device and becomes the default target for subsequent `ios_simulator_*` calls. If already booted, this is a no-op that still records the UDID.
+
+| Parameter     | Type   | Required | Description                                                          |
+|---------------|--------|----------|------------------------------------------------------------------------|
+| `device_name` | string | No       | Name or substring to match, e.g. `"iPhone 17 Pro"`. Defaults to the first available device. |
+
+### ios_simulator_install_app
+
+**Registry key:** `ios_simulator_install_app` | **Category:** `ios_simulator`
+
+Installs a built `.app` bundle onto the target simulator.
+
+| Parameter  | Type   | Required | Description                                     |
+|------------|--------|----------|--------------------------------------------------|
+| `app_path` | string | Yes      | Path to the built `.app` bundle.                 |
+| `udid`     | string | No       | Target simulator UDID (see resolution order above). |
+
+### ios_simulator_launch_app
+
+**Registry key:** `ios_simulator_launch_app` | **Category:** `ios_simulator`
+
+Launches an installed app by bundle identifier.
+
+| Parameter   | Type   | Required | Description                              |
+|-------------|--------|----------|--------------------------------------------|
+| `bundle_id` | string | Yes      | App bundle identifier, e.g. `com.acme.field`. |
+| `udid`      | string | No       | Target simulator UDID.                     |
+
+### ios_simulator_screenshot
+
+**Registry key:** `ios_simulator_screenshot` | **Category:** `ios_simulator`
+
+Takes a screenshot of the target simulator. Returns base64-encoded PNG data in `result.metadata["screenshot_base64"]`.
+
+| Parameter | Type   | Required | Description                              |
+|-----------|--------|----------|--------------------------------------------|
+| `path`    | string | No       | Optional file path to also save the screenshot to. |
+| `udid`    | string | No       | Target simulator UDID.                     |
+
+### ios_simulator_tap
+
+**Registry key:** `ios_simulator_tap` | **Category:** `ios_simulator`
+
+Taps a point on the simulator screen, in points (not pixels) — the same coordinate space returned by `ios_simulator_describe_ui` and used in screenshots. Requires `idb`.
+
+| Parameter | Type   | Required | Description             |
+|-----------|--------|----------|--------------------------|
+| `x`       | number | Yes      | X coordinate, in points. |
+| `y`       | number | Yes      | Y coordinate, in points. |
+| `udid`    | string | No       | Target simulator UDID.  |
+
+### ios_simulator_swipe
+
+**Registry key:** `ios_simulator_swipe` | **Category:** `ios_simulator`
+
+Swipes from one point to another. Requires `idb`.
+
+| Parameter  | Type   | Required | Description                          |
+|------------|--------|----------|----------------------------------------|
+| `start_x`  | number | Yes      | Start X, in points.                    |
+| `start_y`  | number | Yes      | Start Y, in points.                    |
+| `end_x`    | number | Yes      | End X, in points.                      |
+| `end_y`    | number | Yes      | End Y, in points.                      |
+| `duration` | number | No       | Swipe duration in seconds.             |
+| `udid`     | string | No       | Target simulator UDID.                 |
+
+### ios_simulator_type_text
+
+**Registry key:** `ios_simulator_type_text` | **Category:** `ios_simulator`
+
+Types text into whichever field is currently focused. Tap the field first with `ios_simulator_tap`. Requires `idb`.
+
+| Parameter | Type   | Required | Description        |
+|-----------|--------|----------|----------------------|
+| `text`    | string | Yes      | Text to type.        |
+| `udid`    | string | No       | Target simulator UDID. |
+
+### ios_simulator_describe_ui
+
+**Registry key:** `ios_simulator_describe_ui` | **Category:** `ios_simulator`
+
+Returns the accessibility tree of the current screen as JSON — element labels, types, and frames (in points). Use this to find tap targets instead of guessing pixel coordinates from a screenshot. Requires `idb`.
+
+| Parameter | Type   | Required | Description             |
+|-----------|--------|----------|---------------------------|
+| `udid`    | string | No       | Target simulator UDID.    |
 
 ---
 
