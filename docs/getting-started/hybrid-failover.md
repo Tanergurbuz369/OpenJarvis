@@ -82,9 +82,13 @@ order until one succeeds or the chain is exhausted.
   already reached you — switching to another hop at that point would produce
   a corrupted, mixed response, so the error surfaces instead. Failover only
   happens for errors that occur *before* any output was sent.
-- **This wires into `jarvis ask` / `jarvis chat`.** `jarvis serve` (the API
-  server used by the browser/desktop app) doesn't currently build a failover
-  chain from this config — that's a natural follow-up if you need it there
-  too.
+- **This wires into `jarvis ask`, `jarvis chat`, and `jarvis serve`.** For
+  `jarvis serve` (the API server used by the browser/desktop app), the
+  resilience applies to the **primary model only**
+  (`intelligence.default_model` — hop 1 of the chain). Requesting that exact
+  model id gets the full failover chain; requesting any other model id
+  explicitly (e.g. picking a different cloud model from the UI) is served
+  directly and isn't part of the chain. This is different from `jarvis ask`,
+  where there's only ever one model per invocation.
 - Explicitly passing `-e/--engine` on the command line always overrides the
-  chain for that one call.
+  chain for that one call/session.
