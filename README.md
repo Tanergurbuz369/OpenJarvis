@@ -73,7 +73,7 @@ curl -fsSL https://openjarvis.ai/install.sh | bash
 jarvis
 ```
 
-`jarvis init --preset <name>` switches to a starter config. Available presets: `morning-digest-mac`, `morning-digest-linux`, `morning-digest-minimal`, `deep-research`, `code-assistant`, `scheduled-monitor`, `chat-simple`.
+`jarvis init --preset <name>` switches to a starter config. Available presets: `morning-digest-mac`, `morning-digest-linux`, `morning-digest-minimal`, `deep-research`, `code-assistant`, `scheduled-monitor`, `chat-simple`, `openrouter-free`, `hybrid-local-cloud-free`.
 
 ## Starter Configs
 
@@ -94,6 +94,8 @@ uv run jarvis init --preset morning-digest-mac   # or any preset below
 | `code-assistant` | Code Companion | Agent with code execution, file I/O, and shell access |
 | `scheduled-monitor` | Persistent Monitor | Stateful agent that runs on a schedule with memory |
 | `chat-simple` | Simple Chat | Lightweight conversation, no tools needed |
+| `openrouter-free` | Free Cloud Models | No GPU/Ollama required — runs on OpenRouter's free tier |
+| `hybrid-local-cloud-free` | Local + Cloud Failover | Local model first, automatic failover to free cloud models on rate limits ([docs](docs/getting-started/hybrid-failover.md)) |
 
 ```bash
 # Example: Morning Digest on Mac

@@ -1,0 +1,45 @@
+# Hybrid Local + Cloud Failover — local model first, free OpenRouter models
+# as automatic backup when you hit a rate limit.
+# Copy to ~/.openjarvis/config.toml
+#
+# How it works: `intelligence.fallback_chain` is an ordered list of
+# "engine:model" hops. On a rate limit, timeout, or connection error, the
+# request automatically retries against the next hop instead of failing —
+# see docs/getting-started/hybrid-failover.md for the full explanation.
+#
+# Setup (one time):
+#   1. Make sure Ollama is running and has pulled the primary model:
+#        ollama pull qwen3.5:9b
+#   2. Create a free OpenRouter key at https://openrouter.ai/keys
+#   3. Export it so OpenJarvis can find it:
+#        export OPENROUTER_API_KEY="sk-or-..."
+#      (add the line to ~/.bashrc / ~/.zshrc to make it persistent)
+#   4. Use this config:
+#        jarvis ask "..." --config hybrid-local-cloud-free.toml
+#      or copy it to ~/.openjarvis/config.toml and just run `jarvis ask ...`.
+#
+# NOTE: OpenRouter model ids MUST carry the "openrouter/" prefix here (see
+# getting-started/openrouter-free.md) — CloudEngine uses that prefix to
+# decide a request goes to OpenRouter rather than a direct provider SDK.
+
+[engine]
+default = "ollama"
+
+[intelligence]
+# Primary: local, unlimited, runs on your GPU. Swap for a bigger/smaller
+# model to match your VRAM (see code-assistant.toml for other tiers).
+default_model = "qwen3.5:9b"
+fallback_chain = "ollama:qwen3.5:9b,cloud:openrouter/deepseek/deepseek-chat-v3-0324:free,cloud:openrouter/qwen/qwen-2.5-coder-32b-instruct:free"
+temperature = 0.7
+max_tokens = 2048
+
+[agent]
+default_agent = "orchestrator"
+max_turns = 10
+
+[tools]
+enabled = ["code_interpreter", "file_read", "file_write", "shell_exec", "web_search", "think", "calculator"]
+
+[server]
+host = "0.0.0.0"
+port = 8000

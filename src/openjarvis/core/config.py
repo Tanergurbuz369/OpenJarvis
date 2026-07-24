@@ -562,6 +562,13 @@ class IntelligenceConfig:
 
     default_model: str = ""
     fallback_model: str = ""
+    # Ordered cross-engine failover chain: comma-separated "engine:model"
+    # entries, e.g. "ollama:qwen3.5:9b,cloud:openrouter/deepseek/...:free".
+    # engine must be a registered engine key (ollama, cloud, vllm, ...);
+    # OpenRouter models go through "cloud" with an "openrouter/" prefix.
+    # On a rate limit / timeout / connection error, requests advance to the
+    # next entry instead of failing outright. See openjarvis.engine.failover.
+    fallback_chain: str = ""
     model_path: str = ""  # Local weights (HF repo, GGUF file, etc.)
     checkpoint_path: str = ""  # Checkpoint/adapter path
     quantization: str = "none"  # none, fp8, int8, int4, gguf_q4, gguf_q8
@@ -1937,6 +1944,7 @@ host = "http://localhost:8080"
 [intelligence]
 default_model = "{model}"{model_comment}
 fallback_model = ""
+# fallback_chain = ""          # "ollama:qwen3.5:9b,cloud:openrouter/deepseek/..:free"
 # model_path = ""              # Local weights (HF repo, GGUF file, etc.)
 # checkpoint_path = ""         # Checkpoint/adapter path
 # quantization = "none"        # none, fp8, int8, int4, gguf_q4, gguf_q8

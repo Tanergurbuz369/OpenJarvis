@@ -22,6 +22,7 @@ from openjarvis.engine import (
     discover_engines,
     discover_models,
     get_engine,
+    get_failover_engine,
 )
 from openjarvis.intelligence import (
     merge_discovered_models,
@@ -663,8 +664,18 @@ def ask(
     # Discover engines
     register_builtin_models()
 
-    effective_engine_key = engine_key or config.intelligence.preferred_engine or None
-    resolved = get_engine(config, effective_engine_key)
+    # An explicit -e/--engine flag always wins. Otherwise, a configured
+    # fallback_chain takes priority over the single-engine resolution below —
+    # it already covers "no engine specified" via its own ordered hops.
+    resolved = None
+    if engine_key is None and config.intelligence.fallback_chain:
+        resolved = get_failover_engine(config)
+
+    if resolved is None:
+        effective_engine_key = (
+            engine_key or config.intelligence.preferred_engine or None
+        )
+        resolved = get_engine(config, effective_engine_key)
     if resolved is None:
         console.print(
             "[red bold]No inference engine available.[/red bold]\n\n"
