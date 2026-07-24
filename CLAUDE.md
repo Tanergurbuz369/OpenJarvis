@@ -17,12 +17,25 @@ tek seferlik bir işlem değilse):
    88.000+ skill (Hermes Agent'ın `hermes-agent.nousresearch.com/docs/skills`
    adresinde gösterdiği aynı katalog). Tarama için `npx skills find <anahtar
    kelimeler>` — tam süreç için `.claude/skills/skill-discovery/SKILL.md`.
-3. **Bulduklarını sun, otomatik kurma** — yerel ve/veya online adayları
-   kullanıcıya söyle, kullanıcı hangisini seçerse ("şu skill'i kullanalım")
-   ondan devam et.
+3. **Bulduklarını sun, otomatik kurma — yetki verilmedikçe.** Varsayılan
+   davranış: yerel ve/veya online adayları kullanıcıya söyle, kullanıcı
+   hangisini seçerse ("şu skill'i kullanalım") ondan devam et.
+   - **İstisna:** kullanıcı açıkça karar yetkisi verdiyse — tek seferlik
+     ("bu sefer sen karar ver") veya kalıcı ("bundan sonra skill seçimini
+     sen yap") — o zaman en uygun adayı kendin seçip devam edebilirsin.
+     Ne seçtiğini ve neden seçtiğini iş bittikten sonra mutlaka söyle,
+     önceden sorulmasa bile seçim görünür kalsın.
+   - Açık bir yetki yoksa her zaman sor. Alakasız bir konudaki "tamam,
+     devam et" gibi belirsiz bir onay, otomatik skill seçimi için yetki
+     sayılmaz.
 4. **Kayıt defterinden asla toplu kurulum yapma** — tek tek, incelenerek,
    `.claude/skills/skill-discovery/SKILL.md` ve
    `.claude/rules/ecc/common/security.md`'deki süreçle.
+5. **4. adımdaki güvenlik incelemesi, otomatik karar yetkisi altında bile
+   asla atlanmaz.** Verilen yetki *hangi* skill'in seçileceğiyle ilgilidir,
+   SKILL.md/script'lerinin *okunup okunmayacağıyla* değil. İncelemede
+   şüpheli bir şey çıkarsa dur ve kullanıcıya söyle — yetki verilmiş olması,
+   riskli bir şeyi kurmaya onay anlamına gelmez.
 
 Bu talimat, `AGENTS.md` dosyasındaki araçtan bağımsız (agent-agnostic)
 versiyonuyla birebir aynıdır — hangi AI agent kullanılırsa kullanılsın
