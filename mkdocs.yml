@@ -158,6 +158,7 @@ nav:
       - Code Companion: tutorials/code-companion.md
   - Resources:
       - Community Resources: resources/community.md
+      - Research & Related Work: resources/research.md
   - Architecture:
       - Overview: architecture/overview.md
       - Intelligence: architecture/intelligence.md
