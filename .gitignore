@@ -118,3 +118,12 @@ learning.db
 **/learning/benchmarks/
 **/teacher_traces/
 *.session.json
+
+# ---------------------------------------------------------------------------
+# YouMind OpenLab vendored skills — prompt reference data is downloaded at
+# runtime by each skill's setup.js (see .claude/skills/youmind-openlab/),
+# never committed (30MB+, refreshed twice daily upstream).
+# ---------------------------------------------------------------------------
+.claude/skills/youmind-openlab/*/references/*.json
+!.claude/skills/youmind-openlab/*/references/.gitkeep
+.claude/skills/youmind-openlab/*/references/.last-updated
