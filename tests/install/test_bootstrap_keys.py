@@ -99,3 +99,22 @@ def test_cloud_provider_repr_redacts_api_key() -> None:
     assert "openrouter" in r
     assert "OPENROUTER_API_KEY" in r
     assert "redacted" in r.lower() or "***" in r
+
+
+def test_openrouter_default_model_is_routable() -> None:
+    """The auto-selected default model for OpenRouter-only installs must
+    actually be recognized as an OpenRouter model by CloudEngine — otherwise
+    it's misdetected as a direct Anthropic/OpenAI/Google model and fails for
+    anyone who only set OPENROUTER_API_KEY.
+
+    Regression test for a bug where "anthropic/claude-opus-4-6" (missing the
+    "openrouter/" prefix) was picked as the default, silently routing to the
+    direct Anthropic SDK path instead of OpenRouter.
+    """
+    from openjarvis.engine.cloud import _is_openrouter_model
+
+    model = _bootstrap._CLOUD_PROVIDER_DEFAULT_MODELS["openrouter"]
+    assert _is_openrouter_model(model), (
+        f"{model!r} is not recognized as an OpenRouter model id "
+        '(must start with "openrouter/")'
+    )

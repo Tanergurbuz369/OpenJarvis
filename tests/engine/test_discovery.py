@@ -11,6 +11,7 @@ from openjarvis.engine._discovery import (
     discover_engines,
     discover_models,
     get_engine,
+    get_failover_engine,
 )
 
 
@@ -124,6 +125,76 @@ class TestGetEngine:
             result = get_engine(cfg, engine_key="requested")
         assert result is not None
         assert result[0] == "running"
+
+
+class TestGetFailoverEngine:
+    def test_no_chain_configured_returns_none(self) -> None:
+        cfg = JarvisConfig()
+        cfg.intelligence.fallback_chain = ""
+        assert get_failover_engine(cfg) is None
+
+    def test_builds_chain_in_order(self) -> None:
+        _reg("ollama", "ollama")
+        _reg("cloud", "cloud")
+
+        cfg = JarvisConfig()
+        cfg.intelligence.fallback_chain = (
+            "ollama:qwen3.5:9b,cloud:openrouter/deepseek/deepseek-chat-v3-0324:free"
+        )
+
+        with mock.patch(
+            "openjarvis.engine._discovery._make_engine",
+            side_effect=lambda k, c: _FakeEngine(healthy=True),
+        ):
+            result = get_failover_engine(cfg)
+
+        assert result is not None
+        key, engine = result
+        assert key == "failover"
+        hops = engine.chain
+        assert [h[0] for h in hops] == ["ollama", "cloud"]
+        assert [h[2] for h in hops] == [
+            "qwen3.5:9b",
+            "openrouter/deepseek/deepseek-chat-v3-0324:free",
+        ]
+
+    def test_skips_entry_with_unknown_engine(self) -> None:
+        _reg("ollama", "ollama")
+
+        cfg = JarvisConfig()
+        cfg.intelligence.fallback_chain = "nope:some-model,ollama:qwen3.5:9b"
+
+        with mock.patch(
+            "openjarvis.engine._discovery._make_engine",
+            side_effect=lambda k, c: _FakeEngine(healthy=True),
+        ):
+            result = get_failover_engine(cfg)
+
+        assert result is not None
+        _key, engine = result
+        assert [h[0] for h in engine.chain] == ["ollama"]
+
+    def test_all_entries_unusable_returns_none(self) -> None:
+        cfg = JarvisConfig()
+        cfg.intelligence.fallback_chain = "nope:some-model,also-nope:other-model"
+
+        assert get_failover_engine(cfg) is None
+
+    def test_malformed_entry_without_colon_is_skipped(self) -> None:
+        _reg("ollama", "ollama")
+
+        cfg = JarvisConfig()
+        cfg.intelligence.fallback_chain = "not-a-valid-entry,ollama:qwen3.5:9b"
+
+        with mock.patch(
+            "openjarvis.engine._discovery._make_engine",
+            side_effect=lambda k, c: _FakeEngine(healthy=True),
+        ):
+            result = get_failover_engine(cfg)
+
+        assert result is not None
+        _key, engine = result
+        assert [h[0] for h in engine.chain] == ["ollama"]
 
 
 class TestMiningSidecarEngineHandoff:

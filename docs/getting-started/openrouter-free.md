@@ -41,18 +41,24 @@ Add that line to your `~/.bashrc` or `~/.zshrc` so it persists across sessions.
 
 ## 3. Point OpenJarvis at a free model
 
-Free OpenRouter model IDs use the `org/model:free` format. OpenJarvis detects
-the `/` and routes them to OpenRouter. A ready-made config lives at
+Free OpenRouter model IDs use the `org/model:free` format upstream, but
+`CloudEngine` only routes a model to OpenRouter when the id is prefixed with
+`openrouter/` — so the config value needs that prefix prepended:
+`openrouter/org/model:free`. A ready-made config lives at
 [`configs/openjarvis/examples/openrouter-free.toml`](https://github.com/open-jarvis/OpenJarvis/blob/main/configs/openjarvis/examples/openrouter-free.toml):
 
 ```toml
 [intelligence]
-default_model = "deepseek/deepseek-chat-v3-0324:free"
-provider = "openrouter"
+default_model = "openrouter/deepseek/deepseek-chat-v3-0324:free"
 
 [agent]
 default_agent = "simple"
 ```
+
+!!! warning "Always include the `openrouter/` prefix"
+    Without it, the model id is misdetected as a direct Anthropic/OpenAI/Google
+    model (e.g. an id containing `claude` routes to the Anthropic SDK) and
+    fails unless you also happen to have that provider's own API key set.
 
 Copy it to `~/.openjarvis/config.toml` (or pass it with `--config`).
 
@@ -73,13 +79,17 @@ Some popular free choices:
 
 | Model ID | Good for |
 |---|---|
-| `deepseek/deepseek-chat-v3-0324:free` | General + coding |
-| `deepseek/deepseek-r1:free` | Reasoning |
-| `meta-llama/llama-3.3-70b-instruct:free` | General |
-| `qwen/qwen-2.5-coder-32b-instruct:free` | Coding |
-| `google/gemini-2.0-flash-exp:free` | Fast, long context |
+| `openrouter/deepseek/deepseek-chat-v3-0324:free` | General + coding |
+| `openrouter/deepseek/deepseek-r1:free` | Reasoning |
+| `openrouter/meta-llama/llama-3.3-70b-instruct:free` | General |
+| `openrouter/qwen/qwen-2.5-coder-32b-instruct:free` | Coding |
+| `openrouter/google/gemini-2.0-flash-exp:free` | Fast, long context |
 
 !!! warning "Free tiers change and are rate-limited"
     Model availability and rate limits on OpenRouter's free tier can change
-    without notice. If a model stops responding, pick another `:free` model from
-    the catalog above.
+    without notice — and being *free*, they tend to get exhausted quickly
+    under real use. If a model stops responding, pick another `:free` model
+    from the catalog above, or see
+    [Local + Cloud Failover](hybrid-failover.md) to fail over automatically
+    between a local model and a chain of free cloud models instead of
+    hitting one limit and stopping.

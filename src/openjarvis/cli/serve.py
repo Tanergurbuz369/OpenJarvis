@@ -15,6 +15,7 @@ from openjarvis.engine import (
     discover_engines,
     discover_models,
     get_engine,
+    get_failover_engine,
 )
 from openjarvis.intelligence import (
     merge_discovered_models,
@@ -91,7 +92,21 @@ def serve(
         except Exception as exc:
             logger.debug("Telemetry store init failed: %s", exc)
 
-    resolved = get_engine(config, engine_key)
+    # An explicit -e/--engine flag always wins. Otherwise, a configured
+    # fallback_chain takes priority — same rule as `jarvis ask`/`jarvis chat`
+    # (see engine._discovery.get_failover_engine). While a failover chain is
+    # active, requests are served resiliently but only for the primary
+    # (config.intelligence.default_model) model — the MultiEngine wrapping
+    # below, which exposes every individual cloud model for selection, is
+    # skipped in that case to keep the two behaviors from conflicting.
+    resolved = None
+    using_failover_chain = False
+    if engine_key is None and config.intelligence.fallback_chain:
+        resolved = get_failover_engine(config)
+        using_failover_chain = resolved is not None
+
+    if resolved is None:
+        resolved = get_engine(config, engine_key)
     if resolved is None:
         console.print(
             "[red bold]No inference engine available.[/red bold]\n\n"
@@ -100,6 +115,9 @@ def serve(
         sys.exit(1)
 
     engine_name, engine = resolved
+    if using_failover_chain:
+        hop_labels = " -> ".join(label for label, _eng, _model in engine.chain)
+        console.print(f"  Failover: [cyan]enabled[/cyan] ({hop_labels})")
 
     # Apply security guardrails
     from openjarvis.security import setup_security
@@ -118,7 +136,7 @@ def serve(
         or os.environ.get("GOOGLE_API_KEY")
         or os.environ.get("OPENROUTER_API_KEY")
     )
-    if _has_cloud and engine_name != "cloud":
+    if _has_cloud and engine_name != "cloud" and not using_failover_chain:
         try:
             from openjarvis.engine.cloud import CloudEngine
             from openjarvis.engine.multi import MultiEngine

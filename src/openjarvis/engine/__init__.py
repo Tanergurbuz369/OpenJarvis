@@ -12,7 +12,12 @@ from openjarvis.engine._base import (
     InferenceEngine,
     messages_to_dicts,
 )
-from openjarvis.engine._discovery import discover_engines, discover_models, get_engine
+from openjarvis.engine._discovery import (
+    discover_engines,
+    discover_models,
+    get_engine,
+    get_failover_engine,
+)
 
 # Optional engines — only register if their SDK deps are present
 for _optional in ("cloud", "litellm", "gemma_cpp"):
@@ -27,5 +32,6 @@ __all__ = [
     "discover_engines",
     "discover_models",
     "get_engine",
+    "get_failover_engine",
     "messages_to_dicts",
 ]

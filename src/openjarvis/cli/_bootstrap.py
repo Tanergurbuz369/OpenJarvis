@@ -187,7 +187,12 @@ def _seed_memory_files() -> None:
 # --prefer-cloud-when-available.  These IDs will rot as new model versions
 # ship; bump them when sub-project A's release notes track new defaults.
 _CLOUD_PROVIDER_DEFAULT_MODELS: dict[str, str] = {
-    "openrouter": "anthropic/claude-opus-4-6",
+    # CloudEngine only routes to OpenRouter when the model id carries the
+    # "openrouter/" prefix (see engine.cloud._is_openrouter_model) — without
+    # it, a model id like "anthropic/claude-opus-4-6" is misdetected as a
+    # direct Anthropic model and fails for anyone who only has an
+    # OPENROUTER_API_KEY set.
+    "openrouter": "openrouter/anthropic/claude-opus-4-6",
     "anthropic": "claude-opus-4-6",
     "openai": "gpt-5",
     "google": "gemini-3-pro",

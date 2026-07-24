@@ -139,6 +139,64 @@ def discover_models(
     return result
 
 
+def get_failover_engine(config: JarvisConfig) -> Tuple[str, InferenceEngine] | None:
+    """Build a FailoverEngine from ``config.intelligence.fallback_chain``.
+
+    The chain is a comma-separated list of ``engine_key:model_id`` entries,
+    e.g. ``"ollama:qwen3.5:9b,cloud:openrouter/deepseek/deepseek-chat-v3-0324:free"``.
+    Splits on the *first* colon per entry so model ids that themselves
+    contain colons (Ollama tags, OpenRouter's ``:free`` suffix) parse
+    correctly. Entries with an unknown engine key, or whose engine fails to
+    construct, are skipped with a warning rather than aborting the whole
+    chain.
+
+    Returns ``("failover", FailoverEngine(...))`` — matching ``get_engine()``'s
+    return shape — or ``None`` if ``fallback_chain`` is unset or every entry
+    was unusable.
+    """
+    spec = config.intelligence.fallback_chain
+    if not spec:
+        return None
+
+    from openjarvis.engine.failover import FailoverEngine, Hop
+
+    hops: list[Hop] = []
+    for raw_entry in spec.split(","):
+        entry = raw_entry.strip()
+        if not entry or ":" not in entry:
+            logger.warning("Skipping malformed fallback_chain entry: %r", raw_entry)
+            continue
+        engine_key, model_id = (part.strip() for part in entry.split(":", 1))
+        if not engine_key or not model_id:
+            logger.warning("Skipping malformed fallback_chain entry: %r", raw_entry)
+            continue
+        if not EngineRegistry.contains(engine_key):
+            logger.warning(
+                "Skipping fallback_chain entry with unknown engine %r: %r",
+                engine_key,
+                raw_entry,
+            )
+            continue
+        try:
+            engine = _make_engine(engine_key, config)
+        except Exception as exc:
+            logger.warning(
+                "Failed to construct engine %r for fallback_chain entry %r: %s",
+                engine_key,
+                raw_entry,
+                exc,
+            )
+            continue
+        hops.append((engine_key, engine, model_id))
+
+    if not hops:
+        logger.warning(
+            "fallback_chain %r produced no usable hops; ignoring", spec
+        )
+        return None
+    return ("failover", FailoverEngine(hops))
+
+
 def get_engine(
     config: JarvisConfig, engine_key: str | None = None
 ) -> Tuple[str, InferenceEngine] | None:
@@ -170,4 +228,9 @@ def get_engine(
     return healthy[0] if healthy else None
 
 
-__all__ = ["discover_engines", "discover_models", "get_engine"]
+__all__ = [
+    "discover_engines",
+    "discover_models",
+    "get_engine",
+    "get_failover_engine",
+]

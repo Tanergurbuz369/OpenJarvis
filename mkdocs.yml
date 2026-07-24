@@ -148,6 +148,7 @@ nav:
       - macOS Guide: getting-started/macos.md
       - Quick Start: getting-started/quickstart.md
       - Free Cloud Models (OpenRouter): getting-started/openrouter-free.md
+      - Local + Cloud Failover: getting-started/hybrid-failover.md
       - Code Snippets: getting-started/snippets.md
       - Configuration: getting-started/configuration.md
   - Tutorials:
@@ -158,6 +159,7 @@ nav:
       - Code Companion: tutorials/code-companion.md
   - Resources:
       - Community Resources: resources/community.md
+      - Research & Related Work: resources/research.md
   - Architecture:
       - Overview: architecture/overview.md
       - Intelligence: architecture/intelligence.md
