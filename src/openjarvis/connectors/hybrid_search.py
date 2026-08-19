@@ -775,4 +775,38 @@ class HybridSearch:
         return hits
 
 
-__all__ = ["HybridSearch", "SearchHit"]
+def build_research_search(
+    store: KnowledgeStore,
+    embedder: Optional[OllamaEmbedder],
+    config: Any,
+) -> "HybridSearch":
+    """Build the research loop's retrieval per ``[deep_research] retrieval``.
+
+    Local hybrid search is the default. ``retrieval = "mixedbread"`` is a
+    cloud opt-in that returns toast-1-backed search (duck-type compatible,
+    with local hybrid as its failure fallback); the mixedbread module is
+    imported only inside that branch, so the default path never touches
+    optional cloud code. Any opt-in construction failure (missing SDK or
+    API key) logs a warning and falls back to plain hybrid search.
+    """
+    fallback = HybridSearch(store, embedder)
+    dr = getattr(config, "deep_research", None)
+    if dr is None or getattr(dr, "retrieval", "hybrid") != "mixedbread":
+        return fallback
+    try:
+        from openjarvis.connectors.mixedbread_search import MixedbreadSearch
+
+        return MixedbreadSearch(
+            store,
+            store_name=getattr(dr, "mixedbread_store", "openjarvis-knowledge"),
+            fallback=fallback,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "mixedbread retrieval unavailable (%s); using local hybrid search",
+            exc,
+        )
+        return fallback
+
+
+__all__ = ["HybridSearch", "SearchHit", "build_research_search"]

@@ -36,7 +36,6 @@ from openjarvis.agents.research_loop import (
     ResearchAgent,
 )
 from openjarvis.connectors.embeddings import OllamaEmbedder
-from openjarvis.connectors.hybrid_search import HybridSearch
 from openjarvis.connectors.store import KnowledgeStore
 from openjarvis.core.config import DEFAULT_CONFIG_DIR, JarvisConfig, load_config
 from openjarvis.core.types import TelemetryRecord
@@ -421,9 +420,11 @@ async def _stream_research(
             )
             embedder = None
 
+        from openjarvis.connectors.hybrid_search import build_research_search
+
         agent = ResearchAgent(
             engine=engine,
-            search=HybridSearch(store, embedder),
+            search=build_research_search(store, embedder, config),
             model=model,
             clarify_handler=lambda question: _WEB_CLARIFY_RESPONSE,
             on_event=on_event,
