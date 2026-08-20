@@ -76,10 +76,6 @@ class ThroughputBenchmark(BaseBenchmark):
         metrics["total_time_seconds"] = total_time
 
         metadata: dict[str, Any] = {}
-        if engine.engine_id == "apple_fm":
-            metadata["token_estimation"] = (
-                "~4 chars/token (Apple FM SDK does not expose counts)"
-            )
 
         return BenchmarkResult(
             benchmark_name=self.name,
