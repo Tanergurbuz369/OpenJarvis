@@ -565,3 +565,29 @@ class TestOnRealHardware:
         # which zeroed throughput and every per-token energy figure.
         assert result["usage"]["completion_tokens"] > 0
         assert result["usage"]["prompt_tokens"] > 0
+
+
+class TestAfmIsTreatedAsLocal:
+    """`afm` must be recognised as an on-device engine everywhere it matters.
+
+    The Python SDK has no Private Cloud Compute path, so AFM inference never
+    leaves the machine. An engine key missing from these sets produces a false
+    "your data is leaving this machine" signal.
+    """
+
+    def test_data_boundary_audit_classifies_afm_as_local(self):
+        from openjarvis.security.data_boundary_audit import (
+            LOCAL_ENGINE_KEYS,
+            _target_is_cloud,
+        )
+
+        assert "afm" in LOCAL_ENGINE_KEYS
+        assert _target_is_cloud("afm", "afm-3-core") is False
+
+    def test_image_privacy_guard_does_not_warn_for_afm(self):
+        """`jarvis ask -i photo.png --engine afm` must not claim the image
+        leaves the machine."""
+        from openjarvis.cli.ask import LOCAL_ENGINES
+
+        assert "afm" in LOCAL_ENGINES
+        assert "openai" not in LOCAL_ENGINES
