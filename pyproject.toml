@@ -98,6 +98,15 @@ desktop = [
     "soundfile>=0.12",
 ]
 openhands = ["openhands-sdk>=1.0; python_version >= '3.12'"]
+# Apple Foundation Models (on-device AFM 3). Needs an Apple Silicon Mac on
+# macOS 26+ with Apple Intelligence enabled. The SDK compiles Swift bindings
+# at install time, so a full Xcode is required -- Command Line Tools alone
+# fail:
+#   DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer \
+#       uv pip install -e '.[afm]'
+# 0.2.1 is the floor: it added SystemLanguageModel.context_size and
+# token_count, which the engine uses for token accounting.
+afm = ["apple-fm-sdk>=0.2.1; sys_platform == 'darwin'"]
 gpu-metrics = ["pynvml>=12.0"]
 energy-amd = ["amdsmi>=6.1"]
 # `zeus-ml[apple]` was the previous spelling and never worked: zeus-ml has no

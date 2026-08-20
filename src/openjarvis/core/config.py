@@ -448,6 +448,26 @@ class GemmaCppEngineConfig:
 
 
 @dataclass(slots=True)
+class AfmEngineConfig:
+    """Per-engine config for in-process Apple Foundation Models.
+
+    No ``host``: this engine runs the SDK in-process rather than talking to a
+    server. (The separate ``apple_fm`` engine does have a host — it speaks to
+    the FastAPI shim.)
+    """
+
+    # Standing instructions applied to every session, on top of any system
+    # message in the request.
+    instructions: str = ""
+    # "general" or "content_tagging".
+    use_case: str = "general"
+    # "default" or "permissive_content_transformations".
+    guardrails: str = "default"
+    # "greedy" (reproducible, the default here) or "random" (the SDK default).
+    sampling: str = "greedy"
+
+
+@dataclass(slots=True)
 class LemonadeEngineConfig:
     """Per-engine config for Lemonade."""
 
@@ -469,6 +489,7 @@ class EngineConfig:
     nexa: NexaEngineConfig = field(default_factory=NexaEngineConfig)
     uzu: UzuEngineConfig = field(default_factory=UzuEngineConfig)
     apple_fm: AppleFmEngineConfig = field(default_factory=AppleFmEngineConfig)
+    afm: AfmEngineConfig = field(default_factory=AfmEngineConfig)
     gemma_cpp: GemmaCppEngineConfig = field(default_factory=GemmaCppEngineConfig)
     lemonade: LemonadeEngineConfig = field(default_factory=LemonadeEngineConfig)
 
