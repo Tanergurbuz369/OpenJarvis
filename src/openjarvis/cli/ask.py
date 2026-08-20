@@ -833,6 +833,7 @@ def ask(
 
             energy_monitor = create_energy_monitor(
                 prefer_vendor=config.telemetry.energy_vendor or None,
+                allow_estimates=config.telemetry.allow_energy_estimates,
             )
         except Exception as exc:
             logger.debug("Failed to create energy monitor: %s", exc)

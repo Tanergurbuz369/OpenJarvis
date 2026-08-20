@@ -1165,6 +1165,12 @@ class TelemetryConfig:
     gpu_metrics: bool = False
     gpu_poll_interval_ms: int = 50
     energy_vendor: str = ""  # auto-detect or force "nvidia"/"amd"/"apple"/"cpu_rapl"
+    # Permit a modelled energy estimate when no hardware counters are
+    # readable. Off by default: an estimate written to the telemetry DB is
+    # indistinguishable from a measurement at query time except via
+    # `energy_method`, and on Apple Silicon the estimate is a function of
+    # wall-clock alone, so it cannot tell an idle window from a busy one.
+    allow_energy_estimates: bool = False
     warmup_samples: int = 0
     steady_state_window: int = 5
     steady_state_threshold: float = 0.05
