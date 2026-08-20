@@ -247,6 +247,24 @@ class TestSampleRails:
             result.ane_energy_joules / result.duration_seconds
         )
 
+    def test_body_error_survives_a_failing_end_window(self):
+        """The caller's exception must not be swallowed by cleanup.
+
+        `return` inside a `finally` discards an in-flight exception, so a
+        failed end_window would have hidden whatever the body raised.
+        """
+        reader = FakeReader(FakeMetrics(cpu_total_mj=1_000))
+
+        def _explode(key):
+            raise RuntimeError("IOReport went away")
+
+        reader.end_window = _explode
+        monitor = _monitor_with(reader)
+
+        with pytest.raises(ValueError, match="original"):
+            with monitor.sample():
+                raise ValueError("original failure")
+
     def test_window_closes_even_when_body_raises(self):
         reader = FakeReader(FakeMetrics(cpu_total_mj=1_000))
         monitor = _monitor_with(reader)

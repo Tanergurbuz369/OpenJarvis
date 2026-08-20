@@ -76,6 +76,15 @@ class ThroughputBenchmark(BaseBenchmark):
         metrics["total_time_seconds"] = total_time
 
         metadata: dict[str, Any] = {}
+        # Engines that can describe themselves (AFM records the SDK
+        # version, context size and host chip, none of which is
+        # recoverable from the results alone) contribute run metadata.
+        describe = getattr(engine, "describe", None)
+        if callable(describe):
+            try:
+                metadata["engine_info"] = describe()
+            except Exception as exc:
+                logger.debug("engine.describe() failed: %s", exc)
 
         return BenchmarkResult(
             benchmark_name=self.name,

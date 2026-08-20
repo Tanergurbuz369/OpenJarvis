@@ -283,16 +283,19 @@ class AppleEnergyMonitor(EnergyMonitor):
         try:
             yield result
         finally:
+            # No `return` in this block: returning from a finally discards an
+            # exception the body raised, so a failed end_window would swallow
+            # the caller's error.
             try:
                 metrics = self._reader.end_window(window)
             except Exception as exc:
                 logger.debug("Apple energy window failed to close: %s", exc)
-                return
-            self._apply(
-                result,
-                _rails_from_metrics(metrics),
-                time.monotonic() - t_start,
-            )
+            else:
+                self._apply(
+                    result,
+                    _rails_from_metrics(metrics),
+                    time.monotonic() - t_start,
+                )
 
     @staticmethod
     def _apply(result: EnergySample, rails: _Rails, wall: float) -> None:
@@ -382,21 +385,20 @@ class AppleEnergyMonitor(EnergyMonitor):
         try:
             yield result
         finally:
+            # No `return` in this block -- see _sample_ioreport.
             wall = time.monotonic() - t0
             if wall <= 0:
                 result.duration_seconds = 0.0
-                return
-
-            power_w = self._tdp_watts * _ACTIVE_RATIO
-            energy_j = power_w * wall
-
-            rails = _Rails(
-                cpu=energy_j * 0.25,
-                gpu=energy_j * 0.55,
-                dram=energy_j * 0.15,
-                ane=energy_j * 0.05,
-            )
-            self._apply(result, rails, wall)
+            else:
+                power_w = self._tdp_watts * _ACTIVE_RATIO
+                energy_j = power_w * wall
+                rails = _Rails(
+                    cpu=energy_j * 0.25,
+                    gpu=energy_j * 0.55,
+                    dram=energy_j * 0.15,
+                    ane=energy_j * 0.05,
+                )
+                self._apply(result, rails, wall)
 
     def close(self) -> None:
         self._reader = None

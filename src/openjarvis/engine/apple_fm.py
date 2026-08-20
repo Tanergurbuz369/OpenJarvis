@@ -37,6 +37,7 @@ against MLX or Ollama:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import platform
 import subprocess
@@ -505,7 +506,9 @@ class AppleFMEngine(InferenceEngine):
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
         if not self._prepared:
-            self.prepare(model)
+            # prepare() blocks for the ~10s cold start; off-thread so it does
+            # not stall the caller's event loop.
+            await asyncio.to_thread(self.prepare, model)
 
         instructions, prompt = self._split_messages(messages)
         options = self._build_options(temperature, max_tokens)
