@@ -7,7 +7,7 @@ import time
 from typing import Any, List, Optional
 
 from openjarvis.bench._stats import compute_stats
-from openjarvis.bench._stubs import BaseBenchmark, BenchmarkResult
+from openjarvis.bench._stubs import BaseBenchmark, BenchmarkResult, engine_info
 from openjarvis.core.registry import BenchmarkRegistry
 from openjarvis.core.types import Message, Role
 from openjarvis.engine._stubs import InferenceEngine
@@ -142,15 +142,9 @@ class EnergyBenchmark(BaseBenchmark):
         metrics["total_time_seconds"] = total_time
 
         metadata: dict[str, Any] = {}
-        # Engines that can describe themselves (AFM records the SDK
-        # version, context size and host chip, none of which is
-        # recoverable from the results alone) contribute run metadata.
-        describe = getattr(engine, "describe", None)
-        if callable(describe):
-            try:
-                metadata["engine_info"] = describe()
-            except Exception as exc:
-                logger.debug("engine.describe() failed: %s", exc)
+        info = engine_info(engine)
+        if info:
+            metadata["engine_info"] = info
         if energy_basis:
             # Which rail set total_energy_joules and energy_per_token came
             # from. Figures are only comparable across runs sharing a basis.
