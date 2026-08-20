@@ -18,10 +18,12 @@ almost free.
 
 from __future__ import annotations
 
+import atexit
 import logging
 import platform
 import subprocess
 import time
+import weakref
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Generator, Optional
@@ -42,6 +44,23 @@ try:
 except ImportError:
     _AppleRailReader = None  # type: ignore[assignment]
     _NATIVE_AVAILABLE = False
+
+
+# Monitors holding a live native handle. Long-lived callers (`jarvis serve`)
+# create one for the process lifetime and never close it, which leaves the
+# nanobind object alive when the extension's types are torn down -- the
+# extension then prints "leaked instance" warnings on exit. Releasing the
+# handles at interpreter shutdown keeps that teardown clean.
+_LIVE_MONITORS: "weakref.WeakSet[AppleEnergyMonitor]" = weakref.WeakSet()
+
+
+@atexit.register
+def _release_live_monitors() -> None:  # pragma: no cover - shutdown hook
+    for monitor in list(_LIVE_MONITORS):
+        try:
+            monitor.close()
+        except Exception:
+            pass
 
 
 # Typical package TDP (watts) by chip family.  Used only for the opt-in
@@ -188,6 +207,7 @@ class AppleEnergyMonitor(EnergyMonitor):
         if _NATIVE_AVAILABLE and platform.system() == "Darwin":
             try:
                 self._reader = _AppleRailReader()
+                _LIVE_MONITORS.add(self)
             except Exception as exc:
                 logger.debug(
                     "Failed to initialize Apple Silicon energy monitor: %s",
@@ -381,6 +401,7 @@ class AppleEnergyMonitor(EnergyMonitor):
     def close(self) -> None:
         self._reader = None
         self._prev = None
+        _LIVE_MONITORS.discard(self)
 
 
 __all__ = ["AppleEnergyMonitor"]

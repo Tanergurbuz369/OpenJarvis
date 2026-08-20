@@ -211,6 +211,7 @@ def _check_optional_deps() -> List[CheckResult]:
             "openjarvis[energy-apple]",
             "Apple Silicon energy monitoring",
         ),
+        ("apple_fm_sdk", "openjarvis[afm]", "Apple Foundation Models (AFM 3)"),
     ]
     for pkg, install_hint, description in optional_packages:
         try:
