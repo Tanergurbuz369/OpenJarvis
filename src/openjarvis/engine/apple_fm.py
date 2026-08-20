@@ -72,16 +72,44 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_MODEL_LABEL = "afm-3"
 
+
+def _require(path: str) -> Any:
+    """Fetch a dotted attribute from the SDK, or fail as an ImportError.
+
+    An SDK that imports but lacks the surface this engine needs (anything
+    below 0.2.1, which introduced ``token_count`` and ``context_size``) is an
+    unusable install, not a broken engine. Raising ImportError lets
+    ``engine/__init__.py``'s guarded import skip registration instead of
+    letting an AttributeError take down every other engine.
+    """
+    obj: Any = fm
+    for part in path.split("."):
+        try:
+            obj = getattr(obj, part)
+        except AttributeError as exc:
+            raise ImportError(
+                f"apple_fm_sdk is missing {path!r}. The AFM engine needs "
+                "apple-fm-sdk>=0.2.1; upgrade with "
+                "`uv pip install -U 'apple-fm-sdk>=0.2.1'`."
+            ) from exc
+    return obj
+
+
 _USE_CASES = {
-    "general": fm.SystemLanguageModelUseCase.GENERAL,
-    "content_tagging": fm.SystemLanguageModelUseCase.CONTENT_TAGGING,
+    "general": _require("SystemLanguageModelUseCase.GENERAL"),
+    "content_tagging": _require("SystemLanguageModelUseCase.CONTENT_TAGGING"),
 }
 _GUARDRAILS = {
-    "default": fm.SystemLanguageModelGuardrails.DEFAULT,
-    "permissive_content_transformations": (
-        fm.SystemLanguageModelGuardrails.PERMISSIVE_CONTENT_TRANSFORMATIONS
+    "default": _require("SystemLanguageModelGuardrails.DEFAULT"),
+    "permissive_content_transformations": _require(
+        "SystemLanguageModelGuardrails.PERMISSIVE_CONTENT_TRANSFORMATIONS"
     ),
 }
+# token_count / context_size are the 0.2.1 additions the engine's whole token
+# accounting rests on -- check them at import so a stale SDK degrades to "not
+# registered" rather than to silently zeroed usage.
+_require("SystemLanguageModel.token_count")
+_require("SystemLanguageModel.context_size")
 
 
 def _resolve_error(name: str) -> Optional[type]:
