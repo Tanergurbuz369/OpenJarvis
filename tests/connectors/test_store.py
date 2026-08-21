@@ -138,6 +138,39 @@ def test_distinct_sources_hides_out_of_scope_accounts_but_keeps_unscoped(
     assert ks.distinct_sources(accounts=[]) == ["slack"]
 
 
+def test_account_scope_keeps_positive_gmail_imap_provenance(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="work Google OAuth mail",
+        source="gmail",
+        doc_id="gmail:work:1",
+        metadata={"account": "work", "connector": "gmail"},
+    )
+    _store(
+        ks,
+        content="personal Google OAuth mail",
+        source="gmail",
+        doc_id="gmail:personal:1",
+        metadata={"account": "personal", "connector": "gmail"},
+    )
+    _store(
+        ks,
+        content="independent IMAP mail",
+        source="gmail",
+        doc_id="gmail:imap:1",
+        metadata={"imap_uid": "41", "imap_uidvalidity": "777"},
+    )
+
+    results = ks.retrieve("mail", top_k=10, accounts=["work"])
+
+    assert {result.metadata["doc_id"] for result in results} == {
+        "gmail:imap:1",
+        "gmail:work:1",
+    }
+
+
 def test_retrieve_rejects_conflicting_scoped_and_explicit_accounts(
     ks: KnowledgeStore,
 ) -> None:

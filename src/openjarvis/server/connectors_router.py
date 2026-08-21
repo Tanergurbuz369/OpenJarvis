@@ -955,9 +955,9 @@ def create_connectors_router():
                     old_checkpoints = {
                         key: engine.get_checkpoint(key) for key in sync_keys.values()
                     }
-                    for key in sync_keys.values():
-                        engine.reset_checkpoint(key)
                     try:
+                        for key in sync_keys.values():
+                            engine.reset_checkpoint(key)
                         if not account and provider and provider.name == "google":
                             store.delete_unscoped_sources_with_attribution(
                                 purge_sources,

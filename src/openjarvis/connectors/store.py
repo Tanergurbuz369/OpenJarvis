@@ -41,6 +41,14 @@ def google_account_scope_sql(
         f"CASE WHEN json_valid({prefix}metadata) "
         f"THEN json_extract({prefix}metadata, '$.account') END"
     )
+    connector_expr = (
+        f"CASE WHEN json_valid({prefix}metadata) "
+        f"THEN json_extract({prefix}metadata, '$.connector') END"
+    )
+    imap_uid_expr = (
+        f"CASE WHEN json_valid({prefix}metadata) "
+        f"THEN json_extract({prefix}metadata, '$.imap_uid') END"
+    )
     google_sources = tuple(OAUTH_PROVIDERS["google"].connector_ids)
     google_placeholders = ", ".join("?" for _ in google_sources)
     params: list[Any] = []
@@ -50,10 +58,13 @@ def google_account_scope_sql(
         allowed = f"{account_expr} IN ({account_placeholders})"
         params.extend(accounts)
     params.extend(google_sources)
-    clause = (
-        f"({allowed} OR (COALESCE({account_expr}, '') = '' AND "
-        f"{prefix}source NOT IN ({google_placeholders})))"
+    non_google_row = (
+        f"({prefix}source NOT IN ({google_placeholders}) OR "
+        f"({prefix}source = 'gmail' AND "
+        f"({connector_expr} = 'gmail_imap' OR "
+        f"COALESCE({imap_uid_expr}, '') != '')))"
     )
+    clause = f"({allowed} OR (COALESCE({account_expr}, '') = '' AND {non_google_row}))"
     return clause, params
 
 

@@ -595,6 +595,62 @@ def test_disconnect_restores_checkpoint_when_purge_fails(app, monkeypatch) -> No
         _instances.pop("obsidian", None)
 
 
+def test_disconnect_restores_all_checkpoints_when_reset_fails(app, monkeypatch) -> None:
+    """A mid-provider reset failure must roll back earlier checkpoint resets."""
+    from openjarvis.connectors.pipeline import IngestionPipeline
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.connectors.sync_engine import SyncEngine
+    from openjarvis.server.connectors_router import _instances
+
+    class FakeConnector:
+        def __init__(self, connector_id):
+            self.connector_id = connector_id
+            self.connected = True
+
+        def is_connected(self):
+            return self.connected
+
+        def disconnect(self):
+            self.connected = False
+
+    google_ids = ("gcalendar", "gcontacts", "gdrive", "gmail", "google_tasks")
+    for connector_id in google_ids:
+        _instances[connector_id] = FakeConnector(connector_id)
+
+    original_reset = SyncEngine.reset_checkpoint
+    with KnowledgeStore() as store:
+        with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
+            for index, connector_id in enumerate(google_ids, start=1):
+                engine._save_checkpoint(connector_id, index, cursor=connector_id)
+
+    reset_calls = 0
+
+    def fail_second_reset(self, connector_id):
+        nonlocal reset_calls
+        reset_calls += 1
+        if reset_calls == 2:
+            raise RuntimeError("simulated reset failure")
+        return original_reset(self, connector_id)
+
+    monkeypatch.setattr(SyncEngine, "reset_checkpoint", fail_second_reset)
+    try:
+        response = app.post("/v1/connectors/gdrive/disconnect")
+        assert response.status_code == 500
+        assert all(_instances[key].is_connected() for key in google_ids)
+
+        with KnowledgeStore() as store:
+            with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
+                for index, connector_id in enumerate(google_ids, start=1):
+                    checkpoint = engine.get_checkpoint(connector_id)
+                    assert checkpoint is not None
+                    assert checkpoint["items_synced"] == index
+                    assert checkpoint["cursor"] == connector_id
+                    original_reset(engine, connector_id)
+    finally:
+        for connector_id in google_ids:
+            _instances.pop(connector_id, None)
+
+
 def test_sync_status(app):
     """GET /v1/connectors/obsidian/sync returns a response with a state field."""
     resp = app.get("/v1/connectors/obsidian/sync")
