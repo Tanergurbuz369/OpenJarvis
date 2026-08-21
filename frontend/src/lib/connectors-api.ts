@@ -55,6 +55,7 @@ export async function startServerOAuth(
   id: string,
   oauthStartPath?: string,
   existingPopup?: Window | null,
+  requestedAccount = '',
 ): Promise<void> {
   const popup = existingPopup ?? openServerOAuthPopup();
   if (!popup) {
@@ -62,6 +63,9 @@ export async function startServerOAuth(
   }
   const path = oauthStartPath || `/v1/connectors/${encodeURIComponent(id)}/oauth/start`;
   const startUrl = new URL(`${getBase()}${path}`, window.location.origin);
+  if (requestedAccount && !startUrl.searchParams.has('account')) {
+    startUrl.searchParams.set('account', requestedAccount);
+  }
   const account = startUrl.searchParams.get('account') || '';
   startUrl.searchParams.set('response_mode', 'json');
 

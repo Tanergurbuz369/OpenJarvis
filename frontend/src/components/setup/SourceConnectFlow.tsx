@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CheckCircle2,
   Circle,
@@ -10,10 +10,17 @@ import {
 import { SOURCE_CATALOG } from '../../types/connectors';
 import {
   connectSource,
+  listConnectors,
   openServerOAuthPopup,
   startServerOAuth,
 } from '../../lib/connectors-api';
-import type { ConnectRequest, ConnectorMeta } from '../../types/connectors';
+import { GoogleAccountField, supportsGoogleAccounts } from '../GoogleAccountField';
+import type {
+  ConnectRequest,
+  ConnectorInfo,
+  ConnectorMeta,
+  ConnectResponse,
+} from '../../types/connectors';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -24,7 +31,18 @@ type SourceState = 'pending' | 'connecting' | 'connected' | 'skipped' | 'error';
 interface SourceEntry {
   id: string;
   state: SourceState;
+  account?: string;
   error?: string;
+}
+
+export function shouldStartServerOAuth(
+  authType: ConnectorMeta['auth_type'] | undefined,
+  response: ConnectResponse,
+): boolean {
+  return (
+    response.status === 'oauth_required' ||
+    (authType === 'oauth' && !response.connected)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -461,6 +479,30 @@ export function SourceConnectFlow({
     selectedIds.map((id) => ({ id, state: 'pending' as SourceState })),
   );
   const [activeIndex, setActiveIndex] = useState(0);
+  const [googleAccounts, setGoogleAccounts] = useState<
+    Record<string, NonNullable<ConnectorInfo['accounts']>>
+  >({});
+
+  useEffect(() => {
+    let cancelled = false;
+    listConnectors()
+      .then((connectors) => {
+        if (cancelled) return;
+        setGoogleAccounts(
+          Object.fromEntries(
+            connectors
+              .filter((connector) =>
+                supportsGoogleAccounts(connector.connector_id),
+              )
+              .map((connector) => [connector.connector_id, connector.accounts ?? []]),
+          ),
+        );
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const updateEntry = (id: string, patch: Partial<SourceEntry>) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
@@ -477,13 +519,17 @@ export function SourceConnectFlow({
 
   const handleConnect = async (id: string, req: ConnectRequest) => {
     const card = SOURCE_CATALOG.find((item) => item.connector_id === id);
+    const account = entries.find((entry) => entry.id === id)?.account?.trim() ?? '';
     const oauthPopup =
       card?.auth_type === 'oauth' ? openServerOAuthPopup() : null;
     updateEntry(id, { state: 'connecting', error: undefined });
     try {
-      const response = await connectSource(id, req);
-      if (response.status === 'oauth_required') {
-        await startServerOAuth(id, response.oauth_start, oauthPopup);
+      const response = await connectSource(
+        id,
+        account ? { ...req, account } : req,
+      );
+      if (shouldStartServerOAuth(card?.auth_type, response)) {
+        await startServerOAuth(id, response.oauth_start, oauthPopup, account);
       } else {
         oauthPopup?.close();
       }
@@ -555,6 +601,16 @@ export function SourceConnectFlow({
                 </div>
               )}
             </div>
+
+            {supportsGoogleAccounts(activeEntry.id) && (
+              <GoogleAccountField
+                connectorId={activeEntry.id}
+                account={activeEntry.account ?? ''}
+                accounts={googleAccounts[activeEntry.id] ?? []}
+                disabled={activeEntry.state === 'connecting'}
+                onChange={(account) => updateEntry(activeEntry.id, { account })}
+              />
+            )}
 
             {activeEntry.state === 'connected' ? (
               <div className="flex items-center gap-2 text-sm"

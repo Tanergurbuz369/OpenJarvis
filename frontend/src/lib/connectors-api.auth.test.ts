@@ -203,16 +203,67 @@ describe('connectors-api sends the Bearer auth header', () => {
 
   it('scopes connector detail and sync calls to an account alias', async () => {
     fetchMock.mockImplementation(async () => okJson({}));
-    const { getConnector, getSyncStatus, triggerSync } = await freshConnectorsApi();
+    const {
+      connectSource,
+      disconnectSource,
+      getConnector,
+      getSyncStatus,
+      triggerSync,
+    } = await freshConnectorsApi();
 
+    await connectSource('gmail', { account: 'work', code: 'credential' });
     await getConnector('gmail', 'work');
     await getSyncStatus('gmail', 'work');
     await triggerSync('gmail', 'work');
+    await disconnectSource('gmail', undefined, 'work');
 
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/v1/connectors/gmail/connect',
       '/v1/connectors/gmail?account=work',
       '/v1/connectors/gmail/sync?account=work',
       '/v1/connectors/gmail/sync?account=work',
+      '/v1/connectors/gmail/disconnect?account=work',
     ]);
+    expect(fetchMock.mock.calls[0]?.[1]?.body).toBe(
+      JSON.stringify({ account: 'work', code: 'credential' }),
+    );
+  });
+
+  it('carries a requested account through OAuth start and connection polling', async () => {
+    vi.useFakeTimers();
+    const popup = {
+      location: { href: 'about:blank' },
+      close: vi.fn(),
+    };
+    vi.stubGlobal('window', {
+      open: vi.fn(() => popup),
+      location: { origin: 'http://localhost:1313' },
+    });
+    try {
+      fetchMock
+        .mockResolvedValueOnce(
+          okJson({ authorization_url: 'https://accounts.example/authorize' }),
+        )
+        .mockResolvedValueOnce(okJson({ connected: true }));
+      const { startServerOAuth } = await freshConnectorsApi();
+
+      const flow = startServerOAuth(
+        'gdrive',
+        undefined,
+        popup as unknown as Window,
+        'work-team',
+      );
+      await vi.advanceTimersByTimeAsync(2000);
+      await flow;
+
+      expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+        '/v1/connectors/gdrive/oauth/start?account=work-team&response_mode=json',
+        '/v1/connectors/gdrive?account=work-team',
+      ]);
+      expect(popup.location.href).toBe('https://accounts.example/authorize');
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 });

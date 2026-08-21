@@ -277,6 +277,7 @@ def create_connectors_router():
             )
 
         account = _normalise_request_account(connector_id, req)
+        _reject_active_provider_syncs(tuple(provider.connector_ids), account)
         save_client_credentials(
             provider,
             client_id,
@@ -635,6 +636,20 @@ def create_connectors_router():
             )
         account = _normalise_request_account(connector_id, req)
         _reject_pending_disconnect(_instance_key(connector_id, account))
+
+        # Client registration changes a provider-wide credential grant.  Run
+        # that preflight before constructing or invalidating any connector
+        # instance so a sibling Google sync rejects the request atomically:
+        # neither credential files nor the instance cache may change.
+        try:
+            directive = _maybe_oauth_client_pair(connector_id, req)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if directive is not None:
+            return directive
+
         instance = _get_or_create(connector_id, account)
 
         try:
@@ -659,9 +674,6 @@ def create_connectors_router():
                 # localhost:8789 callback server; that thread fails silently in
                 # the bundled desktop context, so the connector never became
                 # connected and never appeared in Data Sources (issue #512).
-                directive = _maybe_oauth_client_pair(connector_id, req)
-                if directive is not None:
-                    return directive
                 if (
                     req.email
                     and req.password
@@ -743,8 +755,10 @@ def create_connectors_router():
                 if req.password and hasattr(instance, "_password"):
                     instance._password = req.password
 
+        except HTTPException:
+            raise
         except Exception as exc:
-            raise HTTPException(status_code=400, detail=str(exc))
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         # Auto-trigger a full backfill on a successful connect. Routed
         # through the same _start_sync helper that POST /sync uses so the

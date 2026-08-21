@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { motion } from 'motion/react';
 import { useAppStore } from '../lib/store';
+import type { CachedConnector } from '../lib/store';
 import {
   fetchManagedAgents,
   fetchAgentChannels,
@@ -23,8 +24,24 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { SOURCE_CATALOG } from '../types/connectors';
-import type { ConnectRequest, ConnectorMeta, SyncStatus, OAuthSetupInfo } from '../types/connectors';
-import { listConnectors, connectSource, disconnectSourceUntilComplete, getConnector, getSyncStatus, triggerSync, openServerOAuthPopup, startServerOAuth } from '../lib/connectors-api';
+import type {
+  ConnectRequest,
+  ConnectorInfo,
+  ConnectorMeta,
+  SyncStatus,
+  OAuthSetupInfo,
+} from '../types/connectors';
+import {
+  listConnectors,
+  connectSource,
+  disconnectSourceUntilComplete,
+  getConnector,
+  getSyncStatus,
+  triggerSync,
+  openServerOAuthPopup,
+  startServerOAuth,
+} from '../lib/connectors-api';
+import { GoogleAccountField, supportsGoogleAccounts } from '../components/GoogleAccountField';
 
 // ---------------------------------------------------------------------------
 // Inline connect form (reused from AgentsPage pattern)
@@ -145,6 +162,7 @@ function InlineConnectForm({
 
 function GenericConnectPanel({
   connectorId,
+  account,
   displayName,
   authType,
   loading,
@@ -153,6 +171,7 @@ function GenericConnectPanel({
   onOAuthStart,
 }: {
   connectorId: string;
+  account?: string;
   displayName: string;
   authType: string;
   loading: boolean;
@@ -166,7 +185,7 @@ function GenericConnectPanel({
   useEffect(() => {
     if (authType !== 'oauth') return;
     let cancelled = false;
-    getConnector(connectorId)
+    getConnector(connectorId, account)
       .then((info) => {
         if (!cancelled) setOauthSetup(info.oauth_setup ?? null);
       })
@@ -174,7 +193,7 @@ function GenericConnectPanel({
     return () => {
       cancelled = true;
     };
-  }, [connectorId, authType]);
+  }, [connectorId, account, authType]);
 
   if (authType === 'local') {
     if (connectorId === 'news_rss') {
@@ -542,10 +561,16 @@ function metaFor(connectorId: string) {
 function GmailOAuthAdvanced({
   loading,
   disabled = false,
+  account,
+  accounts,
+  onAccountChange,
   onConnect,
 }: {
   loading: boolean;
   disabled?: boolean;
+  account: string;
+  accounts: NonNullable<ConnectorInfo['accounts']>;
+  onAccountChange: (account: string) => void;
   onConnect: (req: ConnectRequest) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -591,6 +616,13 @@ function GmailOAuthAdvanced({
             </a>{' '}
             then paste the Client ID and Client Secret below.
           </div>
+          <GoogleAccountField
+            connectorId="gmail"
+            account={account}
+            accounts={accounts}
+            disabled={disabled || loading}
+            onChange={onAccountChange}
+          />
           <InlineConnectForm
             fields={[
               { name: 'email', placeholder: 'Client ID', type: 'text' },
@@ -645,11 +677,37 @@ function formatBacklogRange(iso: string | null | undefined): string | null {
   return `past ${years} year${years === 1 ? '' : 's'}`;
 }
 
+export function connectorInstanceKey(connectorId: string, account = ''): string {
+  return account ? `${connectorId}:${account}` : connectorId;
+}
+
+export function resolveConnectorAccount(
+  connector: CachedConnector,
+  selectedAccount: string | undefined,
+): string {
+  if (selectedAccount !== undefined) return selectedAccount.trim();
+  if (connector.connected) return '';
+  return connector.accounts?.find((profile) => profile.connected)?.account ?? '';
+}
+
+function isSelectedAccountConnected(
+  connector: CachedConnector,
+  account: string,
+): boolean {
+  if (!account) return connector.connected;
+  return Boolean(
+    connector.accounts?.find(
+      (profile) => profile.account === account && profile.connected,
+    ),
+  );
+}
+
 export function SyncStatusDisplay({
   chunks,
   sync,
   unitLabel,
   connectorId,
+  account = '',
   disabled = false,
   onSyncTriggered,
 }: {
@@ -657,6 +715,7 @@ export function SyncStatusDisplay({
   sync: SyncStatus | undefined;
   unitLabel: string;
   connectorId: string;
+  account?: string;
   disabled?: boolean;
   onSyncTriggered: () => void;
 }) {
@@ -668,7 +727,7 @@ export function SyncStatusDisplay({
     setSyncing(true);
     setSyncError('');
     try {
-      await triggerSync(connectorId);
+      await triggerSync(connectorId, account);
       onSyncTriggered();
     } catch (err: any) {
       setSyncError(err.message || 'Sync failed');
@@ -841,6 +900,7 @@ function DataSourcesSection() {
   const isFirstLoad = cachedConnectors === null;
   const [syncStatuses, setSyncStatuses] = useState<Record<string, SyncStatus>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedAccounts, setSelectedAccounts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [disconnectError, setDisconnectError] = useState<{ id: string; message: string } | null>(null);
@@ -856,6 +916,7 @@ function DataSourcesSection() {
           connected: c.connected,
           chunks: (c as any).chunks || 0,
           auth_type: c.auth_type,
+          accounts: c.accounts,
         })),
       );
     } catch {
@@ -865,19 +926,41 @@ function DataSourcesSection() {
 
   const setConnectors = setCachedConnectors;
 
+  const accountFor = useCallback(
+    (connector: CachedConnector) =>
+      resolveConnectorAccount(
+        connector,
+        selectedAccounts[connector.connector_id],
+      ),
+    [selectedAccounts],
+  );
+
+  const selectAccount = useCallback((
+    connectorId: string,
+    account: string,
+    expandedConnectorId = connectorId,
+  ) => {
+    setSelectedAccounts((previous) => ({ ...previous, [connectorId]: account }));
+    setExpandedId(expandedConnectorId);
+  }, []);
+
   // Poll sync status for connected sources
   const loadSyncStatuses = useCallback(async () => {
-    const connected = connectors.filter((c) => c.connected);
+    const connected = connectors.filter((c) =>
+      isSelectedAccountConnected(c, accountFor(c)),
+    );
     const statuses: Record<string, SyncStatus> = {};
     await Promise.all(
       connected.map(async (c) => {
+        const account = accountFor(c);
         try {
-          statuses[c.connector_id] = await getSyncStatus(c.connector_id);
+          statuses[connectorInstanceKey(c.connector_id, account)] =
+            await getSyncStatus(c.connector_id, account);
         } catch { /* */ }
       }),
     );
     setSyncStatuses((prev) => ({ ...prev, ...statuses }));
-  }, [connectors]);
+  }, [accountFor, connectors]);
 
   useEffect(() => {
     void loadConnectors();
@@ -886,12 +969,12 @@ function DataSourcesSection() {
   }, [loadConnectors]);
 
   useEffect(() => {
-    if (connectors.some((c) => c.connected)) {
+    if (connectors.some((c) => isSelectedAccountConnected(c, accountFor(c)))) {
       loadSyncStatuses();
       const interval = setInterval(loadSyncStatuses, 5000);
       return () => clearInterval(interval);
     }
-  }, [connectors, loadSyncStatuses]);
+  }, [accountFor, connectors, loadSyncStatuses]);
 
   const [connectingId, setConnectingId] = useState<string | null>(null);
   const [connectStage, setConnectStage] = useState<string>('');
@@ -899,21 +982,23 @@ function DataSourcesSection() {
 
   useEffect(() => () => disconnectAbortRef.current?.abort(), []);
 
-  const handleDisconnect = async (id: string) => {
+  const handleDisconnect = async (id: string, account = '') => {
     if (disconnectAbortRef.current || loading) return;
+    const instanceKey = connectorInstanceKey(id, account);
     const controller = new AbortController();
     disconnectAbortRef.current = controller;
-    setDisconnectingId(id);
+    setDisconnectingId(instanceKey);
     setDisconnectError(null);
     try {
       await disconnectSourceUntilComplete(id, {
         signal: controller.signal,
+        account,
         onPending: () => {
           setSyncStatuses((prev) => {
-            const current = prev[id];
+            const current = prev[instanceKey];
             return {
               ...prev,
-              [id]: {
+              [instanceKey]: {
                 state: 'stopping',
                 items_synced: current?.items_synced ?? 0,
                 items_total: current?.items_total ?? 0,
@@ -928,14 +1013,14 @@ function DataSourcesSection() {
       });
       setSyncStatuses((prev) => {
         const next = { ...prev };
-        delete next[id];
+        delete next[instanceKey];
         return next;
       });
       await loadConnectors();
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError')) {
         setDisconnectError({
-          id,
+          id: instanceKey,
           message: err instanceof Error ? err.message : 'Disconnect failed',
         });
       }
@@ -947,9 +1032,16 @@ function DataSourcesSection() {
     }
   };
 
-  const handleConnect = async (id: string, req: ConnectRequest | null) => {
+  const handleConnect = async (
+    id: string,
+    req: ConnectRequest | null,
+    requestedAccount?: string,
+  ) => {
     if (loading || disconnectAbortRef.current) return;
     const connector = connectors.find((item) => item.connector_id === id);
+    const account = (
+      requestedAccount ?? (connector ? accountFor(connector) : '')
+    ).trim();
     const oauthPopup =
       req === null || connector?.auth_type === 'oauth'
         ? openServerOAuthPopup()
@@ -959,7 +1051,9 @@ function DataSourcesSection() {
     setConnectStage('Connecting...');
     setConnectError('');
     try {
-      const resp = req === null ? null : await connectSource(id, req);
+      const resp = req === null
+        ? null
+        : await connectSource(id, account ? { ...req, account } : req);
 
       // OAuth connectors (Google Drive/Calendar/Contacts/Gmail/Tasks): pasting
       // a Client ID / Secret only registers the app credentials. The backend
@@ -969,7 +1063,7 @@ function DataSourcesSection() {
       // this the connector would stay "pending" forever — the exact #512 bug.
       if (req === null || resp?.status === 'oauth_required') {
         setConnectStage('Opening provider sign-in...');
-        await startServerOAuth(id, resp?.oauth_start, oauthPopup);
+        await startServerOAuth(id, resp?.oauth_start, oauthPopup, account);
       } else {
         oauthPopup?.close();
       }
@@ -979,15 +1073,16 @@ function DataSourcesSection() {
       // Wait for connector to show as connected
       for (let i = 0; i < 20; i++) {
         await new Promise((r) => setTimeout(r, 2000));
-        const updated = await listConnectors();
-        const target = updated.find((c) => c.connector_id === id);
-        if (target?.connected) {
+        const target = await getConnector(id, account);
+        if (target.connected) {
+          const updated = await listConnectors();
           setConnectors(updated.map((c) => ({
             connector_id: c.connector_id,
             display_name: c.display_name,
             connected: c.connected,
             chunks: (c as any).chunks || 0,
             auth_type: c.auth_type,
+            accounts: c.accounts,
           })));
           break;
         }
@@ -997,7 +1092,7 @@ function DataSourcesSection() {
       // Trigger sync
       setConnectStage('Syncing data...');
       try {
-        await triggerSync(id);
+        await triggerSync(id, account);
       } catch { /* sync may already be running */ }
 
       // Close form after a brief moment
@@ -1030,13 +1125,14 @@ function DataSourcesSection() {
     const gmail = connectors.find((c) => c.connector_id === 'gmail');
     const gmailImap = connectors.find((c) => c.connector_id === 'gmail_imap');
     if (!gmail || !gmailImap) return connectors;
-    if (gmail.connected && !gmailImap.connected) {
+    const gmailConnected = isSelectedAccountConnected(gmail, accountFor(gmail));
+    if (gmailConnected && !gmailImap.connected) {
       return connectors.filter((c) => c.connector_id !== 'gmail_imap');
     }
-    if (gmailImap.connected && !gmail.connected) {
+    if (gmailImap.connected && !gmailConnected) {
       return connectors.filter((c) => c.connector_id !== 'gmail');
     }
-    if (gmail.connected && gmailImap.connected) {
+    if (gmailConnected && gmailImap.connected) {
       const dropId = gmail.chunks >= gmailImap.chunks ? 'gmail_imap' : 'gmail';
       return connectors.filter((c) => c.connector_id !== dropId);
     }
@@ -1044,10 +1140,20 @@ function DataSourcesSection() {
     return connectors.filter((c) => c.connector_id !== 'gmail');
   })();
 
-  const connected = unifiedConnectors.filter((c) => c.connected);
-  const notConnectedBase = unifiedConnectors.filter((c) => !c.connected);
+  const connected = unifiedConnectors.filter((c) =>
+    isSelectedAccountConnected(c, accountFor(c)),
+  );
+  const notConnectedBase = unifiedConnectors.filter(
+    (c) => !isSelectedAccountConnected(c, accountFor(c)),
+  );
   // Always show the upload card in the not-connected list (it has no backend connector)
-  const uploadEntry = { connector_id: 'upload', display_name: 'Upload / Paste', connected: false, chunks: 0, auth_type: 'local' };
+  const uploadEntry: CachedConnector = {
+    connector_id: 'upload',
+    display_name: 'Upload / Paste',
+    connected: false,
+    chunks: 0,
+    auth_type: 'local',
+  };
   const notConnected = notConnectedBase.some((c) => c.connector_id === 'upload')
     ? notConnectedBase
     : [...notConnectedBase, uploadEntry];
@@ -1091,7 +1197,12 @@ function DataSourcesSection() {
           {connected.map((c) => {
             const meta = metaFor(c.connector_id);
             const unit = meta?.unitLabel || 'items';
-            const sync = syncStatuses[c.connector_id];
+            const account = accountFor(c);
+            const instanceKey = connectorInstanceKey(c.connector_id, account);
+            const sync = syncStatuses[instanceKey];
+            const sourceEmail = c.accounts?.find(
+              (profile) => profile.account === account,
+            )?.source_email;
             const hasError = !!sync?.error;
             return (
               <div
@@ -1111,22 +1222,45 @@ function DataSourcesSection() {
                     <div className="font-semibold" style={{ fontSize: 14, fontWeight: 600, color: 'var(--color-text)' }}>
                       {meta?.display_name ?? c.display_name}
                     </div>
+                    {supportsGoogleAccounts(c.connector_id) && (
+                      <GoogleAccountField
+                        connectorId={c.connector_id}
+                        account={account}
+                        accounts={c.accounts ?? []}
+                        disabled={connectorActionsBusy}
+                        onChange={(nextAccount) =>
+                          selectAccount(
+                            c.connector_id,
+                            nextAccount,
+                            c.connector_id === 'gmail'
+                              ? 'gmail_imap'
+                              : c.connector_id,
+                          )
+                        }
+                      />
+                    )}
+                    {sourceEmail && (
+                      <div style={{ fontSize: 10.5, color: 'var(--color-text-tertiary)', marginBottom: 4 }}>
+                        Signed in as {sourceEmail}
+                      </div>
+                    )}
                     <SyncStatusDisplay
                       chunks={c.chunks}
                       sync={sync}
                       unitLabel={unit}
                       connectorId={c.connector_id}
+                      account={account}
                       disabled={connectorActionsBusy}
                       onSyncTriggered={loadConnectors}
                     />
-                    {disconnectError?.id === c.connector_id && (
+                    {disconnectError?.id === instanceKey && (
                       <div style={{ fontSize: 11, color: 'var(--color-error)', marginTop: 4 }}>
                         Disconnect failed: {disconnectError.message}
                       </div>
                     )}
                   </div>
                   <button
-                    onClick={() => handleDisconnect(c.connector_id)}
+                    onClick={() => handleDisconnect(c.connector_id, account)}
                     disabled={connectorActionsBusy}
                     className="hud-label"
                     style={{
@@ -1140,7 +1274,7 @@ function DataSourcesSection() {
                       opacity: connectorActionsBusy ? 0.5 : 1,
                     }}
                   >
-                    {disconnectingId === c.connector_id
+                    {disconnectingId === instanceKey
                       ? sync?.state === 'stopping' ? 'Cleaning up…' : 'Disconnecting…'
                       : sync?.state === 'stopping' ? 'Finish disconnect' : 'Disconnect'}
                   </button>
@@ -1163,6 +1297,13 @@ function DataSourcesSection() {
           {notConnected.map((c) => {
             const meta = metaFor(c.connector_id);
             const isExpanded = expandedId === c.connector_id;
+            const account = accountFor(c);
+            const gmailOAuthConnector = connectors.find(
+              (connector) => connector.connector_id === 'gmail',
+            );
+            const gmailOAuthAccount = gmailOAuthConnector
+              ? accountFor(gmailOAuthConnector)
+              : '';
 
             return (
               <div
@@ -1206,6 +1347,17 @@ function DataSourcesSection() {
 
                 {isExpanded && c.connector_id !== 'upload' && meta?.steps && (
                   <div style={{ borderTop: '1px solid var(--color-border)', padding: 12 }}>
+                    {supportsGoogleAccounts(c.connector_id) && (
+                      <GoogleAccountField
+                        connectorId={c.connector_id}
+                        account={account}
+                        accounts={c.accounts ?? []}
+                        disabled={connectorActionsBusy}
+                        onChange={(nextAccount) =>
+                          selectAccount(c.connector_id, nextAccount)
+                        }
+                      />
+                    )}
                     {meta.steps.map((step, i) => (
                       <div
                         key={i}
@@ -1237,14 +1389,23 @@ function DataSourcesSection() {
                         fields={meta.inputFields}
                         loading={loading && connectingId === c.connector_id}
                         disabled={connectorActionsBusy}
-                        onSubmit={(req) => handleConnect(c.connector_id, req)}
+                        onSubmit={(req) =>
+                          handleConnect(c.connector_id, req, account)
+                        }
                       />
                     )}
                     {c.connector_id === 'gmail_imap' && (
                       <GmailOAuthAdvanced
                         loading={loading && connectingId === 'gmail'}
                         disabled={connectorActionsBusy}
-                        onConnect={(req) => handleConnect('gmail', req)}
+                        account={gmailOAuthAccount}
+                        accounts={gmailOAuthConnector?.accounts ?? []}
+                        onAccountChange={(nextAccount) =>
+                          selectAccount('gmail', nextAccount, 'gmail_imap')
+                        }
+                        onConnect={(req) =>
+                          handleConnect('gmail', req, gmailOAuthAccount)
+                        }
                       />
                     )}
                     {meta?.troubleshooting && (
@@ -1299,14 +1460,30 @@ function DataSourcesSection() {
 
                 {isExpanded && c.connector_id !== 'upload' && !meta?.steps && (
                   <div style={{ borderTop: '1px solid var(--color-border)', padding: 12 }}>
+                    {supportsGoogleAccounts(c.connector_id) && (
+                      <GoogleAccountField
+                        connectorId={c.connector_id}
+                        account={account}
+                        accounts={c.accounts ?? []}
+                        disabled={connectorActionsBusy}
+                        onChange={(nextAccount) =>
+                          selectAccount(c.connector_id, nextAccount)
+                        }
+                      />
+                    )}
                     <GenericConnectPanel
                       connectorId={c.connector_id}
+                      account={account}
                       displayName={meta?.display_name ?? c.display_name}
                       authType={c.auth_type || 'oauth'}
                       loading={loading && connectingId === c.connector_id}
                       disabled={connectorActionsBusy}
-                      onConnect={(req) => handleConnect(c.connector_id, req)}
-                      onOAuthStart={() => handleConnect(c.connector_id, null)}
+                      onConnect={(req) =>
+                        handleConnect(c.connector_id, req, account)
+                      }
+                      onOAuthStart={() =>
+                        handleConnect(c.connector_id, null, account)
+                      }
                     />
                     {connectingId === c.connector_id && connectStage && (
                       <div style={{ marginTop: 8, fontSize: 12, color: 'var(--color-warning)' }}>

@@ -578,6 +578,71 @@ def test_reauth_rejected_while_sibling_account_sync_is_active(
         release.set()
 
 
+def test_client_pair_rejected_before_mutating_credentials_or_instances(
+    client: TestClient,
+    hermetic_connectors: Path,
+) -> None:
+    """A sibling sync makes client-registration POST an atomic 409."""
+    import openjarvis.server.connectors_router as router_mod
+
+    initial = client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    assert initial.status_code == 200
+    account_file = hermetic_connectors / "google" / "accounts" / "work.json"
+    original_credentials = account_file.read_bytes()
+
+    started = threading.Event()
+    release = threading.Event()
+
+    class _BlockingGmail:
+        connector_id = "gmail"
+        _account = "work"
+
+        @staticmethod
+        def is_connected() -> bool:
+            return True
+
+        @staticmethod
+        def sync(*, since=None, cursor=None):
+            del since, cursor
+            started.set()
+            release.wait(timeout=5)
+            if False:
+                yield None
+
+    blocker = _BlockingGmail()
+    router_mod._instances["gmail:work"] = blocker
+    try:
+        sync_response = client.post(
+            "/v1/connectors/gmail/sync",
+            params={"account": "work"},
+        )
+        assert sync_response.status_code == 200
+        assert started.wait(timeout=2)
+        original_instances = dict(router_mod._instances)
+
+        response = client.post(
+            "/v1/connectors/gdrive/connect",
+            json={
+                "code": ("replacement.apps.googleusercontent.com:replacement-secret"),
+                "account": "work",
+            },
+        )
+
+        assert response.status_code == 409
+        assert "sync is active" in response.json()["detail"]
+        assert account_file.read_bytes() == original_credentials
+        assert router_mod._instances.keys() == original_instances.keys()
+        assert all(
+            router_mod._instances[key] is value
+            for key, value in original_instances.items()
+        )
+    finally:
+        release.set()
+
+
 def test_oauth_state_is_required_and_single_use(
     client: TestClient,
 ) -> None:

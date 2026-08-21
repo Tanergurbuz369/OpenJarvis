@@ -14,6 +14,7 @@ import type {
   ToolCallInfo,
   TokenUsage,
 } from '../types';
+import type { ConnectorInfo } from '../types/connectors';
 import type { ManagedAgent } from './api';
 import { isEmbedOnlyModel } from './model-capabilities';
 import { serializeToolCallArguments } from './tool-call';
@@ -24,6 +25,7 @@ export interface CachedConnector {
   connected: boolean;
   chunks: number;
   auth_type: string;
+  accounts?: ConnectorInfo['accounts'];
 }
 
 export interface AgentEvent {
