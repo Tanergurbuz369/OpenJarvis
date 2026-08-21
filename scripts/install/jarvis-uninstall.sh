@@ -11,6 +11,66 @@
 set -euo pipefail
 
 OPENJARVIS_HOME="${OPENJARVIS_HOME:-$HOME/.openjarvis}"
+ASSUME_YES=false
+
+usage() {
+    cat <<'EOF'
+Usage: jarvis-uninstall [-y|--yes]
+
+Removes OpenJarvis and its local data. Without --yes, an explicit confirmation
+is required before config, memory, skills, databases, or connector tokens are
+deleted.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -y|--yes)
+            ASSUME_YES=true
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+if [[ -d "$OPENJARVIS_HOME" ]]; then
+    resolved_install_root="$(cd "$OPENJARVIS_HOME" && pwd -P)"
+    resolved_user_home="$(cd "$HOME" && pwd -P)"
+    if [[ -z "$resolved_install_root" ]] \
+        || [[ "$resolved_install_root" == "/" ]] \
+        || [[ "$resolved_install_root" == "$resolved_user_home" ]]; then
+        echo "Refusing unsafe OPENJARVIS_HOME: $OPENJARVIS_HOME" >&2
+        exit 2
+    fi
+
+    if [[ "$ASSUME_YES" != true ]]; then
+        cat <<EOF
+WARNING: This permanently deletes all OpenJarvis data under:
+  $OPENJARVIS_HOME
+
+That includes config.toml, SOUL.md/MEMORY.md/USER.md, skills, scheduler and
+telemetry databases, stored memory, and connector/OAuth credentials.
+EOF
+        printf 'Type "yes" to continue: '
+        reply=""
+        read -r reply || true
+        case "$reply" in
+            yes|YES|Yes) ;;
+            *)
+                echo "OpenJarvis was not removed."
+                exit 0
+                ;;
+        esac
+    fi
+fi
 
 if [[ -f "$OPENJARVIS_HOME/.state/bg.pid" ]]; then
     pid=$(cat "$OPENJARVIS_HOME/.state/bg.pid" 2>/dev/null || echo "")
@@ -25,7 +85,7 @@ if command -v ollama >/dev/null 2>&1; then
 fi
 
 if [[ -d "$OPENJARVIS_HOME" ]]; then
-    rm -rf "$OPENJARVIS_HOME"
+    rm -rf -- "$OPENJARVIS_HOME"
     echo "Removed $OPENJARVIS_HOME"
 fi
 
