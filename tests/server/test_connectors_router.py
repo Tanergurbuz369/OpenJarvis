@@ -424,18 +424,80 @@ def test_disconnect_preserves_source_owned_by_connected_peer(app) -> None:
                 doc_type="email",
                 doc_id="gmail:shared-owner",
             )
+            store.store(
+                content="Gmail IMAP ownership sentinel",
+                source="gmail",
+                doc_type="email",
+                doc_id="gmail:imap-owner",
+                metadata={"imap_uid": "41"},
+            )
 
         response = app.post("/v1/connectors/gmail_imap/disconnect")
         assert response.status_code == 200
 
         with KnowledgeStore() as store:
-            assert any(
-                result.metadata.get("doc_id") == "gmail:shared-owner"
-                for result in store.retrieve("ownership sentinel", top_k=10)
-            )
+            remaining = store._conn.execute(
+                "SELECT doc_id FROM knowledge_chunks WHERE source = 'gmail'"
+            ).fetchall()
+            assert [row["doc_id"] for row in remaining] == ["gmail:shared-owner"]
             store.delete_by_source("gmail")
     finally:
         _instances.pop("gmail", None)
+        _instances.pop("gmail_imap", None)
+
+
+def test_gmail_imap_disconnect_preserves_named_google_rows(app) -> None:
+    """IMAP cleanup must not depend on a default OAuth instance being active."""
+    from openjarvis.connectors._stubs import SyncStatus
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.server.connectors_router import _instances
+
+    class FakeConnector:
+        def __init__(self, connected):
+            self.indexed_sources = ("gmail",)
+            self.connected = connected
+
+        def is_connected(self):
+            return self.connected
+
+        def disconnect(self):
+            self.connected = False
+
+        def sync_status(self):
+            return SyncStatus()
+
+    _instances["gmail"] = FakeConnector(False)
+    _instances["gmail:work"] = FakeConnector(True)
+    _instances["gmail_imap"] = FakeConnector(True)
+    try:
+        with KnowledgeStore() as store:
+            store.store(
+                content="named work OAuth mail",
+                source="gmail",
+                doc_type="email",
+                doc_id="gmail:work-owned",
+                metadata={"account": "work", "connector": "gmail"},
+            )
+            store.store(
+                content="IMAP mail",
+                source="gmail",
+                doc_type="email",
+                doc_id="gmail:imap-owned",
+                metadata={"imap_uid": "41"},
+            )
+
+        response = app.post("/v1/connectors/gmail_imap/disconnect")
+        assert response.status_code == 200, response.text
+
+        with KnowledgeStore() as store:
+            remaining = store._conn.execute(
+                "SELECT doc_id FROM knowledge_chunks WHERE source = 'gmail'"
+            ).fetchall()
+            assert [row["doc_id"] for row in remaining] == ["gmail:work-owned"]
+            store.delete_by_source("gmail")
+    finally:
+        _instances.pop("gmail", None)
+        _instances.pop("gmail:work", None)
         _instances.pop("gmail_imap", None)
 
 

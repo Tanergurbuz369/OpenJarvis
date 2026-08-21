@@ -505,6 +505,35 @@ def test_legacy_attributed_delete_handles_malformed_metadata_atomically(
     assert [row["doc_id"] for row in remaining] == ["gmail:ambiguous:1"]
 
 
+def test_attributed_delete_recognizes_legacy_gmail_imap_uid(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="named Google OAuth mail",
+        source="gmail",
+        doc_id="gmail:work:1",
+        metadata={"account": "work", "connector": "gmail"},
+    )
+    _store(
+        ks,
+        content="legacy IMAP mail",
+        source="gmail",
+        doc_id="gmail:imap:1",
+        metadata={"imap_uid": "41", "imap_uidvalidity": "777"},
+    )
+
+    assert (
+        ks.delete_unscoped_sources_with_attribution(
+            (),
+            {"gmail": "gmail_imap"},
+        )
+        == 1
+    )
+    remaining = ks._conn.execute("SELECT doc_id FROM knowledge_chunks").fetchall()
+    assert [row["doc_id"] for row in remaining] == ["gmail:work:1"]
+
+
 def test_legacy_attributed_delete_rolls_back_whole_statement_on_error(
     ks: KnowledgeStore,
 ) -> None:

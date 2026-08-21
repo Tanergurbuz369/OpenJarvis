@@ -913,6 +913,13 @@ def create_connectors_router():
             for source in _knowledge_sources(target_id, instance)
         }
         attributed_shared_sources: Dict[str, str] = {}
+        if connector_id == "gmail_imap" and "gmail" in purge_sources:
+            # Gmail IMAP shares ``source='gmail'`` with every Google OAuth
+            # profile.  Its own rows are positively identifiable by connector
+            # provenance or the historical IMAP UID marker, so never make
+            # cleanup depend on which OAuth profile happens to be cached.
+            purge_sources.remove("gmail")
+            attributed_shared_sources["gmail"] = "gmail_imap"
         if not account:
             for other_id in ConnectorRegistry.keys():
                 if other_id in target_ids:
@@ -958,7 +965,10 @@ def create_connectors_router():
                     try:
                         for key in sync_keys.values():
                             engine.reset_checkpoint(key)
-                        if not account and provider and provider.name == "google":
+                        if not account and (
+                            attributed_shared_sources
+                            or (provider and provider.name == "google")
+                        ):
                             store.delete_unscoped_sources_with_attribution(
                                 purge_sources,
                                 attributed_shared_sources,

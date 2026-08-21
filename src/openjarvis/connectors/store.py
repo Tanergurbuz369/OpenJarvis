@@ -617,10 +617,20 @@ class KnowledgeStore(MemoryBackend):
             predicates.append(f"source IN ({placeholders})")
             params.extend(unique_sources)
         for source, connector in attributed:
-            predicates.append(
-                "(source = ? AND CASE WHEN json_valid(metadata) "
-                "THEN json_extract(metadata, '$.connector') END = ?)"
+            connector_match = (
+                "CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.connector') END = ?"
             )
+            if connector == "gmail_imap":
+                # Historical Gmail IMAP rows predate the connector marker but
+                # always carry the UID used for stable mailbox identity.
+                predicates.append(
+                    f"(source = ? AND ({connector_match} OR "
+                    "COALESCE(CASE WHEN json_valid(metadata) "
+                    "THEN json_extract(metadata, '$.imap_uid') END, '') != ''))"
+                )
+            else:
+                predicates.append(f"(source = ? AND {connector_match})")
             params.extend((source, connector))
         if not predicates:
             return 0
