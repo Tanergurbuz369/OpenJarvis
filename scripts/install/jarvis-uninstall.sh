@@ -41,15 +41,41 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
+refuse_unsafe_root() {
+    echo "Refusing unsafe OPENJARVIS_HOME: $OPENJARVIS_HOME" >&2
+    exit 2
+}
+
 if [[ -d "$OPENJARVIS_HOME" ]]; then
     resolved_install_root="$(cd "$OPENJARVIS_HOME" && pwd -P)"
     resolved_user_home="$(cd "$HOME" && pwd -P)"
     if [[ -z "$resolved_install_root" ]] \
         || [[ "$resolved_install_root" == "/" ]] \
-        || [[ "$resolved_install_root" == "$resolved_user_home" ]]; then
-        echo "Refusing unsafe OPENJARVIS_HOME: $OPENJARVIS_HOME" >&2
-        exit 2
+        || [[ "$resolved_install_root" == "$resolved_user_home" ]] \
+        || [[ "$resolved_user_home" == "$resolved_install_root"/* ]]; then
+        refuse_unsafe_root
     fi
+
+    # Never recursively remove a broad system/temp root, even if an unrelated
+    # file happens to resemble an OpenJarvis marker there.
+    case "$resolved_install_root" in
+        /Users|/home|/opt|/tmp|/private|/private/tmp|/var|/var/tmp|/private/var|/private/var/tmp|/usr|/etc)
+            refuse_unsafe_root
+            ;;
+    esac
+
+    # A path being different from $HOME is not evidence that OpenJarvis owns
+    # it.  Require the installer's real, non-symlinked state file and at least
+    # one known completed install stage before authorizing recursive removal.
+    ownership_marker="$resolved_install_root/.state/install-state.json"
+    if [[ ! -f "$ownership_marker" ]] \
+        || [[ -L "$ownership_marker" ]] \
+        || ! grep -Eq '"(install_uv|clone_repo|copy_scripts|create_venv|editable_install)"[[:space:]]*:[[:space:]]*true' "$ownership_marker"; then
+        refuse_unsafe_root
+    fi
+
+    # Use the exact physical path that passed every check below as well.
+    OPENJARVIS_HOME="$resolved_install_root"
 
     if [[ "$ASSUME_YES" != true ]]; then
         cat <<EOF
