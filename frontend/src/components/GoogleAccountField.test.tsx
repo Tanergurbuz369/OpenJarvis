@@ -1,10 +1,14 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-import { GoogleAccountField, supportsGoogleAccounts } from './GoogleAccountField';
+import {
+  GoogleAccountField,
+  normalizeGoogleAccount,
+  supportsGoogleAccounts,
+} from './GoogleAccountField';
 
 describe('Google account profile field', () => {
-  it('renders known aliases and verified source-email provenance', () => {
+  it('renders known aliases and provider-asserted source-email provenance', () => {
     const html = renderToStaticMarkup(
       <GoogleAccountField
         connectorId="gdrive"
@@ -33,6 +37,10 @@ describe('Google account profile field', () => {
     expect(supportsGoogleAccounts('google_tasks')).toBe(true);
     expect(supportsGoogleAccounts('spotify')).toBe(false);
     expect(supportsGoogleAccounts('gmail_imap')).toBe(false);
+  });
+
+  it('normalizes aliases before they reach connector lifecycle state', () => {
+    expect(normalizeGoogleAccount(' Work ')).toBe('work');
   });
 
   it('marks configured disabled profiles as unavailable', () => {

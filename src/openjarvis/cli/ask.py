@@ -157,18 +157,15 @@ def _run_research(
             trace.print(f"  [dim]↳ Clarifying:[/dim] [dim italic]{q}[/dim italic]")
         # final_answer and clarify_response are handled outside the loop.
 
+    config = load_config()
+    configured_defaults = config.agent.default_accounts
+    default_account_scope = config.connectors.google.account_scope(configured_defaults)
     agent = ResearchAgent(
         engine=engine,
         search=HybridSearch(store, embedder),
         model=planner_model,
         on_event=on_event,
-        default_accounts=(
-            accounts
-            if accounts is not None
-            else load_config().connectors.google.enabled_aliases(
-                load_config().agent.default_accounts
-            )
-        ),
+        default_accounts=(accounts if accounts is not None else default_account_scope),
     )
 
     started = time.monotonic()

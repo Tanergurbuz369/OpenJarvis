@@ -75,9 +75,12 @@ jarvis connect google --account work --migrate-legacy-google --sync
 
 The migration flag is intentionally explicit because it deletes only legacy
 Google rows whose metadata has no account alias. It preserves every already
-named profile. Reindexing then writes collision-safe IDs and account metadata,
-preventing duplicates and ensuring a later named disconnect removes all data
-owned by that profile.
+named profile. Historical Gmail OAuth and Gmail IMAP rows both used
+`source = "gmail"`; ambiguous unmarked Gmail rows are therefore preserved
+instead of risking unrelated IMAP mail, while Gmail rows carrying positive
+Google-connector provenance are migrated. Reindexing writes collision-safe IDs
+and account metadata so future disconnects can remove exactly the selected
+profile.
 
 If you need to preserve the existing token without reauthenticating, copy the
 legacy token into the new account directory:
@@ -163,9 +166,12 @@ when available. The email is provenance for display and citation only; it is
 not independently signature-validated and never controls authorization. The
 local alias remains the retrieval boundary.
 
-Setting a declared profile to `enabled = false` prevents CLI/server use and
-removes it from configured default research and digest account lists. Unlisted
-ad-hoc aliases remain enabled for backwards compatibility.
+Setting a declared profile to `enabled = false` prevents new CLI/server use and
+removes it from configured default research and digest account lists. Cleanup
+remains available with `jarvis connect --account ALIAS --disconnect google` or
+the provider-wide disconnect API, so disabling a profile never traps its
+credentials or index. Unlisted ad-hoc aliases remain enabled for backwards
+compatibility.
 
 ## UI And API Sync
 

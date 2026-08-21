@@ -95,3 +95,27 @@ def test_digest_collect_supports_account_scoped_google_source() -> None:
     assert (
         "[gmail:work id=gmail:work:message-1 account=work message_id=message-1]"
     ) in result.content
+
+
+def test_digest_collect_rejects_disabled_named_google_source() -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+    from openjarvis.tools.digest_collect import DigestCollectTool
+
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+    connector_cls = MagicMock()
+
+    with (
+        patch.object(ConnectorRegistry, "contains", return_value=True),
+        patch.object(ConnectorRegistry, "get", return_value=connector_cls),
+        patch("openjarvis.connectors.oauth.get_provider_for_connector") as provider,
+        patch("openjarvis.core.config.load_config", return_value=config),
+    ):
+        provider.return_value.name = "google"
+        result = DigestCollectTool().execute(sources=["gmail:work"])
+
+    assert result.success is True
+    assert "disabled" in result.content
+    connector_cls.assert_not_called()

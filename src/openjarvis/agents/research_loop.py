@@ -23,6 +23,7 @@ import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Callable, Dict, List, Optional, Tuple
+from urllib.parse import quote
 
 from openjarvis.connectors.hybrid_search import HybridSearch, SearchHit
 from openjarvis.core.types import Message, Role, ToolCall
@@ -264,6 +265,15 @@ def _bare_doc_id(source: str, document_id: str) -> str:
     return document_id
 
 
+def _native_doc_id(source: str, document_id: str, account: str = "") -> str:
+    """Strip connector and named-profile prefixes from a stored document ID."""
+    bare = _bare_doc_id(source, document_id)
+    account_prefix = f"{account}:" if account else ""
+    if account_prefix and bare.startswith(account_prefix):
+        return bare[len(account_prefix) :]
+    return bare
+
+
 def _hit_url(source: str, document_id: str) -> str:
     """Reconstruct a clickable URL from a hit's ``doc_id`` alone.
 
@@ -408,7 +418,22 @@ def build_sources_for_client(
         # link for sources whose web URL doesn't derive from the doc_id.
         # Fall back to the doc_id-based reconstruction for sources where
         # that still works (Slack, Gmail).
-        url = h.url or _hit_url(h.source, h.document_id)
+        source_id = _native_doc_id(h.source, h.document_id, h.account)
+        if h.url:
+            url = h.url
+        elif h.source == "gmail" and h.account:
+            # A named Gmail citation must never fall back to browser slot
+            # /u/0, which can open a different signed-in identity.  Rebuild
+            # only when provider-asserted email provenance is available;
+            # otherwise omit the ambiguous link.
+            url = (
+                "https://mail.google.com/mail/?authuser="
+                f"{quote(h.source_email.strip(), safe='')}#all/{source_id}"
+                if h.source_email and source_id
+                else ""
+            )
+        else:
+            url = _hit_url(h.source, h.document_id)
         out.append(
             {
                 "ref": i + 1 + ref_offset,
@@ -419,7 +444,7 @@ def build_sources_for_client(
                 "account": h.account,
                 "source_profile": h.source_profile,
                 "source_email": h.source_email,
-                "source_id": _bare_doc_id(h.source, h.document_id),
+                "source_id": source_id,
                 "url": url,
             }
         )
@@ -525,9 +550,11 @@ class ResearchAgent:
         self._on_event = on_event
         from openjarvis.connectors.oauth import normalize_account_alias
 
-        self._default_accounts = [
-            normalize_account_alias(account) for account in (default_accounts or [])
-        ]
+        self._default_accounts = (
+            None
+            if default_accounts is None
+            else [normalize_account_alias(account) for account in default_accounts]
+        )
         # Explicit list wins; otherwise we'll discover sources from the
         # KnowledgeStore on each run() call so the prompt stays accurate
         # even as the user connects new connectors mid-session.
@@ -606,13 +633,15 @@ class ResearchAgent:
                 except ValueError:
                     normalized_accounts.append("__openjarvis_no_matching_account__")
             accounts = normalized_accounts
-        if self._default_accounts:
+        if self._default_accounts is not None:
             # User/configured account scope is an authorization-style
             # boundary, not a planner hint.  A model-generated scoped source
             # (for example ``gmail:personal``) must never bypass an explicit
             # ``--account work`` restriction.  Planner-provided account
             # filters may narrow a multi-account boundary, but never widen it.
-            if accounts:
+            if not self._default_accounts:
+                accounts = ["__openjarvis_no_matching_account__"]
+            elif accounts:
                 requested = set(accounts)
                 accounts = [
                     account

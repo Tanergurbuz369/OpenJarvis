@@ -13,6 +13,10 @@ export function supportsGoogleAccounts(connectorId: string): boolean {
   return GOOGLE_CONNECTORS.has(connectorId);
 }
 
+export function normalizeGoogleAccount(account: string): string {
+  return account.trim().toLowerCase();
+}
+
 export function GoogleAccountField({
   connectorId,
   account,
@@ -31,13 +35,13 @@ export function GoogleAccountField({
 
   useEffect(() => setDraft(account), [account]);
 
-  const normalizedDraft = draft.trim().toLowerCase();
+  const normalizedDraft = normalizeGoogleAccount(draft);
   const disabledProfile = accounts.find(
     (profile) =>
       profile.account.toLowerCase() === normalizedDraft && profile.enabled === false,
   );
   const commit = () => {
-    if (!disabledProfile) onChange(draft.trim());
+    if (!disabledProfile) onChange(normalizedDraft);
   };
 
   return (

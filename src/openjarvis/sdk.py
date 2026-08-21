@@ -499,9 +499,14 @@ class Jarvis:
                         expand_account_sources,
                     )
 
+                    configured_accounts = dc.accounts
+                    enabled_accounts = self._config.connectors.google.account_scope(
+                        configured_accounts
+                    )
                     section_sources[s] = expand_account_sources(
                         sc.sources,
-                        self._config.connectors.google.enabled_aliases(dc.accounts),
+                        enabled_accounts,
+                        is_account_enabled=self._config.connectors.google.is_enabled,
                     )
             agent_kwargs.update(
                 {

@@ -1738,6 +1738,15 @@ class GoogleConnectorsConfig:
                 enabled.append(alias)
         return enabled
 
+    def account_scope(self, accounts: List[str]) -> Optional[List[str]]:
+        """Return the enforced runtime scope for a configured alias list.
+
+        ``None`` means no boundary was configured.  An empty list means a
+        boundary exists but every named profile is disabled; callers must
+        preserve that distinction and match no Google data.
+        """
+        return self.enabled_aliases(accounts) if accounts else None
+
 
 @dataclass
 class ConnectorsConfig:

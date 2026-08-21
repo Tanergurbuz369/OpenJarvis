@@ -461,16 +461,21 @@ def _google_action_scope(
         if possible_account and (not account or possible_account == account):
             account = account or possible_account
             raw_id = native_id
+    if account:
+        from openjarvis.core.config import load_config
+
+        if not load_config().connectors.google.is_enabled(account):
+            raise ValueError(f"Google account profile '{account}' is disabled")
     return account, raw_id
 
 
 def _exec_email_delete(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    account, msg_id = _google_action_scope(
-        payload, connector_id="gmail", id_field="message_id"
-    )
-    if not msg_id:
-        return False, "Missing message_id in payload"
     try:
+        account, msg_id = _google_action_scope(
+            payload, connector_id="gmail", id_field="message_id"
+        )
+        if not msg_id:
+            return False, "Missing message_id in payload"
         from openjarvis.connectors.gmail import GmailConnector
 
         conn = GmailConnector(account=account)
@@ -481,12 +486,12 @@ def _exec_email_delete(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_email_archive(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    account, msg_id = _google_action_scope(
-        payload, connector_id="gmail", id_field="message_id"
-    )
-    if not msg_id:
-        return False, "Missing message_id in payload"
     try:
+        account, msg_id = _google_action_scope(
+            payload, connector_id="gmail", id_field="message_id"
+        )
+        if not msg_id:
+            return False, "Missing message_id in payload"
         from openjarvis.connectors.gmail import GmailConnector
 
         conn = GmailConnector(account=account)
@@ -511,13 +516,13 @@ def _exec_sms_send(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_calendar_decline(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    account, event_id = _google_action_scope(
-        payload, connector_id="gcalendar", id_field="event_id"
-    )
-    calendar_id = payload.get("calendar_id", "primary")
-    if not event_id:
-        return False, "Missing event_id in payload"
     try:
+        account, event_id = _google_action_scope(
+            payload, connector_id="gcalendar", id_field="event_id"
+        )
+        calendar_id = payload.get("calendar_id", "primary")
+        if not event_id:
+            return False, "Missing event_id in payload"
         from openjarvis.connectors.gcalendar import GCalendarConnector
 
         conn = GCalendarConnector(account=account)
@@ -528,13 +533,13 @@ def _exec_calendar_decline(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_calendar_accept(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    account, event_id = _google_action_scope(
-        payload, connector_id="gcalendar", id_field="event_id"
-    )
-    calendar_id = payload.get("calendar_id", "primary")
-    if not event_id:
-        return False, "Missing event_id in payload"
     try:
+        account, event_id = _google_action_scope(
+            payload, connector_id="gcalendar", id_field="event_id"
+        )
+        calendar_id = payload.get("calendar_id", "primary")
+        if not event_id:
+            return False, "Missing event_id in payload"
         from openjarvis.connectors.gcalendar import GCalendarConnector
 
         conn = GCalendarConnector(account=account)

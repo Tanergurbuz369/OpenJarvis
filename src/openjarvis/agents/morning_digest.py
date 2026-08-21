@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List, Optional
+from typing import Any, Callable, List, Optional
 
 from openjarvis.agents._stubs import AgentContext, AgentResult, ToolUsingAgent
 from openjarvis.agents.digest_store import DigestArtifact, DigestStore
@@ -26,16 +26,34 @@ _GOOGLE_PROFILE_SOURCES = {
 }
 
 
-def expand_account_sources(sources: List[str], accounts: List[str]) -> List[str]:
-    """Expand unscoped Google digest sources across configured profiles."""
-    if not accounts:
-        return list(sources)
+def expand_account_sources(
+    sources: List[str],
+    accounts: Optional[List[str]],
+    *,
+    is_account_enabled: Optional[Callable[[str], bool]] = None,
+) -> List[str]:
+    """Expand and enforce Google profile scope for digest sources.
+
+    ``None`` means no account scope was configured, while an empty list means
+    a scope was configured but every requested profile was disabled. Keeping
+    those states distinct prevents an all-disabled config from widening back
+    to every Google account.
+    """
     from openjarvis.connectors.oauth import normalize_account_alias
 
-    aliases = [normalize_account_alias(account) for account in accounts]
+    aliases = (
+        None
+        if accounts is None
+        else [normalize_account_alias(account) for account in accounts]
+    )
     expanded: List[str] = []
     for source in sources:
-        if ":" in source or source not in _GOOGLE_PROFILE_SOURCES:
+        connector_id, separator, raw_account = source.partition(":")
+        if separator and connector_id in _GOOGLE_PROFILE_SOURCES:
+            alias = normalize_account_alias(raw_account)
+            if is_account_enabled is None or is_account_enabled(alias):
+                expanded.append(f"{connector_id}:{alias}")
+        elif source not in _GOOGLE_PROFILE_SOURCES or aliases is None:
             expanded.append(source)
         else:
             expanded.extend(f"{source}:{account}" for account in aliases)

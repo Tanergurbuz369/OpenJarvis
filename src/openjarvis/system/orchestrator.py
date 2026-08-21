@@ -180,9 +180,14 @@ class QueryOrchestrator:
                         expand_account_sources,
                     )
 
+                    configured_accounts = dc.accounts
+                    enabled_accounts = s.config.connectors.google.account_scope(
+                        configured_accounts
+                    )
                     section_sources[sec] = expand_account_sources(
                         sc.sources,
-                        s.config.connectors.google.enabled_aliases(dc.accounts),
+                        enabled_accounts,
+                        is_account_enabled=s.config.connectors.google.is_enabled,
                     )
             agent_kwargs.update(
                 {

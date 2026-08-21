@@ -62,7 +62,7 @@ describe('connector lifecycle status', () => {
     };
 
     expect(resolveConnectorAccount(connector, undefined)).toBe('work');
-    expect(resolveConnectorAccount(connector, 'personal')).toBe('personal');
+    expect(resolveConnectorAccount(connector, ' Personal ')).toBe('personal');
     expect(connectorInstanceKey('gdrive', 'work')).toBe('gdrive:work');
     expect(connectorInstanceKey('gdrive')).toBe('gdrive');
   });

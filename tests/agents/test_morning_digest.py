@@ -30,6 +30,22 @@ def test_expand_account_sources_scopes_only_google_connectors() -> None:
     ]
 
 
+def test_expand_account_sources_fails_closed_when_profiles_are_disabled() -> None:
+    from openjarvis.agents.morning_digest import expand_account_sources
+
+    assert expand_account_sources(
+        ["gmail", "gcalendar:disabled", "slack"],
+        [],
+        is_account_enabled=lambda account: account != "disabled",
+    ) == ["slack"]
+
+
+def test_expand_account_sources_keeps_unconfigured_legacy_google_source() -> None:
+    from openjarvis.agents.morning_digest import expand_account_sources
+
+    assert expand_account_sources(["gmail", "slack"], None) == ["gmail", "slack"]
+
+
 def test_morning_digest_run(tmp_path):
     from openjarvis.agents.morning_digest import MorningDigestAgent
 

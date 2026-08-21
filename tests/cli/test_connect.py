@@ -236,7 +236,7 @@ def test_legacy_migration_is_explicit_and_precedes_named_sync() -> None:
         ),
         mock.patch(
             "openjarvis.cli.connect_cmd._connect_source",
-            side_effect=lambda *args, **kwargs: calls.append("connect"),
+            side_effect=lambda *args, **kwargs: calls.append("connect") or True,
         ),
         mock.patch(
             "openjarvis.cli.connect_cmd._sync_sources",
@@ -263,6 +263,89 @@ def test_legacy_migration_is_explicit_and_precedes_named_sync() -> None:
     assert calls == ["connect", "migrate:work", "sync"]
 
 
+def test_failed_google_oauth_does_not_migrate_existing_legacy_rows() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch(
+            "openjarvis.connectors.gmail.GmailConnector.is_connected",
+            return_value=False,
+        ),
+        mock.patch(
+            "openjarvis.connectors.oauth.get_client_credentials",
+            return_value=("client.apps.googleusercontent.com", "secret"),
+        ),
+        mock.patch(
+            "openjarvis.connectors.oauth.run_connector_oauth",
+            side_effect=RuntimeError("provider rejected reauth"),
+        ),
+        mock.patch(
+            "openjarvis.cli.connect_cmd._migrate_legacy_google_index"
+        ) as migrate,
+    ):
+        result = runner.invoke(
+            cli,
+            ["connect", "--account", "work", "--migrate-legacy-google", "google"],
+        )
+
+    assert result.exit_code == 1
+    assert "legacy data was not changed" in result.output
+    migrate.assert_not_called()
+
+
+def test_copied_named_token_can_migrate_without_reauthentication() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch(
+            "openjarvis.connectors.gmail.GmailConnector.is_connected",
+            return_value=True,
+        ),
+        mock.patch("openjarvis.connectors.oauth.run_connector_oauth") as oauth,
+        mock.patch(
+            "openjarvis.cli.connect_cmd._migrate_legacy_google_index"
+        ) as migrate,
+    ):
+        result = runner.invoke(
+            cli,
+            ["connect", "--account", "work", "--migrate-legacy-google", "google"],
+        )
+
+    assert result.exit_code == 0, result.output
+    oauth.assert_not_called()
+    migrate.assert_called_once_with("work")
+
+
+def test_legacy_migration_preserves_ambiguous_gmail_rows() -> None:
+    from openjarvis.cli.connect_cmd import _migrate_legacy_google_index
+
+    store = mock.MagicMock()
+    store.__enter__.return_value = store
+    engine = mock.MagicMock()
+    engine.__enter__.return_value = engine
+
+    with (
+        mock.patch(
+            "openjarvis.connectors.store.KnowledgeStore",
+            return_value=store,
+        ),
+        mock.patch(
+            "openjarvis.connectors.sync_engine.SyncEngine",
+            return_value=engine,
+        ),
+    ):
+        _migrate_legacy_google_index("work")
+
+    calls = store.delete_by_sources.call_args_list
+    assert calls[-2].kwargs == {"unscoped_only": True}
+    assert "gmail" not in calls[-2].args[0]
+    assert calls[-1].args == (("gmail",),)
+    assert calls[-1].kwargs == {
+        "unscoped_only": True,
+        "metadata_connector": "gmail",
+    }
+
+
 def test_disabled_configured_google_account_is_rejected(monkeypatch) -> None:
     from openjarvis.core.config import (
         GoogleAccountProfileConfig,
@@ -279,3 +362,22 @@ def test_disabled_configured_google_account_is_rejected(monkeypatch) -> None:
 
     assert result.exit_code == 2
     assert "disabled in config.toml" in result.output
+
+
+def test_disabled_google_account_can_still_be_disconnected(monkeypatch) -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+    monkeypatch.setattr("openjarvis.core.config.load_config", lambda: config)
+
+    with mock.patch("openjarvis.cli.connect_cmd._purge_google_account_index") as purge:
+        result = CliRunner().invoke(
+            cli,
+            ["connect", "--account", "work", "--disconnect", "google"],
+        )
+
+    assert result.exit_code == 0, result.output
+    purge.assert_called_once_with("work")

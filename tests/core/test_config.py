@@ -254,6 +254,9 @@ class TestAgentConfigNew:
         assert cfg.connectors.google.enabled_aliases(
             ["Work", "Personal", "personal"]
         ) == ["personal"]
+        assert cfg.connectors.google.account_scope([]) is None
+        assert cfg.connectors.google.account_scope(["work"]) == []
+        assert cfg.connectors.google.account_scope(["personal", "work"]) == ["personal"]
 
     def test_default_tools_backward_compat(self) -> None:
         ac = AgentConfig()

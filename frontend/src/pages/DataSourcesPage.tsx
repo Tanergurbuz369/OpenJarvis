@@ -41,7 +41,11 @@ import {
   openServerOAuthPopup,
   startServerOAuth,
 } from '../lib/connectors-api';
-import { GoogleAccountField, supportsGoogleAccounts } from '../components/GoogleAccountField';
+import {
+  GoogleAccountField,
+  normalizeGoogleAccount,
+  supportsGoogleAccounts,
+} from '../components/GoogleAccountField';
 
 // ---------------------------------------------------------------------------
 // Inline connect form (reused from AgentsPage pattern)
@@ -685,7 +689,7 @@ export function resolveConnectorAccount(
   connector: CachedConnector,
   selectedAccount: string | undefined,
 ): string {
-  if (selectedAccount !== undefined) return selectedAccount.trim();
+  if (selectedAccount !== undefined) return normalizeGoogleAccount(selectedAccount);
   if (connector.connected) return '';
   return (
     connector.accounts?.find(
@@ -702,7 +706,7 @@ function isSelectedAccountConnected(
   return Boolean(
     connector.accounts?.find(
       (profile) =>
-        profile.account === account &&
+        normalizeGoogleAccount(profile.account) === normalizeGoogleAccount(account) &&
         profile.enabled !== false &&
         profile.connected,
     ),
@@ -1208,7 +1212,9 @@ function DataSourcesSection() {
             const instanceKey = connectorInstanceKey(c.connector_id, account);
             const sync = syncStatuses[instanceKey];
             const sourceEmail = c.accounts?.find(
-              (profile) => profile.account === account,
+              (profile) =>
+                normalizeGoogleAccount(profile.account) ===
+                normalizeGoogleAccount(account),
             )?.source_email;
             const hasError = !!sync?.error;
             return (

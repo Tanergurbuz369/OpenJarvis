@@ -138,7 +138,12 @@ def create_connectors_router():
     def _instance_key(connector_id: str, account: str = "") -> str:
         return f"{connector_id}:{account}" if account else connector_id
 
-    def _normalise_account(connector_id: str, account: str = "") -> str:
+    def _normalise_account(
+        connector_id: str,
+        account: str = "",
+        *,
+        allow_disabled: bool = False,
+    ) -> str:
         """Validate account aliases and reject false isolation for other providers."""
         from openjarvis.connectors.oauth import (
             get_provider_for_connector,
@@ -153,7 +158,7 @@ def create_connectors_router():
                 "Named account profiles are currently supported only for Google "
                 "connectors.",
             )
-        if alias:
+        if alias and not allow_disabled:
             from openjarvis.core.config import load_config
 
             if not load_config().connectors.google.is_enabled(alias):
@@ -360,6 +365,18 @@ def create_connectors_router():
         if stored_connector != connector_id or deadline <= time.monotonic():
             raise HTTPException(400, "Invalid or expired OAuth state")
         return account
+
+    def _revoke_oauth_states(connector_ids: tuple[str, ...], account: str) -> None:
+        """Invalidate pending callbacks for a disconnected provider profile."""
+        connector_set = set(connector_ids)
+        with _oauth_state_lock:
+            stale = [
+                state
+                for state, (connector_id, state_account, _) in _oauth_states.items()
+                if connector_id in connector_set and state_account == account
+            ]
+            for state in stale:
+                _oauth_states.pop(state, None)
 
     def _disconnect_pending(sync_key: str) -> bool:
         """Whether a prior disconnect is waiting for its worker to stop."""
@@ -658,6 +675,12 @@ def create_connectors_router():
         if directive is not None:
             return directive
 
+        from openjarvis.connectors.oauth import get_provider_for_connector
+
+        provider = get_provider_for_connector(connector_id)
+        if provider is not None and (req.code or req.token):
+            _reject_active_provider_syncs(tuple(provider.connector_ids), account)
+
         instance = _get_or_create(connector_id, account)
 
         try:
@@ -794,7 +817,11 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        account = _normalise_account(connector_id, account)
+        account = _normalise_account(
+            connector_id,
+            account,
+            allow_disabled=True,
+        )
         from openjarvis.connectors.oauth import get_provider_for_connector
 
         provider = get_provider_for_connector(connector_id)
@@ -849,6 +876,8 @@ def create_connectors_router():
                     "indexed content was not purged"
                 ),
             )
+
+        _revoke_oauth_states(tuple(target_ids), account)
 
         # Only revoke/delete credentials after the worker has relinquished
         # the old connection.  A timeout must leave the connector usable and
@@ -1019,7 +1048,10 @@ def create_connectors_router():
 
         _ensure_connectors_registered()
 
-        account_alias = _consume_oauth_state(connector_id, state)
+        account_alias = _normalise_account(
+            connector_id,
+            _consume_oauth_state(connector_id, state),
+        )
         _reject_pending_disconnect(_instance_key(connector_id, account_alias))
 
         if error:

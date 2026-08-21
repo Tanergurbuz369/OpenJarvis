@@ -421,13 +421,17 @@ async def _stream_research(
             )
             embedder = None
 
+        configured_defaults = config.agent.default_accounts
+        default_account_scope = config.connectors.google.account_scope(
+            configured_defaults
+        )
         agent = ResearchAgent(
             engine=engine,
             search=HybridSearch(store, embedder),
             model=model,
             clarify_handler=lambda question: _WEB_CLARIFY_RESPONSE,
             on_event=on_event,
-            default_accounts=config.agent.default_accounts,
+            default_accounts=default_account_scope,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("research: setup failed before agent could run: %s", exc)

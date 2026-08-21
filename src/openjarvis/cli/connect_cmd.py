@@ -129,6 +129,7 @@ def _migrate_legacy_google_index(account: str) -> None:
     from openjarvis.connectors.sync_engine import SyncEngine
 
     connector_ids = tuple(OAUTH_PROVIDERS["google"].connector_ids)
+    unambiguous_sources = tuple(cid for cid in connector_ids if cid != "gmail")
     with KnowledgeStore() as store:
         with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
             old_checkpoints = {
@@ -138,7 +139,18 @@ def _migrate_legacy_google_index(account: str) -> None:
             try:
                 for connector_id in connector_ids:
                     engine.reset_checkpoint(connector_id)
-                store.delete_by_sources(connector_ids, unscoped_only=True)
+                # Gmail OAuth and Gmail IMAP historically shared
+                # ``source='gmail'``.  Delete Gmail rows only when they carry
+                # positive Google-connector provenance; an unmarked row is
+                # ambiguous and must be preserved rather than risking an
+                # unrelated IMAP mailbox.  The other Google source IDs are
+                # unambiguous and safe to migrate by source alone.
+                store.delete_by_sources(unambiguous_sources, unscoped_only=True)
+                store.delete_by_sources(
+                    ("gmail",),
+                    unscoped_only=True,
+                    metadata_connector="gmail",
+                )
             except Exception:
                 for connector_id, checkpoint in old_checkpoints.items():
                     engine.restore_checkpoint(connector_id, checkpoint)
@@ -202,7 +214,7 @@ def _connect_source(
     source: str,
     path: str = "",
     account: str = "",
-) -> None:
+) -> bool:
     """Route connector setup by auth_type."""
     console = Console()
 
@@ -215,6 +227,11 @@ def _connect_source(
         )
 
         try:
+            from openjarvis.connectors.gmail import GmailConnector
+
+            if account and GmailConnector(account=account).is_connected():
+                console.print(f"[green]google:{account} is already connected.[/green]")
+                return True
             provider = OAUTH_PROVIDERS["google"]
             creds = get_client_credentials(provider, account=account)
             client_id = creds[0] if creds else ""
@@ -243,9 +260,10 @@ def _connect_source(
             )
             suffix = f":{account}" if account else ""
             console.print(f"[green]google{suffix} authorised successfully.[/green]")
+            return True
         except Exception as exc:  # noqa: BLE001
             console.print(f"[red]OAuth flow failed for google: {exc}[/red]")
-        return
+            return False
 
     if not registry.contains(source):  # type: ignore[attr-defined]
         console.print(f"[red]Unknown source: {source}[/red]")
@@ -254,7 +272,7 @@ def _connect_source(
             + ", ".join(registry.keys())  # type: ignore[attr-defined]
             + "[/yellow]"
         )
-        return
+        return False
 
     connector_cls = registry.get(source)  # type: ignore[attr-defined]
     auth_type = getattr(connector_cls, "auth_type", "")
@@ -265,7 +283,7 @@ def _connect_source(
             console.print(
                 f"[red]{source} requires a --path argument (e.g. --path ~/vault).[/red]"
             )
-            return
+            return False
         try:
             instance = connector_cls(vault_path=path)
         except TypeError:
@@ -273,15 +291,17 @@ def _connect_source(
                 instance = connector_cls(path)
             except Exception as exc:  # noqa: BLE001
                 console.print(f"[red]Failed to create {source} connector: {exc}[/red]")
-                return
+                return False
 
         if instance.is_connected():
             console.print(f"[green]{source} connected at path: {path}[/green]")
+            return True
         else:
             console.print(
                 f"[red]{source}: path '{path}' does not exist or is not accessible."
                 "[/red]"
             )
+            return False
 
     elif auth_type == "oauth":
         # OAuth connectors — auto-open browser + catch callback
@@ -302,12 +322,12 @@ def _connect_source(
             if instance.is_connected():
                 suffix = f":{account}" if account else ""
                 console.print(f"[green]{source}{suffix} is already connected.[/green]")
-                return
+                return True
 
             provider = get_provider_for_connector(source)
             if provider is None:
                 console.print(f"[red]No OAuth provider configured for {source}.[/red]")
-                return
+                return False
 
             creds = get_client_credentials(provider, account=account)
             client_id = creds[0] if creds else ""
@@ -331,8 +351,10 @@ def _connect_source(
             run_connector_oauth(source, client_id, client_secret, account=account)
             suffix = f":{account}" if account else ""
             console.print(f"[green]{source}{suffix} authorised successfully.[/green]")
+            return True
         except Exception as exc:  # noqa: BLE001
             console.print(f"[red]OAuth flow failed for {source}: {exc}[/red]")
+            return False
 
     elif auth_type == "token":
         # Token-based connectors (e.g. Oura) — prompt for personal access token
@@ -346,7 +368,7 @@ def _connect_source(
             instance = connector_cls()
             if instance.is_connected():
                 console.print(f"[green]{source} is already connected.[/green]")
-                return
+                return True
 
             token = click.prompt(f"Enter your {source} personal access token")
             token_dir = Path(DEFAULT_CONFIG_DIR) / "connectors"
@@ -355,8 +377,10 @@ def _connect_source(
             token_file.write_text(json.dumps({"token": token}))
             save_tokens(source, {"token": token})
             console.print(f"[green]{source} connected successfully.[/green]")
+            return True
         except Exception as exc:  # noqa: BLE001
             console.print(f"[red]Token setup failed for {source}: {exc}[/red]")
+            return False
 
     else:
         # Generic / bridge connectors
@@ -365,8 +389,10 @@ def _connect_source(
             connected = instance.is_connected()
             status = "connected" if connected else "disconnected"
             console.print(f"{source} status: {status}")
+            return connected
         except Exception as exc:  # noqa: BLE001
             console.print(f"[red]Failed to connect {source}: {exc}[/red]")
+            return False
 
 
 @click.group(invoke_without_command=True)
@@ -442,7 +468,11 @@ def connect(
     if account_alias and profile_alias and account_alias != profile_alias:
         raise click.UsageError("--account and --profile must name the same alias")
     account_alias = account_alias or profile_alias
-    if account_alias and not load_config().connectors.google.is_enabled(account_alias):
+    if (
+        account_alias
+        and not disconnect_source
+        and not load_config().connectors.google.is_enabled(account_alias)
+    ):
         raise click.UsageError(
             f"Google account profile '{account_alias}' is disabled in config.toml"
         )
@@ -471,11 +501,19 @@ def connect(
         return
 
     if source:
-        _connect_source(ConnectorRegistry, source, path=path, account=account_alias)
+        connect_succeeded = _connect_source(
+            ConnectorRegistry,
+            source,
+            path=path,
+            account=account_alias,
+        )
         if migrate_legacy_google:
             from openjarvis.connectors.gmail import GmailConnector
 
-            if not GmailConnector(account=account_alias).is_connected():
+            if (
+                not connect_succeeded
+                or not GmailConnector(account=account_alias).is_connected()
+            ):
                 raise click.ClickException(
                     "Google authorization did not complete; legacy data was not changed"
                 )

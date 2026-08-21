@@ -497,6 +497,7 @@ class KnowledgeStore(MemoryBackend):
         *,
         account: Optional[str] = None,
         unscoped_only: bool = False,
+        metadata_connector: Optional[str] = None,
     ) -> int:
         """Atomically delete chunks belonging to *sources* and optional account."""
         if account is not None and unscoped_only:
@@ -512,6 +513,9 @@ class KnowledgeStore(MemoryBackend):
             params = (*params, account)
         elif unscoped_only:
             where += " AND COALESCE(json_extract(metadata, '$.account'), '') = ''"
+        if metadata_connector is not None:
+            where += " AND json_extract(metadata, '$.connector') = ?"
+            params = (*params, metadata_connector)
         try:
             cur = self._conn.execute(
                 f"DELETE FROM knowledge_chunks WHERE {where}",

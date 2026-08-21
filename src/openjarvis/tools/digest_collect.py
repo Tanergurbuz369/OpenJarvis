@@ -523,6 +523,12 @@ class DigestCollectTool(BaseTool):
                             "named digest profiles are supported only for Google "
                             "connectors"
                         )
+                    from openjarvis.core.config import load_config
+
+                    if not load_config().connectors.google.is_enabled(account):
+                        raise ValueError(
+                            f"Google account profile '{account}' is disabled"
+                        )
                 except ValueError as exc:
                     errors.append(f"Invalid source '{requested_source}': {exc}")
                     continue

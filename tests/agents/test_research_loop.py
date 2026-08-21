@@ -289,6 +289,37 @@ def test_build_sources_includes_account_metadata() -> None:
     assert sources[0]["source_profile"] == "work"
 
 
+def test_named_gmail_citation_never_falls_back_to_default_browser_account() -> None:
+    [without_email] = build_sources_for_client(
+        [
+            _mk_hit(
+                source="gmail",
+                document_id="gmail:work:18f9abc",
+                account="work",
+                source_profile="work",
+            )
+        ]
+    )
+    assert without_email["source_id"] == "18f9abc"
+    assert without_email["url"] == ""
+
+    [with_email] = build_sources_for_client(
+        [
+            _mk_hit(
+                source="gmail",
+                document_id="gmail:work:18f9abc",
+                account="work",
+                source_profile="work",
+                source_email="user+work@company.example",
+            )
+        ]
+    )
+    assert with_email["url"] == (
+        "https://mail.google.com/mail/?authuser="
+        "user%2Bwork%40company.example#all/18f9abc"
+    )
+
+
 def test_build_sources_falls_back_to_reconstruction_when_url_missing() -> None:
     """Slack/Gmail still work without a stored URL — reconstructed from doc_id."""
     sources = build_sources_for_client(
@@ -451,6 +482,41 @@ def test_search_account_scalar_is_coerced_to_list(stub_search: MagicMock) -> Non
 
     kwargs = stub_search.search.call_args.kwargs
     assert kwargs.get("accounts") == ["personal"]
+
+
+def test_empty_enforced_account_scope_matches_nothing(
+    stub_search: MagicMock,
+) -> None:
+    """All-disabled configured defaults must not widen back to every account."""
+    engine = _MockEngine(
+        responses=[_search_call("s1"), _text_response("No enabled accounts.")]
+    )
+    agent = ResearchAgent(
+        engine,
+        stub_search,
+        model="mock",
+        max_iterations=2,
+        default_accounts=[],
+    )
+
+    agent.run("search my mail")
+
+    assert stub_search.search.call_args.kwargs["accounts"] == [
+        "__openjarvis_no_matching_account__"
+    ]
+
+
+def test_unconfigured_account_scope_remains_unfiltered(
+    stub_search: MagicMock,
+) -> None:
+    engine = _MockEngine(
+        responses=[_search_call("s1"), _text_response("Unscoped result.")]
+    )
+    agent = ResearchAgent(engine, stub_search, model="mock", max_iterations=2)
+
+    agent.run("search my mail")
+
+    assert stub_search.search.call_args.kwargs["accounts"] is None
 
 
 # ---------------------------------------------------------------------------

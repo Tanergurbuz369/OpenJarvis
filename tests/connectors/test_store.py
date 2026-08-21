@@ -355,6 +355,37 @@ def test_delete_by_sources_can_purge_only_legacy_unscoped_rows(
     assert [row["doc_id"] for row in remaining] == ["gmail:work:1"]
 
 
+def test_delete_by_sources_can_require_positive_connector_provenance(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="legacy Google OAuth mail",
+        source="gmail",
+        doc_id="gmail:oauth:1",
+        metadata={"connector": "gmail"},
+    )
+    _store(
+        ks,
+        content="unrelated IMAP mail",
+        source="gmail",
+        doc_id="gmail:imap:1",
+        metadata={"imap_uid": "41", "imap_uidvalidity": "777"},
+    )
+
+    assert (
+        ks.delete_by_sources(
+            ("gmail",),
+            unscoped_only=True,
+            metadata_connector="gmail",
+        )
+        == 1
+    )
+
+    remaining = ks._conn.execute("SELECT doc_id FROM knowledge_chunks").fetchall()
+    assert [row["doc_id"] for row in remaining] == ["gmail:imap:1"]
+
+
 def test_clear(ks: KnowledgeStore) -> None:
     """clear() removes all stored documents."""
     _store(ks, content="Document one about research")

@@ -515,6 +515,59 @@ def test_named_account_oauth_state_binds_segmented_token(
         assert response.json()["connected"] is False
 
 
+def test_disconnect_revokes_pending_named_oauth_state(
+    client: TestClient,
+    hermetic_connectors: Path,
+) -> None:
+    import openjarvis.connectors.oauth as oauth_mod
+
+    client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    state = _start_state(client, "gdrive", account="work")
+
+    disconnected = client.post(
+        "/v1/connectors/gdrive/disconnect",
+        params={"account": "work"},
+    )
+    assert disconnected.status_code == 200
+
+    with patch.object(oauth_mod, "_exchange_token") as exchange:
+        callback = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "late-code", "state": state},
+        )
+
+    assert callback.status_code == 400
+    exchange.assert_not_called()
+    assert not (hermetic_connectors / "google" / "accounts" / "work.json").exists()
+
+
+def test_callback_rechecks_disabled_profile_after_state_was_issued(
+    client: TestClient,
+) -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+
+    client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    state = _start_state(client, "gdrive", account="work")
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+
+    with patch("openjarvis.core.config.load_config", return_value=config):
+        callback = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "late-code", "state": state},
+        )
+
+    assert callback.status_code == 403
+
+
 def test_named_account_rejected_for_non_google_connector(client: TestClient) -> None:
     response = client.get("/v1/connectors/spotify", params={"account": "work"})
 
@@ -548,6 +601,30 @@ def test_disabled_google_account_is_rejected_by_server(client: TestClient) -> No
 
     assert response.status_code == 403
     assert "disabled in config.toml" in response.json()["detail"]
+
+
+def test_disabled_google_account_can_still_be_disconnected(
+    client: TestClient,
+) -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+
+    client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+
+    with patch("openjarvis.core.config.load_config", return_value=config):
+        response = client.post(
+            "/v1/connectors/gdrive/disconnect",
+            params={"account": "work"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "disconnected"
 
 
 def test_reauth_rejected_while_sibling_account_sync_is_active(
@@ -662,6 +739,61 @@ def test_client_pair_rejected_before_mutating_credentials_or_instances(
             router_mod._instances[key] is value
             for key, value in original_instances.items()
         )
+    finally:
+        release.set()
+
+
+def test_raw_google_token_rejected_while_sibling_sync_is_active(
+    client: TestClient,
+    hermetic_connectors: Path,
+) -> None:
+    import openjarvis.server.connectors_router as router_mod
+
+    initial = client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    assert initial.status_code == 200
+    account_file = hermetic_connectors / "google" / "accounts" / "work.json"
+    original_credentials = account_file.read_bytes()
+    started = threading.Event()
+    release = threading.Event()
+
+    class _BlockingCalendar:
+        connector_id = "gcalendar"
+        _account = "work"
+
+        @staticmethod
+        def is_connected() -> bool:
+            return True
+
+        @staticmethod
+        def sync(*, since=None, cursor=None):
+            del since, cursor
+            started.set()
+            release.wait(timeout=5)
+            if False:
+                yield None
+
+    router_mod._instances["gcalendar:work"] = _BlockingCalendar()
+    try:
+        assert (
+            client.post(
+                "/v1/connectors/gcalendar/sync",
+                params={"account": "work"},
+            ).status_code
+            == 200
+        )
+        assert started.wait(timeout=2)
+
+        response = client.post(
+            "/v1/connectors/gmail/connect",
+            json={"token": "ya29.replacement", "account": "work"},
+        )
+
+        assert response.status_code == 409
+        assert "sync is active" in response.json()["detail"]
+        assert account_file.read_bytes() == original_credentials
     finally:
         release.set()
 
