@@ -56,7 +56,11 @@ class EnergySample:
     vendor: str = ""
     device_name: str = ""
     device_count: int = 0
-    energy_method: str = ""  # "hw_counter", "polling", "rapl", "zeus"
+    # How the numbers above were obtained. "hw_counter" / "polling" (NVIDIA,
+    # AMD), "rapl" (Linux sysfs), "ioreport" (Apple Silicon), or
+    # "tdp_estimate" -- the last being modelled rather than measured, and
+    # opt-in.
+    energy_method: str = ""
 
     # Per-component breakdown (joules)
     cpu_energy_joules: float = 0.0
@@ -104,7 +108,13 @@ class EnergyMonitor(ABC):
 
     @abstractmethod
     def energy_method(self) -> str:
-        """Return the measurement method: 'hw_counter', 'polling', 'rapl', or 'zeus'."""
+        """Return the measurement method.
+
+        One of ``hw_counter``, ``polling``, ``rapl``, ``ioreport``, or
+        ``tdp_estimate``. Everything but the last is a real measurement;
+        ``tdp_estimate`` is modelled and only reachable when the caller
+        explicitly opts in.
+        """
 
     @abstractmethod
     @contextmanager
