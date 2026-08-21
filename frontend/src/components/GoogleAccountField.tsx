@@ -17,6 +17,19 @@ export function normalizeGoogleAccount(account: string): string {
   return account.trim().toLowerCase();
 }
 
+export function canSelectGoogleAccountProfile(
+  accounts: NonNullable<ConnectorInfo['accounts']>,
+  account: string,
+): boolean {
+  const normalized = normalizeGoogleAccount(account);
+  const profile = accounts.find(
+    (candidate) => normalizeGoogleAccount(candidate.account) === normalized,
+  );
+  // A disabled profile cannot be connected or synced, but an existing
+  // connection must remain selectable so the user can disconnect/clean it.
+  return !profile || profile.enabled !== false || profile.connected;
+}
+
 export function GoogleAccountField({
   connectorId,
   account,
@@ -41,8 +54,11 @@ export function GoogleAccountField({
       profile.account.toLowerCase() === normalizedDraft && profile.enabled === false,
   );
   const commit = () => {
-    if (!disabledProfile) onChange(normalizedDraft);
+    if (canSelectGoogleAccountProfile(accounts, normalizedDraft)) {
+      onChange(normalizedDraft);
+    }
   };
+  const profileBlocked = !canSelectGoogleAccountProfile(accounts, normalizedDraft);
 
   return (
     <div style={{ marginBottom: 10 }}>
@@ -89,7 +105,7 @@ export function GoogleAccountField({
           <option
             key={profile.account}
             value={profile.account}
-            disabled={profile.enabled === false}
+            disabled={profile.enabled === false && !profile.connected}
           >
             {profile.source_email || (profile.connected ? 'Connected' : 'Not connected')}
           </option>
@@ -99,7 +115,7 @@ export function GoogleAccountField({
         <button
           type="button"
           onClick={commit}
-          disabled={disabled || Boolean(disabledProfile)}
+          disabled={disabled || profileBlocked}
           style={{
             marginTop: 5,
             padding: '4px 8px',
@@ -108,7 +124,7 @@ export function GoogleAccountField({
             borderRadius: 4,
             color: 'var(--color-on-accent)',
             fontSize: 10.5,
-            cursor: disabled || disabledProfile ? 'default' : 'pointer',
+            cursor: disabled || profileBlocked ? 'default' : 'pointer',
           }}
         >
           Use profile

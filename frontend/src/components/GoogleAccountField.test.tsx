@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  canSelectGoogleAccountProfile,
   GoogleAccountField,
   normalizeGoogleAccount,
   supportsGoogleAccounts,
@@ -43,18 +44,26 @@ describe('Google account profile field', () => {
     expect(normalizeGoogleAccount(' Work ')).toBe('work');
   });
 
-  it('marks configured disabled profiles as unavailable', () => {
+  it('keeps disabled connected profiles selectable only for cleanup', () => {
+    const accounts = [
+      { account: 'work', connected: true, enabled: true },
+      { account: 'personal', connected: true, enabled: false },
+      { account: 'archived', connected: false, enabled: false },
+    ];
+    expect(canSelectGoogleAccountProfile(accounts, 'personal')).toBe(true);
+    expect(canSelectGoogleAccountProfile(accounts, 'archived')).toBe(false);
+
     const html = renderToStaticMarkup(
       <GoogleAccountField
         connectorId="gmail"
         account="work"
-        accounts={[{ account: 'work', connected: true, enabled: false }]}
+        accounts={accounts}
         onChange={vi.fn()}
       />,
     );
 
-    expect(html).toContain('disabled in config.toml');
-    expect(html).toMatch(/<option[^>]*disabled/);
-    expect(html).toContain('work — disabled');
+    expect(html).toMatch(/<option value="personal">/);
+    expect(html).toMatch(/<option value="archived" disabled/);
+    expect(html).toContain('personal — disabled');
   });
 });
