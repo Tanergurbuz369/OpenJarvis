@@ -156,10 +156,20 @@ describe('connectors-api sends the Bearer auth header', () => {
 
   it('OAuth polling waits for a real connected state before resolving', async () => {
     vi.useFakeTimers();
-    const open = vi.fn();
-    vi.stubGlobal('window', { open });
+    const popup = {
+      location: { href: 'about:blank' },
+      close: vi.fn(),
+    };
+    const open = vi.fn(() => popup);
+    vi.stubGlobal('window', {
+      open,
+      location: { origin: 'http://localhost:1313' },
+    });
     try {
       fetchMock
+        .mockResolvedValueOnce(
+          okJson({ authorization_url: 'https://provider.example/authorize' }),
+        )
         .mockResolvedValueOnce(okJson({ connected: false }))
         .mockResolvedValueOnce(okJson({ connected: true }));
       const { startServerOAuth } = await freshConnectorsApi();
@@ -168,17 +178,41 @@ describe('connectors-api sends the Bearer auth header', () => {
       const flow = startServerOAuth('spotify').then(() => {
         resolved = true;
       });
+      expect(open).toHaveBeenCalledWith(
+        'about:blank',
+        '_blank',
+        'width=600,height=700',
+      );
+      expect(open.mock.invocationCallOrder[0]).toBeLessThan(
+        fetchMock.mock.invocationCallOrder[0],
+      );
       await vi.advanceTimersByTimeAsync(2000);
       expect(resolved).toBe(false);
       await vi.advanceTimersByTimeAsync(2000);
       await flow;
 
       expect(resolved).toBe(true);
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-      expect(open).toHaveBeenCalledOnce();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      expect(fetchMock.mock.calls[0]?.[0]).toContain('response_mode=json');
+      expect(popup.location.href).toBe('https://provider.example/authorize');
     } finally {
       vi.useRealTimers();
       vi.unstubAllGlobals();
     }
+  });
+
+  it('scopes connector detail and sync calls to an account alias', async () => {
+    fetchMock.mockImplementation(async () => okJson({}));
+    const { getConnector, getSyncStatus, triggerSync } = await freshConnectorsApi();
+
+    await getConnector('gmail', 'work');
+    await getSyncStatus('gmail', 'work');
+    await triggerSync('gmail', 'work');
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      '/v1/connectors/gmail?account=work',
+      '/v1/connectors/gmail/sync?account=work',
+      '/v1/connectors/gmail/sync?account=work',
+    ]);
   });
 });

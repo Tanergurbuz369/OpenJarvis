@@ -33,9 +33,10 @@ jarvis connect gcalendar --account family
 
 ## Alias Names
 
-Aliases should be short, readable, and stable. They are normalized into safe
-directory names, so names such as `aquantive-nirav`, `kanakia.org-home`, and
-`banqer` work. Prefer lowercase words separated by `-`, `_`, or `.`.
+Aliases should be short, readable, and stable. They are normalized to lowercase
+safe filenames, so names such as `aquantive-nirav`, `kanakia.org-home`, and
+`banqer` work. Windows-reserved names and trailing dots are rejected. Prefer
+lowercase words separated by `-`, `_`, or `.`.
 
 Avoid putting secrets in alias names. Aliases are used in local file paths,
 document IDs, metadata, and source filters.
@@ -107,10 +108,14 @@ gcalendar:family
 Natural-language examples:
 
 ```bash
-jarvis ask "Summarize only my work Gmail about subscription renewals"
-jarvis ask "Find Drive files from research about the Q3 plan"
-jarvis ask "Compare personal calendar and work calendar conflicts this week"
+jarvis ask --account work "Summarize Gmail subscription renewals"
+jarvis ask --account research "Find Drive files about the Q3 plan"
+jarvis ask --accounts personal,work "Compare calendar conflicts this week"
 ```
+
+`--account` is repeatable and `--accounts` accepts a comma-separated list. An
+account filter implies `--research`, because the boundary applies to indexed
+knowledge retrieval rather than direct model inference.
 
 The research planner maps these requests to structured filters:
 
@@ -127,6 +132,32 @@ store.retrieve("subscription renewals", source="gmail:work")
 hybrid.search("Q3 plan", sources=["gdrive"], accounts=["research"])
 ```
 
+Set a default research boundary and expand morning-digest Google sources across
+selected profiles in `config.toml`:
+
+```toml
+[connectors.google.accounts.personal]
+enabled = true
+
+[connectors.google.accounts.work]
+enabled = true
+
+[agent]
+default_accounts = ["personal"]
+
+[digest]
+accounts = ["personal", "work"]
+
+[digest.messages]
+sources = ["gmail", "google_tasks"]
+```
+
+An explicitly scoped source such as `gmail:research` is left unchanged. Without
+`digest.accounts`, section sources keep their legacy default-profile behavior.
+Google sync documents include the local alias, connector, and the verified
+`source_email` claim returned by Google, when available. The email is
+provenance for display and citation; the alias remains the retrieval boundary.
+
 ## UI And API Sync
 
 The connector sync API accepts an optional `account` query parameter. Use the
@@ -139,6 +170,18 @@ GET  /v1/connectors/gmail/sync?account=work
 
 Sync status is tracked per connector/profile pair, so a long sync for
 `gmail:work` does not mask the state of `gmail:personal`.
+
+One named Google profile uses a shared OAuth grant for all five Google
+connectors. Disconnecting any one of those connector routes for a named account
+therefore disconnects the whole named Google profile and removes that account's
+Gmail, Drive, Calendar, Contacts, and Tasks index rows together:
+
+```text
+POST /v1/connectors/gdrive/disconnect?account=work
+```
+
+This provider-wide behavior prevents half-disconnected profiles with stale
+indexed data. Other named accounts are not affected.
 
 ## How To Test
 

@@ -473,9 +473,7 @@ def test_tool_schema_sources_lists_known_connectors() -> None:
 
 def test_tool_schema_includes_accounts_filter() -> None:
     """The planner has an explicit account/persona filter parameter."""
-    accounts_prop = (
-        SEARCH_TOOL_SPEC["function"]["parameters"]["properties"]["accounts"]
-    )
+    accounts_prop = SEARCH_TOOL_SPEC["function"]["parameters"]["properties"]["accounts"]
     desc = accounts_prop["description"]
     assert accounts_prop["type"] == "array"
     assert "account aliases" in desc

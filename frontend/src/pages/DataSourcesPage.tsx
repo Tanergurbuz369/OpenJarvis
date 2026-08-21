@@ -24,7 +24,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { SOURCE_CATALOG } from '../types/connectors';
 import type { ConnectRequest, ConnectorMeta, SyncStatus, OAuthSetupInfo } from '../types/connectors';
-import { listConnectors, connectSource, disconnectSourceUntilComplete, getConnector, getSyncStatus, triggerSync, startServerOAuth } from '../lib/connectors-api';
+import { listConnectors, connectSource, disconnectSourceUntilComplete, getConnector, getSyncStatus, triggerSync, openServerOAuthPopup, startServerOAuth } from '../lib/connectors-api';
 
 // ---------------------------------------------------------------------------
 // Inline connect form (reused from AgentsPage pattern)
@@ -949,6 +949,11 @@ function DataSourcesSection() {
 
   const handleConnect = async (id: string, req: ConnectRequest | null) => {
     if (loading || disconnectAbortRef.current) return;
+    const connector = connectors.find((item) => item.connector_id === id);
+    const oauthPopup =
+      req === null || connector?.auth_type === 'oauth'
+        ? openServerOAuthPopup()
+        : null;
     setLoading(true);
     setConnectingId(id);
     setConnectStage('Connecting...');
@@ -964,7 +969,9 @@ function DataSourcesSection() {
       // this the connector would stay "pending" forever — the exact #512 bug.
       if (req === null || resp?.status === 'oauth_required') {
         setConnectStage('Opening provider sign-in...');
-        await startServerOAuth(id, resp?.oauth_start);
+        await startServerOAuth(id, resp?.oauth_start, oauthPopup);
+      } else {
+        oauthPopup?.close();
       }
 
       setConnectStage('Connected! Starting sync...');
@@ -999,6 +1006,7 @@ function DataSourcesSection() {
       loadConnectors();
       loadSyncStatuses();
     } catch (err: any) {
+      oauthPopup?.close();
       let errorMsg = err.message || 'Connection failed';
       if (id === 'gmail_imap' && (errorMsg.includes('auth') || errorMsg.includes('credentials') || errorMsg.includes('LOGIN'))) {
         errorMsg = 'Invalid credentials — make sure you\'re using an App Password (16 characters), not your regular Gmail password.';

@@ -358,10 +358,18 @@ _FORMATTERS: Dict[str, Any] = {
 
 def _format_doc(source: str, doc: Document) -> str:
     """Format a document using the source-specific formatter, with fallback."""
-    formatter = _FORMATTERS.get(source)
+    base_source, _, account = source.partition(":")
+    formatter = _FORMATTERS.get(base_source)
     if formatter:
         try:
-            return formatter(doc)
+            formatted = formatter(doc)
+            if account and formatted.startswith(f"[{base_source}"):
+                return formatted.replace(
+                    f"[{base_source}",
+                    f"[{base_source}:{account}",
+                    1,
+                )
+            return formatted
         except Exception:  # noqa: BLE001
             pass
     # Fallback: connector name + title
@@ -444,7 +452,9 @@ class DigestCollectTool(BaseTool):
                         "items": {"type": "string"},
                         "description": (
                             "List of connector IDs to fetch from "
-                            "(e.g., ['gmail', 'oura', 'gcalendar'])."
+                            "(e.g., ['gmail', 'oura', 'gcalendar']). Named Google "
+                            "profiles use connector:account syntax, such as "
+                            "['gmail:work', 'gcalendar:personal']."
                         ),
                     },
                     "hours_back": {
@@ -474,7 +484,8 @@ class DigestCollectTool(BaseTool):
         # Ensure connectors are registered
         import openjarvis.connectors  # noqa: F401
 
-        sources: List[str] = params.get("sources", [])
+        requested_sources: List[str] = params.get("sources", [])
+        sources: List[str] = []
         hours_back: float = params.get("hours_back", 24)
         unacted_only: bool = bool(params.get("unacted_only", False))
         seen_ids: set = set(params.get("seen_ids", []))
@@ -484,14 +495,36 @@ class DigestCollectTool(BaseTool):
         collected_docs: Dict[str, List[Document]] = {}
         errors: List[str] = []
 
-        for source in sources:
-            if not ConnectorRegistry.contains(source):
+        for requested_source in requested_sources:
+            connector_id, separator, account = requested_source.partition(":")
+            if separator:
+                try:
+                    from openjarvis.connectors.oauth import (
+                        get_provider_for_connector,
+                        normalize_account_alias,
+                    )
+
+                    account = normalize_account_alias(account)
+                    provider = get_provider_for_connector(connector_id)
+                    if not account or provider is None or provider.name != "google":
+                        raise ValueError(
+                            "named digest profiles are supported only for Google "
+                            "connectors"
+                        )
+                except ValueError as exc:
+                    errors.append(f"Invalid source '{requested_source}': {exc}")
+                    continue
+            source = f"{connector_id}:{account}" if account else connector_id
+            sources.append(source)
+            if not ConnectorRegistry.contains(connector_id):
                 errors.append(f"Connector '{source}' not available")
                 continue
 
             try:
-                connector_cls = ConnectorRegistry.get(source)
-                connector = connector_cls()
+                connector_cls = ConnectorRegistry.get(connector_id)
+                connector = (
+                    connector_cls(account=account) if account else connector_cls()
+                )
 
                 if not connector.is_connected():
                     errors.append(
@@ -504,7 +537,7 @@ class DigestCollectTool(BaseTool):
                 docs: List[Document] = []
 
                 sync_kwargs: Dict[str, Any] = {"since": since}
-                if unacted_only and source == "gmail":
+                if unacted_only and connector_id == "gmail":
                     sync_kwargs["query_extra"] = "is:unread"
 
                 for d in connector.sync(**sync_kwargs):
@@ -513,10 +546,10 @@ class DigestCollectTool(BaseTool):
                     if len(docs) >= max_per_source:
                         break
 
-                if unacted_only and source == "imessage":
+                if unacted_only and connector_id == "imessage":
                     docs = _filter_unanswered_threads(docs)
 
-                if unacted_only and source == "gcalendar":
+                if unacted_only and connector_id == "gcalendar":
                     docs = _filter_pending_invites(docs)
 
                 collected_docs[source] = docs
@@ -528,7 +561,9 @@ class DigestCollectTool(BaseTool):
         for section_name, section_connectors in _SECTION_ORDER:
             # Gather all sources that belong to this section and have data
             section_sources = [
-                s for s in sources if s in section_connectors and s in collected_docs
+                s
+                for s in sources
+                if s.partition(":")[0] in section_connectors and s in collected_docs
             ]
             if not section_sources:
                 continue
@@ -556,7 +591,9 @@ class DigestCollectTool(BaseTool):
             known_connectors |= cids
 
         uncategorized_sources = [
-            s for s in sources if s not in known_connectors and s in collected_docs
+            s
+            for s in sources
+            if s.partition(":")[0] not in known_connectors and s in collected_docs
         ]
         if uncategorized_sources:
             summary_parts.append("=== OTHER ===")

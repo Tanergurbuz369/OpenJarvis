@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import secrets
 import threading
+import time
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -136,6 +138,37 @@ def create_connectors_router():
     def _instance_key(connector_id: str, account: str = "") -> str:
         return f"{connector_id}:{account}" if account else connector_id
 
+    def _normalise_account(connector_id: str, account: str = "") -> str:
+        """Validate account aliases and reject false isolation for other providers."""
+        from openjarvis.connectors.oauth import (
+            get_provider_for_connector,
+            normalize_account_alias,
+        )
+
+        alias = normalize_account_alias(account)
+        provider = get_provider_for_connector(connector_id)
+        if alias and (provider is None or provider.name != "google"):
+            raise HTTPException(
+                400,
+                "Named account profiles are currently supported only for Google "
+                "connectors.",
+            )
+        return alias
+
+    def _normalise_request_account(
+        connector_id: str,
+        req: ConnectRequest,
+    ) -> str:
+        """Resolve account/profile aliases without silently choosing one."""
+        account = _normalise_account(connector_id, req.account or "")
+        profile = _normalise_account(connector_id, req.profile or "")
+        if account and profile and account != profile:
+            raise HTTPException(
+                400,
+                "account and profile must name the same alias",
+            )
+        return account or profile
+
     def _get_or_create(connector_id: str, account: str = "") -> Any:
         """Return a cached connector instance, creating it if needed."""
         key = _instance_key(connector_id, account)
@@ -165,13 +198,25 @@ def create_connectors_router():
         except Exception:
             pass
 
-        return {
+        summary = {
             "connector_id": connector_id,
             "display_name": getattr(instance, "display_name", connector_id),
             "auth_type": getattr(instance, "auth_type", "unknown"),
             "connected": instance.is_connected(),
             "chunks": chunks,
         }
+        try:
+            from openjarvis.connectors.oauth import (
+                get_provider_for_connector,
+                list_google_accounts,
+            )
+
+            provider = get_provider_for_connector(connector_id)
+            if provider and provider.name == "google":
+                summary["accounts"] = list_google_accounts()
+        except Exception:  # noqa: BLE001
+            pass
+        return summary
 
     def _maybe_oauth_client_pair(
         connector_id: str, req: ConnectRequest
@@ -231,7 +276,7 @@ def create_connectors_router():
                 ),
             )
 
-        account = (req.account or req.profile or "").strip()
+        account = _normalise_request_account(connector_id, req)
         save_client_credentials(
             provider,
             client_id,
@@ -273,6 +318,39 @@ def create_connectors_router():
     # globally keeps connect/disconnect/manual-sync decisions atomic,
     # including ownership checks for sources shared by multiple connectors.
     _lifecycle_lock = threading.RLock()
+    _oauth_state_lock = threading.Lock()
+    _oauth_states: Dict[str, tuple[str, str, float]] = {}
+    _OAUTH_STATE_TTL_SECONDS = 600.0
+
+    def _issue_oauth_state(connector_id: str, account: str) -> str:
+        """Issue a one-time state token bound to connector and account alias."""
+        now = time.monotonic()
+        state = secrets.token_urlsafe(32)
+        with _oauth_state_lock:
+            expired = [
+                key
+                for key, (_, _, deadline) in _oauth_states.items()
+                if deadline <= now
+            ]
+            for key in expired:
+                _oauth_states.pop(key, None)
+            _oauth_states[state] = (
+                connector_id,
+                account,
+                now + _OAUTH_STATE_TTL_SECONDS,
+            )
+        return state
+
+    def _consume_oauth_state(connector_id: str, state: str) -> str:
+        """Consume a valid one-time OAuth state and return its account alias."""
+        with _oauth_state_lock:
+            stored = _oauth_states.pop(state, None)
+        if stored is None:
+            raise HTTPException(400, "Invalid or expired OAuth state")
+        stored_connector, account, deadline = stored
+        if stored_connector != connector_id or deadline <= time.monotonic():
+            raise HTTPException(400, "Invalid or expired OAuth state")
+        return account
 
     def _disconnect_pending(sync_key: str) -> bool:
         """Whether a prior disconnect is waiting for its worker to stop."""
@@ -293,6 +371,28 @@ def create_connectors_router():
                     f"Sync for '{sync_key}' is still stopping; "
                     "retry disconnect before reconnecting or syncing"
                 ),
+            )
+
+    def _reject_active_provider_syncs(
+        connector_ids: tuple[str, ...],
+        account: str,
+    ) -> None:
+        """Prevent a shared OAuth grant changing under active sync workers."""
+        with _sync_lock:
+            active = [
+                _instance_key(connector_id, account)
+                for connector_id in connector_ids
+                if (
+                    (thread := _sync_threads.get(_instance_key(connector_id, account)))
+                    is not None
+                    and thread.is_alive()
+                )
+            ]
+        if active:
+            raise HTTPException(
+                409,
+                "OAuth credentials cannot be changed while sync is active for: "
+                + ", ".join(active),
             )
 
     def _serialized_async(func):
@@ -464,7 +564,7 @@ def create_connectors_router():
         return {"connectors": results}
 
     @router.get("/{connector_id}")
-    async def connector_detail(connector_id: str):
+    async def connector_detail(connector_id: str, account: str = ""):
         """Return detail for a single connector."""
         _ensure_connectors_registered()
         if not ConnectorRegistry.contains(connector_id):
@@ -472,7 +572,8 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        instance = _get_or_create(connector_id)
+        account = _normalise_account(connector_id, account)
+        instance = _get_or_create(connector_id, account)
 
         # Try to get an OAuth URL if applicable; ignore errors for non-OAuth
         # connectors.
@@ -499,7 +600,9 @@ def create_connectors_router():
 
             provider = get_provider_for_connector(connector_id)
             if provider:
-                has_creds = get_client_credentials(provider) is not None
+                has_creds = (
+                    get_client_credentials(provider, account=account) is not None
+                )
                 oauth_setup = {
                     "provider": provider.name,
                     "setup_url": provider.setup_url,
@@ -511,6 +614,7 @@ def create_connectors_router():
 
         return {
             "connector_id": connector_id,
+            "account": account or None,
             "display_name": getattr(instance, "display_name", connector_id),
             "auth_type": getattr(instance, "auth_type", "unknown"),
             "connected": instance.is_connected(),
@@ -529,7 +633,7 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        account = (req.account or req.profile or "").strip()
+        account = _normalise_request_account(connector_id, req)
         _reject_pending_disconnect(_instance_key(connector_id, account))
         instance = _get_or_create(connector_id, account)
 
@@ -668,30 +772,58 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        account = account.strip()
-        sync_key = _instance_key(connector_id, account)
-        instance = _get_or_create(connector_id, account)
-        with _sync_lock:
-            _sync_generations[sync_key] = _sync_generations.get(sync_key, 0) + 1
-            cancel_event = _sync_cancel_events.get(sync_key)
-            sync_thread = _sync_threads.get(sync_key)
-            if cancel_event is not None:
-                cancel_event.set()
-            if sync_thread is not None and sync_thread.is_alive():
-                previous_state = _sync_state.get(sync_key, {})
-                _sync_state[sync_key] = {
-                    **previous_state,
-                    "state": "stopping",
-                    "error": None,
-                }
+        account = _normalise_account(connector_id, account)
+        from openjarvis.connectors.oauth import get_provider_for_connector
 
-        if sync_thread is not None and sync_thread.is_alive():
-            sync_thread.join(timeout=_SYNC_STOP_TIMEOUT_SECONDS)
-        if sync_thread is not None and sync_thread.is_alive():
+        provider = get_provider_for_connector(connector_id)
+        # A named Google profile uses one shared grant for Gmail, Drive,
+        # Calendar, Contacts, and Tasks.  Removing that file for only the
+        # initiating primitive would silently disconnect its siblings while
+        # leaving their indexed rows/checkpoints behind.  Treat it as one
+        # provider-level lifecycle and clean every primitive atomically.
+        target_ids = (
+            tuple(provider.connector_ids)
+            if account and provider and provider.name == "google"
+            else (connector_id,)
+        )
+        targets = {
+            target_id: _get_or_create(target_id, account)
+            for target_id in target_ids
+            if ConnectorRegistry.contains(target_id)
+        }
+        sync_keys = {
+            target_id: _instance_key(target_id, account) for target_id in targets
+        }
+        threads: Dict[str, Any] = {}
+        with _sync_lock:
+            for sync_key in sync_keys.values():
+                _sync_generations[sync_key] = _sync_generations.get(sync_key, 0) + 1
+                cancel_event = _sync_cancel_events.get(sync_key)
+                sync_thread = _sync_threads.get(sync_key)
+                threads[sync_key] = sync_thread
+                if cancel_event is not None:
+                    cancel_event.set()
+                if sync_thread is not None and sync_thread.is_alive():
+                    previous_state = _sync_state.get(sync_key, {})
+                    _sync_state[sync_key] = {
+                        **previous_state,
+                        "state": "stopping",
+                        "error": None,
+                    }
+
+        for sync_thread in threads.values():
+            if sync_thread is not None and sync_thread.is_alive():
+                sync_thread.join(timeout=_SYNC_STOP_TIMEOUT_SECONDS)
+        still_running = [
+            key
+            for key, sync_thread in threads.items()
+            if sync_thread is not None and sync_thread.is_alive()
+        ]
+        if still_running:
             raise HTTPException(
                 status_code=409,
                 detail=(
-                    f"Sync for '{sync_key}' is still stopping; "
+                    f"Sync for '{', '.join(still_running)}' is still stopping; "
                     "indexed content was not purged"
                 ),
             )
@@ -701,14 +833,19 @@ def create_connectors_router():
         # reject reconnect attempts, rather than silently switching source
         # state underneath a still-running writer.
         try:
-            instance.disconnect()
+            for instance in targets.values():
+                instance.disconnect()
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
         # A source can be shared by multiple connector implementations
         # (Gmail OAuth and Gmail IMAP both write source='gmail'). Preserve it
         # while another owner is connected; otherwise purge it only after the
         # in-flight writer has stopped.
-        purge_sources = set(_knowledge_sources(connector_id, instance))
+        purge_sources = {
+            source
+            for target_id, instance in targets.items()
+            for source in _knowledge_sources(target_id, instance)
+        }
         if not account:
             for other_id in ConnectorRegistry.keys():
                 if other_id == connector_id:
@@ -735,37 +872,52 @@ def create_connectors_router():
                 with SyncEngine(
                     pipeline=IngestionPipeline(store=store),
                 ) as engine:
-                    old_checkpoint = engine.get_checkpoint(sync_key)
-                    engine.reset_checkpoint(sync_key)
+                    old_checkpoints = {
+                        key: engine.get_checkpoint(key) for key in sync_keys.values()
+                    }
+                    for key in sync_keys.values():
+                        engine.reset_checkpoint(key)
                     try:
                         store.delete_by_sources(
                             purge_sources,
                             account=account or None,
                         )
                     except Exception:
-                        engine.restore_checkpoint(sync_key, old_checkpoint)
+                        for key, checkpoint in old_checkpoints.items():
+                            engine.restore_checkpoint(key, checkpoint)
                         raise
         except Exception as exc:  # noqa: BLE001
-            logger.exception("Disconnect cleanup failed for %s", sync_key)
+            logger.exception(
+                "Disconnect cleanup failed for %s",
+                ", ".join(sync_keys.values()),
+            )
             raise HTTPException(
                 status_code=500,
                 detail=f"Disconnected, but indexed-data cleanup failed: {exc}",
             )
 
         with _sync_lock:
-            _sync_cancel_events.pop(sync_key, None)
-            _sync_threads.pop(sync_key, None)
-            _sync_state.pop(sync_key, None)
-        _instances.pop(sync_key, None)
+            for sync_key in sync_keys.values():
+                _sync_cancel_events.pop(sync_key, None)
+                _sync_threads.pop(sync_key, None)
+                _sync_state.pop(sync_key, None)
+        for sync_key in sync_keys.values():
+            _instances.pop(sync_key, None)
         return {
             "connector_id": connector_id,
             "account": account or None,
+            "disconnected_connectors": sorted(targets),
             "connected": False,
             "status": "disconnected",
         }
 
     @router.get("/{connector_id}/oauth/start")
-    async def oauth_start(connector_id: str, request: Request, account: str = ""):
+    async def oauth_start(
+        connector_id: str,
+        request: Request,
+        account: str = "",
+        response_mode: str = "redirect",
+    ):
         """Redirect to the OAuth provider's consent page.
 
         The callback will come back to /v1/connectors/{id}/oauth/callback.
@@ -785,7 +937,8 @@ def create_connectors_router():
         if not provider:
             raise HTTPException(400, f"No OAuth provider for '{connector_id}'")
 
-        account = account.strip()
+        account = _normalise_account(connector_id, account)
+        _reject_active_provider_syncs(tuple(provider.connector_ids), account)
         creds = get_client_credentials(provider, account=account)
         if not creds:
             raise HTTPException(
@@ -806,9 +959,13 @@ def create_connectors_router():
             "scope": " ".join(provider.scopes),
             **provider.extra_auth_params,
         }
-        if account:
-            params["state"] = account
+        params["state"] = _issue_oauth_state(connector_id, account)
         auth_url = f"{provider.auth_endpoint}?{urlencode(params)}"
+
+        if response_mode == "json":
+            return {"authorization_url": auth_url}
+        if response_mode != "redirect":
+            raise HTTPException(400, "response_mode must be 'redirect' or 'json'")
 
         from fastapi.responses import RedirectResponse
 
@@ -822,9 +979,10 @@ def create_connectors_router():
         code: str = "",
         error: str = "",
         state: str = "",
-        account: str = "",
     ):
         """Handle OAuth callback from the provider."""
+        from html import escape
+
         from fastapi.responses import HTMLResponse
 
         from openjarvis.connectors.oauth import (
@@ -832,13 +990,15 @@ def create_connectors_router():
             _exchange_token,
             get_client_credentials,
             get_provider_for_connector,
+            google_source_email_from_tokens,
             require_access_token,
             save_tokens,
         )
 
         _ensure_connectors_registered()
 
-        _reject_pending_disconnect(connector_id)
+        account_alias = _consume_oauth_state(connector_id, state)
+        _reject_pending_disconnect(_instance_key(connector_id, account_alias))
 
         if error:
             _style = "font-family:system-ui;text-align:center;padding:60px"
@@ -846,7 +1006,7 @@ def create_connectors_router():
                 content=(
                     f"<html><body style='{_style}'>"
                     f"<h2 style='color:#ef4444'>Authorization Failed</h2>"
-                    f"<p>{error}</p>"
+                    f"<p>{escape(error)}</p>"
                     "<script>setTimeout(()=>window.close(),3000)</script>"
                     "</body></html>"
                 ),
@@ -860,7 +1020,11 @@ def create_connectors_router():
         if not provider:
             raise HTTPException(400, f"No OAuth provider for '{connector_id}'")
 
-        account_alias = (account or state or "").strip()
+        _reject_active_provider_syncs(
+            tuple(provider.connector_ids),
+            account_alias,
+        )
+
         creds = get_client_credentials(provider, account=account_alias)
         if not creds:
             raise HTTPException(400, "No client credentials configured")
@@ -874,13 +1038,15 @@ def create_connectors_router():
                 provider, code, client_id, client_secret, redirect_uri
             )
             access_token = require_access_token(tokens)
-        except Exception as exc:
+        except Exception:
+            logger.exception("OAuth token exchange failed for %s", connector_id)
             _style = "font-family:system-ui;text-align:center;padding:60px"
             return HTMLResponse(
                 content=(
                     f"<html><body style='{_style}'>"
                     f"<h2 style='color:#ef4444'>Token Exchange Failed</h2>"
-                    f"<p>{exc}</p>"
+                    "<p>The provider rejected the token exchange. "
+                    "Check the server logs for details.</p>"
                     "</body></html>"
                 ),
                 status_code=500,
@@ -893,13 +1059,22 @@ def create_connectors_router():
             "expires_in": tokens.get("expires_in", 3600),
             "client_id": client_id,
             "client_secret": client_secret,
+            "source_email": google_source_email_from_tokens(tokens)
+            if provider.name == "google"
+            else "",
         }
 
         for path in _credential_paths_for_provider(provider, account=account_alias):
             save_tokens(str(path), payload)
 
-        # Clear cached instance so it picks up new credentials
-        _instances.pop(_instance_key(connector_id, account_alias), None)
+        # Every Google primitive shares this account grant.  Rebuild all of
+        # them so instances created before the callback cannot retain a stale
+        # credentials path or connection status.
+        for provider_connector_id in provider.connector_ids:
+            _instances.pop(
+                _instance_key(provider_connector_id, account_alias),
+                None,
+            )
 
         _style = "font-family:system-ui;text-align:center;padding:60px"
         return HTMLResponse(
@@ -922,7 +1097,7 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        account = account.strip()
+        account = _normalise_account(connector_id, account)
         _reject_pending_disconnect(_instance_key(connector_id, account))
         inst = _get_or_create(connector_id, account)
         if not inst.is_connected():
@@ -946,7 +1121,7 @@ def create_connectors_router():
                 status_code=404,
                 detail=f"Connector '{connector_id}' not found",
             )
-        account = account.strip()
+        account = _normalise_account(connector_id, account)
         instance = _get_or_create(connector_id, account)
         try:
             status = instance.sync_status()
@@ -1046,6 +1221,7 @@ def create_connectors_router():
 
         return {
             "connector_id": connector_id,
+            "account": account or None,
             "state": effective_state,
             "items_synced": items_synced,
             "items_total": items_total,

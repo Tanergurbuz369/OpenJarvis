@@ -20,6 +20,7 @@ from openjarvis.connectors.oauth import (
     delete_tokens,
     google_account_doc_id,
     google_account_metadata,
+    google_account_source_id,
     load_tokens,
     normalize_account_alias,
     resolve_google_credentials,
@@ -282,6 +283,10 @@ class GContactsConnector(BaseConnector):
                     doc_id=google_account_doc_id(
                         "gcontacts", resource_name, self._account
                     ),
+                    source_id=google_account_source_id(
+                        resource_name,
+                        self._account,
+                    ),
                     source="gcontacts",
                     doc_type="contact",
                     content=content,
@@ -289,7 +294,11 @@ class GContactsConnector(BaseConnector):
                     author=primary_email,
                     metadata={
                         "resource_name": resource_name,
-                        **google_account_metadata("gcontacts", self._account),
+                        **google_account_metadata(
+                            "gcontacts",
+                            self._account,
+                            str(tokens.get("source_email", "")),
+                        ),
                     },
                 )
                 synced += 1

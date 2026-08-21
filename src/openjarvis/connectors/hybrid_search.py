@@ -206,8 +206,7 @@ def _query_tokens(query: str) -> set[str]:
 
 def _sources_include_gcalendar(sources: Optional[Sequence[str]]) -> bool:
     return any(
-        str(source).lower().split(":", 1)[0] == "gcalendar"
-        for source in sources or []
+        str(source).lower().split(":", 1)[0] == "gcalendar" for source in sources or []
     )
 
 
@@ -532,7 +531,11 @@ class HybridSearch:
     # ------------------------------------------------------------------
 
     def _thread_context(
-        self, thread_id: str, anchor_chunk_id: str
+        self,
+        thread_id: str,
+        anchor_chunk_id: str,
+        source: str,
+        account: str,
     ) -> List[Dict[str, Any]]:
         """Fetch sibling chunks for ``thread_id`` (capped at ``thread_context_cap``).
 
@@ -545,10 +548,13 @@ class HybridSearch:
             """
             SELECT id, chunk_index, content, timestamp, author
             FROM knowledge_chunks
-            WHERE thread_id = ? AND deleted_at IS NULL
+            WHERE thread_id = ?
+              AND source = ?
+              AND COALESCE(json_extract(metadata, '$.account'), '') = ?
+              AND deleted_at IS NULL
             ORDER BY timestamp ASC, chunk_index ASC
             """,
-            (thread_id,),
+            (thread_id, source, account),
         ).fetchall()
         if not rows:
             return []
@@ -824,7 +830,12 @@ class HybridSearch:
                     bm25_score=bm25_score,
                     vector_score=vec_score,
                     thread_id=r["thread_id"] or "",
-                    thread_context=self._thread_context(r["thread_id"] or "", chunk_id),
+                    thread_context=self._thread_context(
+                        r["thread_id"] or "",
+                        chunk_id,
+                        r["source"] or "",
+                        str(metadata.get("account", "") or ""),
+                    ),
                     account=str(metadata.get("account", "") or ""),
                     source_profile=str(metadata.get("source_profile", "") or ""),
                     url=r["url"] or "",

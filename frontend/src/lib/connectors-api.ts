@@ -18,8 +18,9 @@ export async function listConnectors(): Promise<ConnectorInfo[]> {
   return data.connectors || [];
 }
 
-export async function getConnector(id: string): Promise<ConnectorInfo> {
-  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}`);
+export async function getConnector(id: string, account = ''): Promise<ConnectorInfo> {
+  const query = account ? `?account=${encodeURIComponent(account)}` : '';
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}${query}`);
   if (!res.ok) throw new Error(`Failed to get connector ${id}: ${res.status}`);
   return res.json();
 }
@@ -39,16 +40,51 @@ export async function connectSource(id: string, req: ConnectRequest): Promise<Co
   return res.json();
 }
 
+const OAUTH_POPUP_FEATURES = 'width=600,height=700';
+
+/** Open a placeholder while the caller still owns a trusted click gesture.
+ * Browsers may block a popup created only after an awaited API request. */
+export function openServerOAuthPopup(): Window | null {
+  return window.open('about:blank', '_blank', OAUTH_POPUP_FEATURES);
+}
+
 /** Open the server-side OAuth consent flow in a popup and resolve once the
  *  connector reports connected (or reject on timeout). Reused for any OAuth
  *  connector whose /connect returned `oauth_required` (issue #512). */
-export function startServerOAuth(id: string, oauthStartPath?: string): Promise<void> {
+export async function startServerOAuth(
+  id: string,
+  oauthStartPath?: string,
+  existingPopup?: Window | null,
+): Promise<void> {
+  const popup = existingPopup ?? openServerOAuthPopup();
+  if (!popup) {
+    throw new Error('Authorization popup was blocked — allow popups and retry.');
+  }
   const path = oauthStartPath || `/v1/connectors/${encodeURIComponent(id)}/oauth/start`;
-  window.open(`${getBase()}${path}`, '_blank', 'width=600,height=700');
+  const startUrl = new URL(`${getBase()}${path}`, window.location.origin);
+  const account = startUrl.searchParams.get('account') || '';
+  startUrl.searchParams.set('response_mode', 'json');
+
+  try {
+    const startResponse = await apiFetch(`${startUrl.pathname}${startUrl.search}`);
+    if (!startResponse.ok) {
+      const err = await startResponse.json().catch(() => ({ detail: startResponse.statusText }));
+      throw new Error(err.detail || `Failed to start OAuth: ${startResponse.status}`);
+    }
+    const payload = (await startResponse.json()) as { authorization_url?: string };
+    if (!payload.authorization_url) {
+      throw new Error('OAuth start returned no authorization URL');
+    }
+    popup.location.href = payload.authorization_url;
+  } catch (error) {
+    popup.close();
+    throw error;
+  }
+
   return new Promise((resolve, reject) => {
     const interval = setInterval(async () => {
       try {
-        const info = await getConnector(id);
+        const info = await getConnector(id, account);
         if (info.connected) {
           clearInterval(interval);
           clearTimeout(timer);
@@ -60,6 +96,7 @@ export function startServerOAuth(id: string, oauthStartPath?: string): Promise<v
     }, 2000);
     const timer = setTimeout(() => {
       clearInterval(interval);
+      popup.close();
       reject(new Error('Authorization timed out — please try again.'));
     }, 180000);
   });
@@ -78,8 +115,10 @@ export class ConnectorApiError extends Error {
 export async function disconnectSource(
   id: string,
   signal?: AbortSignal,
+  account = '',
 ): Promise<void> {
-  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/disconnect`, {
+  const query = account ? `?account=${encodeURIComponent(account)}` : '';
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/disconnect${query}`, {
     method: 'POST',
     signal,
   });
@@ -96,6 +135,7 @@ export interface DisconnectUntilCompleteOptions {
   signal?: AbortSignal;
   retryDelayMs?: number;
   onPending?: (message: string) => void;
+  account?: string;
 }
 
 function waitForDisconnectRetry(delayMs: number, signal?: AbortSignal): Promise<void> {
@@ -128,11 +168,12 @@ export async function disconnectSourceUntilComplete(
     signal,
     retryDelayMs = 1500,
     onPending,
+    account = '',
   }: DisconnectUntilCompleteOptions = {},
 ): Promise<void> {
   while (true) {
     try {
-      await disconnectSource(id, signal);
+      await disconnectSource(id, signal, account);
       return;
     } catch (err) {
       if (!(err instanceof ConnectorApiError) || err.status !== 409) {
@@ -144,14 +185,16 @@ export async function disconnectSourceUntilComplete(
   }
 }
 
-export async function getSyncStatus(id: string): Promise<SyncStatus> {
-  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync`);
+export async function getSyncStatus(id: string, account = ''): Promise<SyncStatus> {
+  const query = account ? `?account=${encodeURIComponent(account)}` : '';
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync${query}`);
   if (!res.ok) throw new Error(`Failed to get sync status for ${id}: ${res.status}`);
   return res.json();
 }
 
-export async function triggerSync(id: string): Promise<{ connector_id: string; chunks_indexed: number; status: string }> {
-  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync`, {
+export async function triggerSync(id: string, account = ''): Promise<{ connector_id: string; chunks_indexed: number; status: string }> {
+  const query = account ? `?account=${encodeURIComponent(account)}` : '';
+  const res = await apiFetch(`/v1/connectors/${encodeURIComponent(id)}/sync${query}`, {
     method: 'POST',
   });
   if (!res.ok) {

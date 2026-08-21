@@ -128,6 +128,34 @@ def test_sync_yields_contacts(
     mock_list.assert_called_once()
 
 
+@patch("openjarvis.connectors.gcontacts._gcontacts_api_list")
+def test_named_account_sync_emits_scoped_provenance(
+    mock_list,
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors.gcontacts import GContactsConnector
+
+    creds = tmp_path / "work.json"
+    creds.write_text(
+        json.dumps({"token": "fake-access-token", "source_email": "work@example.com"}),
+        encoding="utf-8",
+    )
+    connector = GContactsConnector(credentials_path=str(creds), account="work")
+    mock_list.return_value = {
+        "connections": [_CONNECTIONS_RESPONSE["connections"][0]],
+        "nextPageToken": None,
+    }
+
+    doc = next(connector.sync())
+
+    assert doc.doc_id == "gcontacts:work:people/c1"
+    assert doc.source_id == "work:people/c1"
+    assert doc.metadata["account"] == "work"
+    assert doc.metadata["source_profile"] == "work"
+    assert doc.metadata["connector"] == "gcontacts"
+    assert doc.metadata["source_email"] == "work@example.com"
+
+
 # ---------------------------------------------------------------------------
 # Test 4 — disconnect removes the credentials file
 # ---------------------------------------------------------------------------

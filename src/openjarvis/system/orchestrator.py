@@ -176,7 +176,14 @@ class QueryOrchestrator:
             for sec in dc.sections:
                 sc = getattr(dc, sec, None)
                 if sc and hasattr(sc, "sources"):
-                    section_sources[sec] = sc.sources
+                    from openjarvis.agents.morning_digest import (
+                        expand_account_sources,
+                    )
+
+                    section_sources[sec] = expand_account_sources(
+                        sc.sources,
+                        dc.accounts,
+                    )
             agent_kwargs.update(
                 {
                     "persona": dc.persona,

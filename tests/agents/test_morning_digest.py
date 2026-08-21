@@ -16,6 +16,20 @@ def test_morning_digest_registered():
     assert AgentRegistry.contains("morning_digest")
 
 
+def test_expand_account_sources_scopes_only_google_connectors() -> None:
+    from openjarvis.agents.morning_digest import expand_account_sources
+
+    assert expand_account_sources(
+        ["gmail", "gcalendar:family", "slack"],
+        [" Work ", "personal"],
+    ) == [
+        "gmail:work",
+        "gmail:personal",
+        "gcalendar:family",
+        "slack",
+    ]
+
+
 def test_morning_digest_run(tmp_path):
     from openjarvis.agents.morning_digest import MorningDigestAgent
 

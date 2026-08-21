@@ -43,6 +43,7 @@ def _run_research(
     knowledge_db: str | None,
     output_json: bool,
     console: Console,
+    accounts: list[str] | None = None,
 ) -> None:
     """Run the hybrid-search research loop and print the result to the console.
 
@@ -66,14 +67,13 @@ def _run_research(
     store = KnowledgeStore(**store_kwargs)
 
     # Research mode is wired specifically to Ollama: the planner prompt
-    # and the function-call schema for search/clarify both assume Ollama's
-    # /api/chat tool semantics. Using the engine returned by get_engine() here
-    # is a foot-gun — discovery can pick any OpenAI-compatible engine registered
-    # on the same port as our own API server. Honor configured/remote Ollama
-    # host though; otherwise LAN setups fall back to localhost during research.
-    cfg = load_config()
-    ollama_host = cfg.engine.ollama.host or None
-    engine = OllamaEngine(host=ollama_host)
+    # (gemma4:31b) and the function-call schema for search/clarify both
+    # assume Ollama's /api/chat tool semantics. Using the engine returned
+    # by get_engine() here is a foot-gun — discovery can pick any
+    # OpenAI-compatible engine registered on the same port as our own
+    # API server. research_router.py hardcodes OllamaEngine() for the
+    # same reason; mirror that here so CLI and HTTP behave identically.
+    engine = OllamaEngine()
 
     chunk_count = store._conn.execute(
         "SELECT COUNT(*) FROM knowledge_chunks"
@@ -86,7 +86,7 @@ def _run_research(
         chunk_count,
     )
 
-    embedder = OllamaEmbedder(host=ollama_host or "http://localhost:11434")
+    embedder = OllamaEmbedder()
     embedder_available = embedder.is_available()
     logger.debug("research: embedder available=%s", embedder_available)
     if not embedder_available:
@@ -96,9 +96,7 @@ def _run_research(
         )
         embedder = None
 
-    planner_model = (
-        model_name or cfg.intelligence.default_model or DEFAULT_PLANNER_MODEL
-    )
+    planner_model = model_name or DEFAULT_PLANNER_MODEL
     logger.debug("research: planner_model=%s", planner_model)
 
     # ---- Output styling --------------------------------------------------
@@ -164,6 +162,9 @@ def _run_research(
         search=HybridSearch(store, embedder),
         model=planner_model,
         on_event=on_event,
+        default_accounts=(
+            accounts if accounts is not None else load_config().agent.default_accounts
+        ),
     )
 
     started = time.monotonic()
@@ -219,6 +220,24 @@ def _run_research(
             f"[dim]Deep Research · {elapsed:.1f}s · "
             f"{len(cited)} {src_word} cited · {planner_model} · {engine_label}[/dim]"
         )
+
+
+def _normalise_account_filters(
+    account_names: tuple[str, ...],
+    accounts_csv: str,
+) -> list[str]:
+    """Validate and de-duplicate CLI account filters in stable order."""
+    from openjarvis.connectors.oauth import normalize_account_alias
+
+    raw_accounts = [*account_names, *accounts_csv.split(",")]
+    accounts: list[str] = []
+    for raw_account in raw_accounts:
+        if not raw_account.strip():
+            continue
+        account = normalize_account_alias(raw_account)
+        if account not in accounts:
+            accounts.append(account)
+    return accounts
 
 
 def _get_memory_backend(config):
@@ -637,6 +656,21 @@ def _print_profile(
     ),
 )
 @click.option(
+    "--account",
+    "account_names",
+    multiple=True,
+    help=(
+        "Limit knowledge retrieval to a named connector account. "
+        "Repeat for multiple accounts; implies --research."
+    ),
+)
+@click.option(
+    "--accounts",
+    "accounts_csv",
+    default="",
+    help="Comma-separated named connector accounts; implies --research.",
+)
+@click.option(
     "-i",
     "--image",
     "image_paths",
@@ -676,6 +710,8 @@ def ask(
     enable_profile: bool,
     research_mode: bool,
     knowledge_db: str | None,
+    account_names: tuple[str, ...],
+    accounts_csv: str,
     persona_name: str | None,
     image_paths: tuple[str, ...] = (),
     capture_screen: bool = False,
@@ -711,6 +747,13 @@ def ask(
 
     # Load config
     config = load_config()
+
+    try:
+        requested_accounts = _normalise_account_filters(account_names, accounts_csv)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if requested_accounts:
+        research_mode = True
 
     # Resolve effective MemoryFilesConfig with --persona override
     import dataclasses as _dc
@@ -818,6 +861,7 @@ def ask(
             knowledge_db=knowledge_db,
             output_json=output_json,
             console=console,
+            accounts=requested_accounts or None,
         )
         return
 

@@ -9,9 +9,11 @@ Provides:
 from __future__ import annotations
 
 import base64
+import binascii
 import json
 import os
 import re
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -28,6 +30,14 @@ _CONNECTORS_DIR = DEFAULT_CONFIG_DIR / "connectors"
 _GOOGLE_ACCOUNT_PROVIDER = "google"
 _GOOGLE_ACCOUNTS_DIR = _CONNECTORS_DIR / _GOOGLE_ACCOUNT_PROVIDER / "accounts"
 _ACCOUNT_ALIAS_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
+_WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{i}" for i in range(1, 10)),
+    *(f"LPT{i}" for i in range(1, 10)),
+}
 
 # ---------------------------------------------------------------------------
 # OAuth provider registry
@@ -140,10 +150,18 @@ def normalize_account_alias(account: str = "") -> str:
     restricted to a small filesystem-safe slug format because they become JSON
     filenames under ``~/.openjarvis/connectors/google/accounts``.
     """
-    alias = account.strip()
+    # Alias names become cross-platform filenames.  Normalize case so
+    # ``Work`` and ``work`` cannot silently address the same file on default
+    # macOS/Windows filesystems while remaining distinct on Linux.
+    alias = account.strip().lower()
     if not alias:
         return ""
-    if not _ACCOUNT_ALIAS_RE.fullmatch(alias):
+    reserved_stem = alias.split(".", 1)[0].upper()
+    if (
+        not _ACCOUNT_ALIAS_RE.fullmatch(alias)
+        or alias.endswith(".")
+        or reserved_stem in _WINDOWS_RESERVED_NAMES
+    ):
         raise ValueError(
             "Account aliases must be 1-64 characters and contain only letters, "
             "numbers, dots, underscores, or hyphens."
@@ -159,17 +177,71 @@ def google_account_credentials_path(account: str) -> str:
     return str(_GOOGLE_ACCOUNTS_DIR / f"{alias}.json")
 
 
-def google_account_metadata(connector_id: str, account: str = "") -> Dict[str, str]:
+def list_google_accounts() -> List[Dict[str, Any]]:
+    """Return named Google profiles without exposing credential contents."""
+    if not _GOOGLE_ACCOUNTS_DIR.is_dir():
+        return []
+    accounts: List[Dict[str, Any]] = []
+    for path in sorted(_GOOGLE_ACCOUNTS_DIR.glob("*.json")):
+        try:
+            alias = normalize_account_alias(path.stem)
+        except ValueError:
+            continue
+        tokens = load_tokens(str(path))
+        accounts.append(
+            {
+                "account": alias,
+                "connected": bool(
+                    tokens and (tokens.get("access_token") or tokens.get("token"))
+                ),
+                "source_email": str(tokens.get("source_email", "")) if tokens else "",
+            }
+        )
+    return accounts
+
+
+def google_account_metadata(
+    connector_id: str,
+    account: str = "",
+    source_email: str = "",
+) -> Dict[str, str]:
     """Return provenance metadata for a named connector account."""
     alias = normalize_account_alias(account)
     if not alias:
         return {"connector": connector_id}
-    return {
+    metadata = {
         "account": alias,
         "source_profile": alias,
         "connector": connector_id,
         "connector_instance": f"{connector_id}:{alias}",
     }
+    if source_email.strip():
+        metadata["source_email"] = source_email.strip()
+    return metadata
+
+
+def google_source_email_from_tokens(tokens: Dict[str, Any]) -> str:
+    """Extract Google's verified email claim for provenance metadata only.
+
+    The ID token arrives directly from Google's TLS-authenticated token
+    endpoint. The claim is not used for authorization or account selection;
+    the user-controlled local alias remains the security boundary.
+    """
+    id_token = tokens.get("id_token")
+    if not isinstance(id_token, str):
+        return ""
+    parts = id_token.split(".")
+    if len(parts) != 3:
+        return ""
+    try:
+        encoded = parts[1] + "=" * (-len(parts[1]) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(encoded).decode("utf-8"))
+    except (binascii.Error, ValueError, UnicodeDecodeError, json.JSONDecodeError):
+        return ""
+    if not isinstance(payload, dict) or payload.get("email_verified") is not True:
+        return ""
+    email = payload.get("email")
+    return email.strip() if isinstance(email, str) else ""
 
 
 def google_account_doc_id(connector_id: str, native_id: str, account: str = "") -> str:
@@ -663,6 +735,7 @@ def run_oauth_flow(
         "expires_in": tokens.get("expires_in", 3600),
         "client_id": client_id,
         "client_secret": client_secret,
+        "source_email": google_source_email_from_tokens(tokens),
     }
     _persist_google_oauth_tokens(
         credentials_path,
@@ -683,8 +756,9 @@ def _wait_for_callback_code(
     port: int = 8789,
     path: str = "/callback",
     timeout: int = 120,
+    expected_state: str = "",
 ) -> str:
-    """Start a localhost HTTP server and wait for ``?code=`` on *path*.
+    """Wait for a code on the exact callback path with matching OAuth state.
 
     Returns the authorization code received from the OAuth redirect.
     """
@@ -696,7 +770,13 @@ def _wait_for_callback_code(
 
     class _Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:  # noqa: N802
-            params = parse_qs(urlparse(self.path).query)
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            state = params.get("state", [""])[0]
+            if parsed.path != path or not expected_state or state != expected_state:
+                self.send_response(400)
+                self.end_headers()
+                return
             if "code" in params:
                 auth_code.append(params["code"][0])
                 self.send_response(200)
@@ -744,9 +824,10 @@ def _wait_for_callback_code(
     time.sleep(0.3)
 
     server = HTTPServer((host, port), _Handler)
-    server.timeout = timeout
+    deadline = time.monotonic() + timeout
+    server.timeout = min(1.0, float(timeout))
 
-    while not auth_code and not error:
+    while not auth_code and not error and time.monotonic() < deadline:
         server.handle_request()
     server.server_close()
 
@@ -835,6 +916,8 @@ def run_connector_oauth(
         "scope": " ".join(provider.scopes),
         **provider.extra_auth_params,
     }
+    state = secrets.token_urlsafe(32)
+    params["state"] = state
     auth_url = f"{provider.auth_endpoint}?{urlencode(params)}"
 
     # Open browser and wait for callback
@@ -843,6 +926,7 @@ def run_connector_oauth(
         host=provider.callback_host,
         port=provider.callback_port,
         path=provider.callback_path,
+        expected_state=state,
     )
 
     # Exchange code for tokens
@@ -857,6 +941,9 @@ def run_connector_oauth(
         "expires_in": tokens.get("expires_in", 3600),
         "client_id": client_id,
         "client_secret": client_secret,
+        "source_email": google_source_email_from_tokens(tokens)
+        if provider.name == _GOOGLE_ACCOUNT_PROVIDER
+        else "",
     }
 
     # Save to the legacy provider files, or to one segmented account file when

@@ -508,6 +508,7 @@ class ResearchAgent:
         clarify_handler: Optional[Callable[[str], str]] = None,
         on_event: Optional[Callable[[Dict[str, Any]], None]] = None,
         available_sources: Optional[List[str]] = None,
+        default_accounts: Optional[List[str]] = None,
     ) -> None:
         self._engine = engine
         self._search = search
@@ -518,6 +519,11 @@ class ResearchAgent:
         self._num_ctx = int(num_ctx)
         self._clarify_handler = clarify_handler or _default_clarify_handler
         self._on_event = on_event
+        from openjarvis.connectors.oauth import normalize_account_alias
+
+        self._default_accounts = [
+            normalize_account_alias(account) for account in (default_accounts or [])
+        ]
         # Explicit list wins; otherwise we'll discover sources from the
         # KnowledgeStore on each run() call so the prompt stays accurate
         # even as the user connects new connectors mid-session.
@@ -564,19 +570,6 @@ class ResearchAgent:
 
         if person:
             person = str(person).strip() or None
-            # Small/local planners often misclassify exact marker strings,
-            # ticket IDs, and other search literals as a `person` filter. That
-            # turns a good lexical search into an impossible AND over
-            # participants/author. If the supposed person is just the query
-            # rewritten/normalized, treat it as a search term only.
-            if query and person:
-                norm_query = _norm_markerish(query)
-                norm_person = _norm_markerish(person)
-                marker_like_query = any(ch in query for ch in "_-0123456789")
-                if norm_person == norm_query or (
-                    marker_like_query and norm_person and norm_person in norm_query
-                ):
-                    person = None
         time_range = self._parse_time_range(args.get("time_range"))
         sources = args.get("sources") or None
         if sources and not isinstance(sources, list):
@@ -584,6 +577,9 @@ class ResearchAgent:
         accounts = args.get("accounts") or args.get("account") or None
         if accounts and not isinstance(accounts, list):
             accounts = [str(accounts)]
+        has_scoped_source = any(":" in str(source) for source in (sources or []))
+        if not accounts and not has_scoped_source and self._default_accounts:
+            accounts = list(self._default_accounts)
         if person:
             # The planner can also mistake an account alias from a scoped
             # source like gmail:personal-main for a person filter (e.g.
@@ -598,7 +594,10 @@ class ResearchAgent:
                 if ":" in source_s:
                     scoped_accounts.append(source_s.split(":", 1)[1])
             scoped_accounts.extend(str(account) for account in (accounts or []))
-            if any(_norm_markerish(person) == _norm_markerish(account) for account in scoped_accounts):
+            if any(
+                _norm_markerish(person) == _norm_markerish(account)
+                for account in scoped_accounts
+            ):
                 person = None
         limit = int(args.get("limit", 20) or 20)
         limit = max(1, min(limit, 20))

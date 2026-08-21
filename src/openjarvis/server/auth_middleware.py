@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import logging
 import os
+import re
 import secrets
 
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -78,6 +79,14 @@ class AuthMiddleware(BaseHTTPMiddleware):
         by unauthenticated clients, so it is gated alongside ``/v1`` and
         ``/api``. ``/health`` stays open for liveness probes.
         """
+        # OAuth providers cannot attach OpenJarvis's bearer key when they
+        # redirect the browser back to us.  The callback is nevertheless
+        # authenticated by a short-lived, one-time, connector-bound ``state``
+        # token issued from the protected start endpoint.  Keep only the
+        # callback public; initiation and every other connector route remain
+        # behind API-key auth.
+        if re.fullmatch(r"/v1/connectors/[^/]+/oauth/callback", path):
+            return False
         return (
             path.startswith("/v1/")
             or path.startswith("/api/")

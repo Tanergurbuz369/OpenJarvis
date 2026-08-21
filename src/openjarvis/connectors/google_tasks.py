@@ -16,6 +16,7 @@ from openjarvis.connectors.google_auth import call_with_refresh
 from openjarvis.connectors.oauth import (
     google_account_doc_id,
     google_account_metadata,
+    google_account_source_id,
     load_tokens,
     normalize_account_alias,
     resolve_google_credentials,
@@ -86,6 +87,7 @@ class GoogleTasksConnector(BaseConnector):
     def sync(
         self, *, since: Optional[datetime] = None, cursor: Optional[str] = None
     ) -> Iterator[Document]:
+        tokens = load_tokens(str(self._credentials_path)) or {}
         # call_with_refresh handles the access-token read + one-shot 401 retry.
         task_lists = call_with_refresh(
             _tasks_api_get, str(self._credentials_path), "users/@me/lists"
@@ -126,6 +128,10 @@ class GoogleTasksConnector(BaseConnector):
                     doc_id=google_account_doc_id(
                         "google_tasks", task["id"], self._account
                     ),
+                    source_id=google_account_source_id(
+                        task["id"],
+                        self._account,
+                    ),
                     source="google_tasks",
                     doc_type="task",
                     content=task.get("notes", ""),
@@ -137,7 +143,11 @@ class GoogleTasksConnector(BaseConnector):
                         "status": status,
                         "due": due,
                         "completed": task.get("completed", ""),
-                        **google_account_metadata("google_tasks", self._account),
+                        **google_account_metadata(
+                            "google_tasks",
+                            self._account,
+                            str(tokens.get("source_email", "")),
+                        ),
                     },
                 )
 

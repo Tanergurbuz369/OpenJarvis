@@ -160,6 +160,9 @@ class KnowledgeSearchTool(BaseTool):
         for i, result in enumerate(results, start=1):
             meta = result.metadata
             src_label = result.source or meta.get("source", "")
+            result_account = str(meta.get("account", "") or "")
+            if src_label and result_account:
+                src_label = f"{src_label}:{result_account}"
             title = meta.get("title", "")
             result_author = meta.get("author", "")
             url = meta.get("url", "")

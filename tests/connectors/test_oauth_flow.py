@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -198,6 +201,74 @@ def test_google_account_credentials_path_is_segmented(tmp_path: Path) -> None:
     assert path == str(tmp_path / "google" / "accounts" / "work.json")
 
 
+def test_google_account_aliases_are_case_normalized_and_portable(
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors import oauth
+
+    with patch.object(oauth, "_GOOGLE_ACCOUNTS_DIR", tmp_path):
+        assert oauth.google_account_credentials_path(" Work ") == str(
+            tmp_path / "work.json"
+        )
+        with pytest.raises(ValueError, match="Account aliases"):
+            oauth.google_account_credentials_path("CON")
+        with pytest.raises(ValueError, match="Account aliases"):
+            oauth.google_account_credentials_path("work.")
+
+
+def test_list_google_accounts_reports_aliases_without_secrets(tmp_path: Path) -> None:
+    from openjarvis.connectors import oauth
+
+    account_dir = tmp_path / "google" / "accounts"
+    with patch.object(oauth, "_GOOGLE_ACCOUNTS_DIR", account_dir):
+        oauth.save_tokens(
+            oauth.google_account_credentials_path("work"),
+            {"access_token": "ya29.secret", "refresh_token": "1//secret"},
+        )
+        oauth.save_tokens(
+            oauth.google_account_credentials_path("personal"),
+            {"client_id": "configured-but-not-authorized"},
+        )
+        profiles = oauth.list_google_accounts()
+
+    assert profiles == [
+        {"account": "personal", "connected": False, "source_email": ""},
+        {"account": "work", "connected": True, "source_email": ""},
+    ]
+    assert "ya29.secret" not in repr(profiles)
+    assert "1//secret" not in repr(profiles)
+
+
+def test_google_source_email_requires_verified_id_token_claim() -> None:
+    from openjarvis.connectors.oauth import google_source_email_from_tokens
+
+    def _id_token(payload: dict) -> str:
+        encoded = base64.urlsafe_b64encode(json.dumps(payload).encode()).decode()
+        return f"header.{encoded.rstrip('=')}.signature"
+
+    assert (
+        google_source_email_from_tokens(
+            {
+                "id_token": _id_token(
+                    {"email": "person@example.com", "email_verified": True}
+                )
+            }
+        )
+        == "person@example.com"
+    )
+    assert (
+        google_source_email_from_tokens(
+            {
+                "id_token": _id_token(
+                    {"email": "spoof@example.com", "email_verified": False}
+                )
+            }
+        )
+        == ""
+    )
+    assert google_source_email_from_tokens({"id_token": "invalid"}) == ""
+
+
 def test_resolve_google_credentials_keeps_explicit_path_isolated(
     tmp_path: Path,
 ) -> None:
@@ -356,8 +427,10 @@ def test_run_connector_oauth_saves_named_google_account_only(tmp_path: Path) -> 
     with (
         patch.object(oauth, "_GOOGLE_ACCOUNTS_DIR", account_dir),
         patch.object(oauth, "_CONNECTORS_DIR", legacy_dir),
-        patch("openjarvis.connectors.oauth.open_browser"),
-        patch("openjarvis.connectors.oauth._wait_for_callback_code", return_value="c"),
+        patch("openjarvis.connectors.oauth.open_browser") as mock_browser,
+        patch(
+            "openjarvis.connectors.oauth._wait_for_callback_code", return_value="c"
+        ) as wait_for_callback,
         patch(
             "openjarvis.connectors.oauth._exchange_token",
             return_value={
@@ -377,3 +450,12 @@ def test_run_connector_oauth_saves_named_google_account_only(tmp_path: Path) -> 
 
     assert (account_dir / "work.json").exists()
     assert not (legacy_dir / "gmail.json").exists()
+    auth_url = mock_browser.call_args.args[0]
+    state = parse_qs(urlparse(auth_url).query)["state"][0]
+    assert state
+    wait_for_callback.assert_called_once_with(
+        host="127.0.0.1",
+        port=8789,
+        path="/callback",
+        expected_state=state,
+    )

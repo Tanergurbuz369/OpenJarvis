@@ -7,6 +7,7 @@ from pathlib import Path
 from openjarvis.core.config import (
     AgentConfig,
     ChannelConfig,
+    DigestConfig,
     EngineConfig,
     GpuInfo,
     HardwareInfo,
@@ -223,6 +224,29 @@ class TestAgentConfigNew:
         assert ac.context_from_memory is True
         assert ac.tools == ""
         assert ac.max_turns == 10
+        assert ac.default_accounts == []
+
+    def test_named_account_defaults(self) -> None:
+        assert AgentConfig(default_accounts=["work"]).default_accounts == ["work"]
+        assert DigestConfig(accounts=["personal", "work"]).accounts == [
+            "personal",
+            "work",
+        ]
+
+    def test_loads_named_google_account_profiles(self, tmp_path: Path) -> None:
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            "[connectors.google.accounts.personal]\n"
+            "enabled = true\n\n"
+            "[connectors.google.accounts.work]\n"
+            "enabled = false\n",
+            encoding="utf-8",
+        )
+
+        cfg = load_config(config_path)
+
+        assert cfg.connectors.google.accounts["personal"].enabled is True
+        assert cfg.connectors.google.accounts["work"].enabled is False
 
     def test_default_tools_backward_compat(self) -> None:
         ac = AgentConfig()

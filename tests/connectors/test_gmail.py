@@ -183,7 +183,15 @@ def test_sync_with_account_namespaces_ids_and_metadata(
 
     creds_path = Path(conn._credentials_path)
     creds_path.parent.mkdir(parents=True, exist_ok=True)
-    creds_path.write_text(json.dumps({"token": "fake-access-token"}), encoding="utf-8")
+    creds_path.write_text(
+        json.dumps(
+            {
+                "token": "fake-access-token",
+                "source_email": "work@example.com",
+            }
+        ),
+        encoding="utf-8",
+    )
 
     mock_list.return_value = {"messages": [{"id": "msg1"}]}
     mock_get.return_value = _MSG1
@@ -196,6 +204,7 @@ def test_sync_with_account_namespaces_ids_and_metadata(
     assert docs[0].metadata["account"] == "work"
     assert docs[0].metadata["source_profile"] == "work"
     assert docs[0].metadata["connector_instance"] == "gmail:work"
+    assert docs[0].metadata["source_email"] == "work@example.com"
 
 
 # ---------------------------------------------------------------------------

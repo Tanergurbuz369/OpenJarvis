@@ -520,7 +520,11 @@ class GmailConnector(BaseConnector):
                         "snippet": msg.get("snippet", ""),
                         "history_id": msg.get("historyId", ""),
                         "size_estimate": msg.get("sizeEstimate", 0),
-                        **google_account_metadata("gmail", self._account),
+                        **google_account_metadata(
+                            "gmail",
+                            self._account,
+                            str(tokens.get("source_email", "")),
+                        ),
                     },
                 )
                 synced += 1

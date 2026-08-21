@@ -28,9 +28,11 @@ shared file when the caller-supplied path does not yet exist on disk).
 from __future__ import annotations
 
 import json
+import threading
 from pathlib import Path
 from typing import Any, Iterator
 from unittest.mock import patch
+from urllib.parse import parse_qs, urlparse
 
 import pytest
 
@@ -83,6 +85,11 @@ def hermetic_connectors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
     monkeypatch.setattr(config_mod, "DEFAULT_CONFIG_DIR", tmp_path)
     monkeypatch.setattr(oauth_mod, "_CONNECTORS_DIR", conn_dir)
     monkeypatch.setattr(
+        oauth_mod,
+        "_GOOGLE_ACCOUNTS_DIR",
+        conn_dir / "google" / "accounts",
+    )
+    monkeypatch.setattr(
         oauth_mod, "_SHARED_GOOGLE_CREDENTIALS_PATH", str(conn_dir / "google.json")
     )
 
@@ -101,6 +108,7 @@ def hermetic_connectors(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path
         "openjarvis.connectors.spotify",
         "openjarvis.connectors.strava",
     ]
+    ConnectorRegistry.clear()
     for name in google_mods:
         module = importlib.import_module(name)
         # Always execute each decorator under the patched config root. Merely
@@ -130,6 +138,24 @@ def client(hermetic_connectors: Path) -> Iterator[TestClient]:
     app.include_router(create_connectors_router())
     with TestClient(app) as c:
         yield c
+
+
+def _start_state(
+    client: TestClient,
+    connector_id: str,
+    *,
+    account: str = "",
+) -> str:
+    """Start OAuth and return the one-time state from its provider URL."""
+    suffix = f"?account={account}" if account else ""
+    response = client.get(
+        f"/v1/connectors/{connector_id}/oauth/start{suffix}",
+        follow_redirects=False,
+    )
+    assert response.status_code in (302, 307), response.text
+    state = parse_qs(urlparse(response.headers["location"]).query).get("state")
+    assert state and len(state) == 1
+    return state[0]
 
 
 # ---------------------------------------------------------------------------
@@ -276,6 +302,22 @@ def test_oauth_start_redirects_to_consent(
     assert "oauth%2Fcallback" in location or "oauth/callback" in location
 
 
+def test_oauth_start_can_return_provider_url_for_authenticated_frontend(
+    client: TestClient,
+) -> None:
+    client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+
+    response = client.get(
+        "/v1/connectors/gdrive/oauth/start",
+        params={"response_mode": "json"},
+    )
+
+    assert response.status_code == 200
+    authorization_url = response.json()["authorization_url"]
+    assert authorization_url.startswith("https://accounts.google.com/o/oauth2/v2/auth")
+    assert parse_qs(urlparse(authorization_url).query)["state"][0]
+
+
 def test_oauth_start_without_creds_returns_400(client: TestClient) -> None:
     resp = client.get("/v1/connectors/gdrive/oauth/start", follow_redirects=False)
     assert resp.status_code == 400
@@ -293,6 +335,7 @@ def test_oauth_callback_exchanges_and_connects(
     import openjarvis.connectors.oauth as oauth_mod
 
     client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+    state = _start_state(client, "gdrive")
 
     fake_tokens = {
         "access_token": "ya29.REAL",
@@ -301,7 +344,10 @@ def test_oauth_callback_exchanges_and_connects(
         "expires_in": 3600,
     }
     with patch.object(oauth_mod, "_exchange_token", return_value=fake_tokens) as ex:
-        resp = client.get("/v1/connectors/gdrive/oauth/callback?code=authcode123")
+        resp = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "authcode123", "state": state},
+        )
 
     assert resp.status_code == 200, resp.text
     assert "Connected!" in resp.text
@@ -324,7 +370,12 @@ def test_oauth_callback_exchanges_and_connects(
 
 
 def test_oauth_callback_error_param_renders_failure(client: TestClient) -> None:
-    resp = client.get("/v1/connectors/gdrive/oauth/callback?error=access_denied")
+    client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+    state = _start_state(client, "gdrive")
+    resp = client.get(
+        "/v1/connectors/gdrive/oauth/callback",
+        params={"error": "access_denied", "state": state},
+    )
     assert resp.status_code == 400
     assert "access_denied" in resp.text
 
@@ -335,12 +386,16 @@ def test_oauth_callback_exchange_failure_renders_error(
     import openjarvis.connectors.oauth as oauth_mod
 
     client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+    state = _start_state(client, "gdrive")
 
     def _boom(*_a: Any, **_k: Any) -> dict[str, Any]:
         raise RuntimeError("token endpoint 400")
 
     with patch.object(oauth_mod, "_exchange_token", side_effect=_boom):
-        resp = client.get("/v1/connectors/gdrive/oauth/callback?code=bad")
+        resp = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "bad", "state": state},
+        )
 
     assert resp.status_code == 500
     assert "Token Exchange Failed" in resp.text
@@ -354,12 +409,16 @@ def test_oauth_callback_rejects_missing_access_token_without_false_success(
     import openjarvis.connectors.oauth as oauth_mod
 
     client.post("/v1/connectors/spotify/connect", json={"code": "id:secret"})
+    state = _start_state(client, "spotify")
     with patch.object(
         oauth_mod,
         "_exchange_token",
         return_value={"refresh_token": "refresh-only"},
     ):
-        resp = client.get("/v1/connectors/spotify/oauth/callback?code=bad-payload")
+        resp = client.get(
+            "/v1/connectors/spotify/oauth/callback",
+            params={"code": "bad-payload", "state": state},
+        )
 
     assert resp.status_code == 500
     assert "Token Exchange Failed" in resp.text
@@ -370,3 +429,203 @@ def test_oauth_callback_rejects_missing_access_token_without_false_success(
     from openjarvis.connectors.spotify import SpotifyConnector
 
     assert SpotifyConnector().is_connected() is False
+
+
+def test_named_account_oauth_state_binds_segmented_token(
+    client: TestClient,
+    hermetic_connectors: Path,
+) -> None:
+    """The callback account comes from one-time state, not caller input."""
+    import openjarvis.connectors.oauth as oauth_mod
+
+    response = client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    assert response.status_code == 200
+    assert response.json()["oauth_start"].endswith("?account=work")
+    # Cache a sibling before tokens exist. The callback must invalidate every
+    # Google primitive that shares this named grant, not only gdrive.
+    assert (
+        client.get("/v1/connectors/gmail", params={"account": "work"}).json()[
+            "connected"
+        ]
+        is False
+    )
+    state = _start_state(client, "gdrive", account="work")
+
+    with patch.object(
+        oauth_mod,
+        "_exchange_token",
+        return_value={"access_token": "ya29.WORK", "refresh_token": "refresh"},
+    ):
+        callback = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "work-code", "state": state, "account": "personal"},
+        )
+
+    assert callback.status_code == 200
+    account_file = hermetic_connectors / "google" / "accounts" / "work.json"
+    assert json.loads(account_file.read_text(encoding="utf-8"))["access_token"] == (
+        "ya29.WORK"
+    )
+    assert not (hermetic_connectors / "google" / "accounts" / "personal.json").exists()
+
+    detail = client.get("/v1/connectors/gdrive", params={"account": "work"})
+    assert detail.status_code == 200
+    assert detail.json()["account"] == "work"
+    assert detail.json()["connected"] is True
+    assert (
+        client.get("/v1/connectors/gmail", params={"account": "work"}).json()[
+            "connected"
+        ]
+        is True
+    )
+
+    listing = client.get("/v1/connectors").json()["connectors"]
+    gdrive = next(item for item in listing if item["connector_id"] == "gdrive")
+    assert gdrive["accounts"] == [
+        {"account": "work", "connected": True, "source_email": ""}
+    ]
+
+    disconnected = client.post(
+        "/v1/connectors/gdrive/disconnect",
+        params={"account": "work"},
+    )
+    assert disconnected.status_code == 200, disconnected.text
+    assert set(disconnected.json()["disconnected_connectors"]) == {
+        "gcalendar",
+        "gcontacts",
+        "gdrive",
+        "gmail",
+        "google_tasks",
+    }
+    assert not account_file.exists()
+    for connector_id in ("gdrive", "gmail", "gcalendar"):
+        response = client.get(
+            f"/v1/connectors/{connector_id}",
+            params={"account": "work"},
+        )
+        assert response.status_code == 200
+        assert response.json()["connected"] is False
+
+
+def test_named_account_rejected_for_non_google_connector(client: TestClient) -> None:
+    response = client.get("/v1/connectors/spotify", params={"account": "work"})
+
+    assert response.status_code == 400
+    assert "supported only for Google connectors" in response.json()["detail"]
+
+
+def test_connect_rejects_conflicting_account_and_profile(client: TestClient) -> None:
+    response = client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work", "profile": "personal"},
+    )
+
+    assert response.status_code == 400
+    assert "must name the same alias" in response.json()["detail"]
+
+
+def test_reauth_rejected_while_sibling_account_sync_is_active(
+    client: TestClient,
+) -> None:
+    import openjarvis.connectors.oauth as oauth_mod
+    import openjarvis.server.connectors_router as router_mod
+
+    client.post(
+        "/v1/connectors/gdrive/connect",
+        json={"code": _CLIENT_PAIR, "account": "work"},
+    )
+    state = _start_state(client, "gdrive", account="work")
+    started = threading.Event()
+    release = threading.Event()
+
+    class _BlockingGmail:
+        connector_id = "gmail"
+        _account = "work"
+
+        @staticmethod
+        def is_connected() -> bool:
+            return True
+
+        @staticmethod
+        def sync(*, since=None, cursor=None):
+            del since, cursor
+            started.set()
+            release.wait(timeout=5)
+            if False:
+                yield None
+
+    router_mod._instances["gmail:work"] = _BlockingGmail()
+    try:
+        sync_response = client.post(
+            "/v1/connectors/gmail/sync", params={"account": "work"}
+        )
+        assert sync_response.status_code == 200
+        assert started.wait(timeout=2)
+
+        with patch.object(oauth_mod, "_exchange_token") as exchange:
+            callback = client.get(
+                "/v1/connectors/gdrive/oauth/callback",
+                params={"code": "new-identity", "state": state},
+            )
+
+        assert callback.status_code == 409
+        assert "sync is active" in callback.json()["detail"]
+        exchange.assert_not_called()
+    finally:
+        release.set()
+
+
+def test_oauth_state_is_required_and_single_use(
+    client: TestClient,
+) -> None:
+    """Missing, forged, or replayed state never reaches token exchange."""
+    import openjarvis.connectors.oauth as oauth_mod
+
+    client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+    state = _start_state(client, "gdrive")
+
+    with patch.object(
+        oauth_mod,
+        "_exchange_token",
+        return_value={"access_token": "ya29.ONCE"},
+    ) as exchange:
+        missing = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "missing"},
+        )
+        forged = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "forged", "state": "not-issued"},
+        )
+        first = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "valid", "state": state},
+        )
+        replay = client.get(
+            "/v1/connectors/gdrive/oauth/callback",
+            params={"code": "again", "state": state},
+        )
+
+    assert missing.status_code == 400
+    assert forged.status_code == 400
+    assert first.status_code == 200
+    assert replay.status_code == 400
+    exchange.assert_called_once()
+
+
+def test_oauth_error_is_html_escaped(client: TestClient) -> None:
+    """Provider error text cannot inject markup into the callback page."""
+    client.post("/v1/connectors/gdrive/connect", json={"code": _CLIENT_PAIR})
+    state = _start_state(client, "gdrive")
+
+    response = client.get(
+        "/v1/connectors/gdrive/oauth/callback",
+        params={"error": "<script>alert(1)</script>", "state": state},
+    )
+
+    assert response.status_code == 400
+    assert "<script>alert(1)</script>" not in response.text
+    assert "&lt;script&gt;" in response.text

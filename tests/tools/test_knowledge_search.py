@@ -82,6 +82,20 @@ class TestKnowledgeSearchTool:
         # Every returned result must come from gmail
         assert "slack" not in result.content
 
+    def test_account_provenance_is_visible_in_result_label(self, store):
+        store.store(
+            "Named account renewal notice.",
+            source="gmail",
+            source_id="work:renewal",
+            doc_type="email",
+            metadata={"account": "work"},
+        )
+        tool = KnowledgeSearchTool(store=store)
+
+        result = tool.execute(query="renewal", account="work")
+
+        assert "[gmail:work]" in result.content
+
     def test_filter_by_author(self, store):
         """author filter restricts results to sarah only."""
         tool = KnowledgeSearchTool(store=store)
@@ -118,7 +132,15 @@ class TestKnowledgeSearchTool:
         """ToolSpec.parameters includes all required and optional filter fields."""
         tool = KnowledgeSearchTool()
         props = tool.spec.parameters.get("properties", {})
-        for field in ("query", "source", "doc_type", "author", "since", "top_k"):
+        for field in (
+            "query",
+            "source",
+            "account",
+            "doc_type",
+            "author",
+            "since",
+            "top_k",
+        ):
             assert field in props, f"Missing parameter: {field}"
         assert "query" in tool.spec.parameters.get("required", [])
         assert tool.spec.category == "knowledge"

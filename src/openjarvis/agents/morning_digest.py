@@ -17,6 +17,31 @@ from openjarvis.core.paths import get_config_dir
 from openjarvis.core.registry import AgentRegistry
 from openjarvis.core.types import Message, Role, ToolCall
 
+_GOOGLE_PROFILE_SOURCES = {
+    "gcalendar",
+    "gcontacts",
+    "gdrive",
+    "gmail",
+    "google_tasks",
+}
+
+
+def expand_account_sources(sources: List[str], accounts: List[str]) -> List[str]:
+    """Expand unscoped Google digest sources across configured profiles."""
+    if not accounts:
+        return list(sources)
+    from openjarvis.connectors.oauth import normalize_account_alias
+
+    aliases = [normalize_account_alias(account) for account in accounts]
+    expanded: List[str] = []
+    for source in sources:
+        if ":" in source or source not in _GOOGLE_PROFILE_SOURCES:
+            expanded.append(source)
+        else:
+            expanded.extend(f"{source}:{account}" for account in aliases)
+    return expanded
+
+
 _SECTION_PROMPTS = {
     "messages": "MESSAGES — Prioritize provided messages or tasks needing action.",
     "calendar": "CALENDAR — Cover only provided upcoming events.",

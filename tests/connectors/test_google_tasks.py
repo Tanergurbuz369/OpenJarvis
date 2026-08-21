@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -70,3 +72,26 @@ def test_sync_yields_tasks(connector):
     assert docs[0].title == "Review PR #42"
     assert docs[0].metadata["status"] == "needsAction"
     assert docs[1].metadata["status"] == "completed"
+
+
+def test_named_account_sync_emits_scoped_provenance(tmp_path: Path) -> None:
+    from openjarvis.connectors.google_tasks import GoogleTasksConnector
+
+    creds = tmp_path / "work.json"
+    creds.write_text(
+        json.dumps({"token": "fake-access-token", "source_email": "work@example.com"}),
+        encoding="utf-8",
+    )
+    connector = GoogleTasksConnector(credentials_path=str(creds), account="work")
+    with patch(
+        "openjarvis.connectors.google_tasks._tasks_api_get",
+        side_effect=[_TASK_LISTS_RESPONSE, {"items": [_TASKS_RESPONSE["items"][0]]}],
+    ):
+        doc = next(connector.sync())
+
+    assert doc.doc_id == "google_tasks:work:task1"
+    assert doc.source_id == "work:task1"
+    assert doc.metadata["account"] == "work"
+    assert doc.metadata["source_profile"] == "work"
+    assert doc.metadata["connector"] == "google_tasks"
+    assert doc.metadata["source_email"] == "work@example.com"

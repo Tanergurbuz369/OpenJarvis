@@ -20,6 +20,7 @@ from openjarvis.connectors.oauth import (
     delete_tokens,
     google_account_doc_id,
     google_account_metadata,
+    google_account_source_id,
     load_tokens,
     normalize_account_alias,
     resolve_google_credentials,
@@ -413,6 +414,7 @@ class GCalendarConnector(BaseConnector):
                         doc_id=google_account_doc_id(
                             "gcalendar", evt_id, self._account
                         ),
+                        source_id=google_account_source_id(evt_id, self._account),
                         source="gcalendar",
                         doc_type="event",
                         content=content,
@@ -425,7 +427,11 @@ class GCalendarConnector(BaseConnector):
                             "calendar_id": calendar_id,
                             "event_id": evt_id,
                             "response_status": self_status,
-                            **google_account_metadata("gcalendar", self._account),
+                            **google_account_metadata(
+                                "gcalendar",
+                                self._account,
+                                str(tokens.get("source_email", "")),
+                            ),
                         },
                     )
                     synced += 1

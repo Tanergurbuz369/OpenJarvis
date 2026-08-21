@@ -34,6 +34,15 @@ def _list_sources(registry: object) -> None:
 
         table.add_row(key, auth_type, status)
 
+    try:
+        from openjarvis.connectors.oauth import list_google_accounts
+
+        for profile in list_google_accounts():
+            status = "connected" if profile["connected"] else "pending"
+            table.add_row(f"google:{profile['account']}", "oauth", status)
+    except Exception:  # noqa: BLE001
+        pass
+
     console.print(table)
 
 
@@ -41,15 +50,27 @@ def _disconnect_source(registry: object, source: str, account: str = "") -> None
     """Find and disconnect a registered source connector."""
     console = Console()
 
-    if source == "google" and account:
+    if account:
         from openjarvis.connectors.oauth import (
             delete_tokens,
+            get_provider_for_connector,
             google_account_credentials_path,
         )
 
-        delete_tokens(google_account_credentials_path(account))
-        console.print(f"[green]Disconnected google:{account}.[/green]")
-        return
+        provider = get_provider_for_connector(source)
+        if source == "google" or (provider and provider.name == "google"):
+            try:
+                _purge_google_account_index(account)
+                delete_tokens(google_account_credentials_path(account))
+                console.print(
+                    f"[green]Disconnected Google account {account} from all "
+                    "Google connectors.[/green]"
+                )
+            except Exception as exc:  # noqa: BLE001
+                console.print(
+                    f"[red]Failed to disconnect Google account {account}: {exc}[/red]"
+                )
+            return
 
     if not registry.contains(source):  # type: ignore[attr-defined]
         console.print(f"[red]Unknown source: {source}[/red]")
@@ -66,6 +87,32 @@ def _disconnect_source(registry: object, source: str, account: str = "") -> None
         console.print(f"[green]Disconnected {source}{suffix}.[/green]")
     except Exception as exc:  # noqa: BLE001
         console.print(f"[red]Failed to disconnect {source}: {exc}[/red]")
+
+
+def _purge_google_account_index(account: str) -> None:
+    """Remove all indexed rows/checkpoints owned by one Google profile."""
+    from openjarvis.connectors.oauth import OAUTH_PROVIDERS
+    from openjarvis.connectors.pipeline import IngestionPipeline
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.connectors.sync_engine import SyncEngine
+
+    connector_ids = tuple(OAUTH_PROVIDERS["google"].connector_ids)
+    checkpoint_ids = tuple(
+        f"{connector_id}:{account}" for connector_id in connector_ids
+    )
+    with KnowledgeStore() as store:
+        with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
+            old_checkpoints = {
+                key: engine.get_checkpoint(key) for key in checkpoint_ids
+            }
+            try:
+                for key in checkpoint_ids:
+                    engine.reset_checkpoint(key)
+                store.delete_by_sources(connector_ids, account=account)
+            except Exception:
+                for key, checkpoint in old_checkpoints.items():
+                    engine.restore_checkpoint(key, checkpoint)
+                raise
 
 
 def _connect_source(
@@ -289,9 +336,29 @@ def connect(
     """Manage data source connections (Gmail, Obsidian, etc.)."""
     # Lazy imports to avoid top-level side effects
     import openjarvis.connectors  # noqa: F401 — registers all connectors
+    from openjarvis.connectors.oauth import (
+        get_provider_for_connector,
+        normalize_account_alias,
+    )
     from openjarvis.core.registry import ConnectorRegistry
 
-    account_alias = account or profile
+    try:
+        account_alias = normalize_account_alias(account)
+        profile_alias = normalize_account_alias(profile)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from exc
+    if account_alias and profile_alias and account_alias != profile_alias:
+        raise click.UsageError("--account and --profile must name the same alias")
+    account_alias = account_alias or profile_alias
+
+    selected_source = disconnect_source or source or ""
+    if account_alias and selected_source != "google":
+        provider = get_provider_for_connector(selected_source)
+        if provider is None or provider.name != "google":
+            raise click.UsageError(
+                "Named account profiles are currently supported only for Google "
+                "connectors."
+            )
 
     if list_sources:
         _list_sources(ConnectorRegistry)

@@ -270,3 +270,37 @@ def test_hybrid_search_intersects_sources_and_accounts(tmp_path: Path) -> None:
     assert {h.title for h in hits} == {"Work Drive roadmap"}
     assert all(h.source == "gdrive" for h in hits)
     assert all(h.account == "work" for h in hits)
+
+
+def test_account_scoped_hit_never_enriches_from_sibling_account_thread(
+    tmp_path: Path,
+) -> None:
+    ks = KnowledgeStore(db_path=tmp_path / "knowledge.db")
+    _store(
+        ks,
+        content="project alpha work update",
+        source="gmail",
+        title="Work update",
+        doc_id="gmail:work:1",
+        thread_id="provider-thread-123",
+        metadata={"account": "work", "source_profile": "work"},
+    )
+    _store(
+        ks,
+        content="PERSONAL SECRET project alpha",
+        source="gmail",
+        title="Personal update",
+        doc_id="gmail:personal:1",
+        thread_id="provider-thread-123",
+        metadata={"account": "personal", "source_profile": "personal"},
+        chunk_index=1,
+    )
+
+    hits = HybridSearch(ks).search("project alpha", accounts=["work"])
+
+    assert len(hits) == 1
+    assert hits[0].account == "work"
+    assert all(
+        "PERSONAL SECRET" not in context["snippet"]
+        for context in hits[0].thread_context
+    )

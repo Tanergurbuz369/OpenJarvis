@@ -133,6 +133,37 @@ def test_sync_yields_documents(
     assert mock_export.call_count == 2
 
 
+@patch("openjarvis.connectors.gdrive._gdrive_api_list_files")
+@patch("openjarvis.connectors.gdrive._gdrive_api_export")
+def test_named_account_sync_emits_scoped_provenance(
+    mock_export,
+    mock_list,
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors.gdrive import GDriveConnector
+
+    creds = tmp_path / "work.json"
+    creds.write_text(
+        json.dumps({"token": "fake-access-token", "source_email": "work@example.com"}),
+        encoding="utf-8",
+    )
+    connector = GDriveConnector(credentials_path=str(creds), account="work")
+    mock_list.return_value = {
+        "files": [_FILES_LIST_RESPONSE["files"][0]],
+        "nextPageToken": None,
+    }
+    mock_export.return_value = _EXPORT_RESPONSE
+
+    doc = next(connector.sync())
+
+    assert doc.doc_id == "gdrive:work:doc1"
+    assert doc.source_id == "work:doc1"
+    assert doc.metadata["account"] == "work"
+    assert doc.metadata["source_profile"] == "work"
+    assert doc.metadata["connector"] == "gdrive"
+    assert doc.metadata["source_email"] == "work@example.com"
+
+
 # ---------------------------------------------------------------------------
 # Test 4 — disconnect removes the credentials file
 # ---------------------------------------------------------------------------

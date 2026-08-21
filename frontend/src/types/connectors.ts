@@ -41,6 +41,12 @@ export interface ConnectorInfo {
   mcp_tools?: string[];
   chunks?: number;
   oauth_setup?: OAuthSetupInfo | null;
+  account?: string | null;
+  accounts?: Array<{
+    account: string;
+    connected: boolean;
+    source_email?: string;
+  }>;
 }
 
 export interface SyncStatus {
@@ -56,9 +62,12 @@ export interface SyncStatus {
   oldest_item_date?: string | null;
   last_sync: string | null;
   error: string | null;
+  account?: string | null;
 }
 
 export interface ConnectRequest {
+  account?: string;
+  profile?: string;
   path?: string;
   token?: string;
   code?: string;
@@ -82,6 +91,7 @@ export interface ConnectResponse {
   status: "connected" | "pending" | "oauth_required" | "disconnected";
   oauth_start?: string;
   sync_status?: string | null;
+  account?: string | null;
 }
 
 export type WizardStep = "pick" | "connect" | "ingest" | "ready";

@@ -16,10 +16,9 @@ Typical usage::
 
 from __future__ import annotations
 
-import os
 import sqlite3
 import threading
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -115,17 +114,6 @@ class SyncEngine:
         if checkpoint and checkpoint.get("last_sync"):
             try:
                 since = datetime.fromisoformat(checkpoint["last_sync"])
-                # Gmail and similar APIs often filter by message Date/internal
-                # timestamp, not by the moment OpenJarvis last polled. A new
-                # email can legitimately have a Date a few minutes before the
-                # checkpoint wall clock, so exact `after:last_sync` polling can
-                # miss it forever. Re-fetch a bounded overlap and rely on the
-                # store natural key to ignore already-ingested documents.
-                lookback_seconds = int(
-                    os.environ.get("OPENJARVIS_SYNC_LOOKBACK_SECONDS", "86400")
-                )
-                if lookback_seconds > 0:
-                    since = since - timedelta(seconds=lookback_seconds)
             except (ValueError, TypeError):
                 pass
 

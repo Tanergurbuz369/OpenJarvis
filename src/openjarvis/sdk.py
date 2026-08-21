@@ -495,7 +495,14 @@ class Jarvis:
             for s in dc.sections:
                 sc = getattr(dc, s, None)
                 if sc and hasattr(sc, "sources"):
-                    section_sources[s] = sc.sources
+                    from openjarvis.agents.morning_digest import (
+                        expand_account_sources,
+                    )
+
+                    section_sources[s] = expand_account_sources(
+                        sc.sources,
+                        dc.accounts,
+                    )
             agent_kwargs.update(
                 {
                     "persona": dc.persona,

@@ -135,6 +135,34 @@ def test_sync_yields_events(
     mock_events.assert_called_once()
 
 
+@patch("openjarvis.connectors.gcalendar._gcal_api_calendars_list")
+@patch("openjarvis.connectors.gcalendar._gcal_api_events_list")
+def test_named_account_sync_emits_scoped_provenance(
+    mock_events,
+    mock_calendars,
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors.gcalendar import GCalendarConnector
+
+    creds = tmp_path / "work.json"
+    creds.write_text(
+        json.dumps({"token": "fake-access-token", "source_email": "work@example.com"}),
+        encoding="utf-8",
+    )
+    connector = GCalendarConnector(credentials_path=str(creds), account="work")
+    mock_calendars.return_value = _CALENDARS_RESPONSE
+    mock_events.return_value = _EVENTS_RESPONSE
+
+    doc = next(connector.sync())
+
+    assert doc.doc_id == "gcalendar:work:evt1"
+    assert doc.source_id == "work:evt1"
+    assert doc.metadata["account"] == "work"
+    assert doc.metadata["source_profile"] == "work"
+    assert doc.metadata["connector"] == "gcalendar"
+    assert doc.metadata["source_email"] == "work@example.com"
+
+
 def test_parse_event_timestamp_handles_all_day_events() -> None:
     """All-day events use their calendar date, not the current wall clock."""
     from openjarvis.connectors.gcalendar import _parse_event_timestamp  # noqa: PLC0415

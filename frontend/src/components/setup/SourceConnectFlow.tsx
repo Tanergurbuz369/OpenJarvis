@@ -8,8 +8,11 @@ import {
   Loader2,
 } from 'lucide-react';
 import { SOURCE_CATALOG } from '../../types/connectors';
-import { connectSource, getConnector } from '../../lib/connectors-api';
-import { getBase } from '../../lib/api';
+import {
+  connectSource,
+  openServerOAuthPopup,
+  startServerOAuth,
+} from '../../lib/connectors-api';
 import type { ConnectRequest, ConnectorMeta } from '../../types/connectors';
 
 // ---------------------------------------------------------------------------
@@ -138,56 +141,25 @@ function FilesystemPanel({
 
 function OAuthPanel({
   displayName,
-  authUrl,
-  connectorId,
   onConnect,
   onSkip,
   isConnecting,
 }: {
   displayName: string;
-  authUrl?: string;
-  connectorId: string;
   onConnect: (req: ConnectRequest) => void;
   onSkip: () => void;
   isConnecting: boolean;
 }) {
-  const [waiting, setWaiting] = useState(false);
-
-  const startOAuth = () => {
-    // Open the server's OAuth start endpoint which redirects to the provider
-    const oauthUrl = `${getBase()}/v1/connectors/${encodeURIComponent(connectorId)}/oauth/start`;
-    window.open(oauthUrl, '_blank', 'width=600,height=700');
-    setWaiting(true);
-
-    // Poll for connection status
-    const interval = setInterval(async () => {
-      try {
-        const info = await getConnector(connectorId);
-        if (info.connected) {
-          clearInterval(interval);
-          setWaiting(false);
-          onConnect({});
-        }
-      } catch {
-        // ignore polling errors
-      }
-    }, 2000);
-
-    // Stop polling after 3 minutes
-    setTimeout(() => {
-      clearInterval(interval);
-      setWaiting(false);
-    }, 180000);
-  };
+  const startOAuth = () => onConnect({});
 
   return (
     <div className="flex flex-col gap-4">
       <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-        {waiting
+        {isConnecting
           ? `Waiting for ${displayName} authorization... Complete it in the browser window.`
           : `Connect your ${displayName} account with one click.`}
       </p>
-      {waiting ? (
+      {isConnecting ? (
         <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--color-accent)' }}>
           <Loader2 size={16} className="animate-spin" />
           Waiting for authorization...
@@ -504,11 +476,20 @@ export function SourceConnectFlow({
   };
 
   const handleConnect = async (id: string, req: ConnectRequest) => {
+    const card = SOURCE_CATALOG.find((item) => item.connector_id === id);
+    const oauthPopup =
+      card?.auth_type === 'oauth' ? openServerOAuthPopup() : null;
     updateEntry(id, { state: 'connecting', error: undefined });
     try {
-      await connectSource(id, req);
+      const response = await connectSource(id, req);
+      if (response.status === 'oauth_required') {
+        await startServerOAuth(id, response.oauth_start, oauthPopup);
+      } else {
+        oauthPopup?.close();
+      }
       updateEntry(id, { state: 'connected' });
     } catch (err: unknown) {
+      oauthPopup?.close();
       const msg = err instanceof Error ? err.message : String(err);
       updateEntry(id, { state: 'error', error: msg });
       return;
@@ -606,8 +587,6 @@ export function SourceConnectFlow({
             ) : (
               <OAuthPanel
                 displayName={activeCard.display_name}
-                authUrl={undefined}
-                connectorId={activeEntry.id}
                 onConnect={(req) => handleConnect(activeEntry.id, req)}
                 onSkip={() => handleSkip(activeEntry.id)}
                 isConnecting={activeEntry.state === 'connecting'}

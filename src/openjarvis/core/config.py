@@ -1108,6 +1108,7 @@ class AgentConfig:
     system_prompt: str = ""  # inline system prompt (takes precedence if set)
     system_prompt_path: str = ""  # path to system prompt file (.txt, .md)
     context_from_memory: bool = True  # inject relevant memory context into prompts
+    default_accounts: List[str] = field(default_factory=list)
     default_system_prompt: str = (
         "You are OpenJarvis, a helpful AI assistant running locally on the "
         "user's own hardware. You are not a cloud service, and you are not "
@@ -1678,6 +1679,7 @@ class DigestConfig:
         default_factory=lambda: ["github", "financial", "music", "fitness"]
     )
     honorific: str = "sir"
+    accounts: List[str] = field(default_factory=list)
     voice_id: str = ""
     voice_speed: float = 1.0
     tts_backend: str = "cartesia"
@@ -1695,6 +1697,27 @@ class DigestConfig:
     world: DigestSectionConfig = field(
         default_factory=lambda: DigestSectionConfig(sources=[])
     )
+
+
+@dataclass
+class GoogleAccountProfileConfig:
+    """Configuration for one named Google connector profile."""
+
+    enabled: bool = True
+
+
+@dataclass
+class GoogleConnectorsConfig:
+    """Named Google profiles available to connector-aware workflows."""
+
+    accounts: Dict[str, GoogleAccountProfileConfig] = field(default_factory=dict)
+
+
+@dataclass
+class ConnectorsConfig:
+    """Connector-specific configuration."""
+
+    google: GoogleConnectorsConfig = field(default_factory=GoogleConnectorsConfig)
 
 
 @dataclass
@@ -1729,6 +1752,7 @@ class JarvisConfig:
     system_prompt: SystemPromptConfig = field(default_factory=SystemPromptConfig)
     compression: CompressionConfig = field(default_factory=CompressionConfig)
     skills: SkillsConfig = field(default_factory=SkillsConfig)
+    connectors: ConnectorsConfig = field(default_factory=ConnectorsConfig)
     digest: DigestConfig = field(default_factory=DigestConfig)
     proactive: ProactiveConfig = field(default_factory=ProactiveConfig)
     mining: Optional["MiningConfig"] = None
@@ -1856,6 +1880,23 @@ def _apply_toml_section(target: Any, section: Dict[str, Any]) -> None:
                 if hasattr(nested, "__dataclass_fields__"):
                     _apply_toml_section(nested, value)
                 else:
+                    field_type = None
+                    if hasattr(target, "__dataclass_fields__"):
+                        field_obj = target.__dataclass_fields__.get(key)
+                        if field_obj is not None:
+                            field_type = type_hints.get(key, field_obj.type)
+                    type_args = get_args(field_type) if field_type else ()
+                    value_type = type_args[1] if len(type_args) == 2 else None
+                    if get_origin(field_type) is dict and is_dataclass(value_type):
+                        converted = {}
+                        for item_key, item_value in value.items():
+                            if isinstance(item_value, dict):
+                                item = value_type()
+                                _apply_toml_section(item, item_value)
+                                converted[item_key] = item
+                            else:
+                                converted[item_key] = item_value
+                        value = converted
                     setattr(target, key, value)
             else:
                 # Normalise TOML arrays → comma-separated string.
@@ -2030,6 +2071,7 @@ def load_config(path: Optional[Path] = None) -> JarvisConfig:
             "system_prompt",
             "compression",
             "skills",
+            "connectors",
         )
         for section_name in top_sections:
             if section_name in data:
@@ -2345,6 +2387,7 @@ __all__ = [
     "CapabilitiesConfig",
     "ChannelConfig",
     "ConfigurationError",
+    "ConnectorsConfig",
     "DEFAULT_CONFIG_DIR",
     "DEFAULT_CONFIG_PATH",
     "DiscordChannelConfig",
@@ -2357,6 +2400,8 @@ __all__ = [
     "EngineConfig",
     "FeishuChannelConfig",
     "GoogleChatChannelConfig",
+    "GoogleAccountProfileConfig",
+    "GoogleConnectorsConfig",
     "GpuInfo",
     "HardwareInfo",
     "IRCChannelConfig",

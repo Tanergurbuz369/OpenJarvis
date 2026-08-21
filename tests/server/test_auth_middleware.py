@@ -20,6 +20,14 @@ def _make_app(api_key: str) -> FastAPI:
     async def models():
         return {"models": []}
 
+    @app.get("/v1/connectors/gdrive/oauth/callback")
+    async def oauth_callback():
+        return {"status": "callback reached"}
+
+    @app.get("/v1/connectors/gdrive/oauth/start")
+    async def oauth_start():
+        return {"status": "start reached"}
+
     @app.get("/health")
     async def health():
         return {"status": "ok"}
@@ -76,6 +84,10 @@ class TestAuthMiddleware:
     def test_metrics_accepts_valid_key(self, client):
         resp = client.get("/metrics", headers={"Authorization": "Bearer oj_sk_test123"})
         assert resp.status_code == 200
+
+    def test_oauth_callback_exempt_but_start_remains_protected(self, client):
+        assert client.get("/v1/connectors/gdrive/oauth/callback").status_code == 200
+        assert client.get("/v1/connectors/gdrive/oauth/start").status_code == 401
 
     def test_no_key_configured_allows_all(self):
         client = TestClient(_make_app(""))

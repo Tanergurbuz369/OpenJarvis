@@ -427,6 +427,7 @@ async def _stream_research(
             model=model,
             clarify_handler=lambda question: _WEB_CLARIFY_RESPONSE,
             on_event=on_event,
+            default_accounts=config.agent.default_accounts,
         )
     except Exception as exc:  # noqa: BLE001
         logger.exception("research: setup failed before agent could run: %s", exc)

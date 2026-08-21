@@ -111,6 +111,25 @@ def test_retrieve_filter_by_source_account_alias(ks: KnowledgeStore) -> None:
     assert "gmail:work" in ks.distinct_sources()
 
 
+def test_retrieve_rejects_conflicting_scoped_and_explicit_accounts(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="project alpha from personal",
+        source="gmail",
+        doc_type="email",
+        metadata={"account": "personal"},
+    )
+
+    with pytest.raises(ValueError, match="Conflicting account filters"):
+        ks.retrieve(
+            "project alpha",
+            source="gmail:work",
+            account="personal",
+        )
+
+
 def test_retrieve_filter_by_doc_type(ks: KnowledgeStore) -> None:
     """retrieve() with doc_type= filters correctly."""
     _store(
@@ -277,6 +296,40 @@ def test_delete_by_sources_removes_all_owned_sources_atomically(
 
     assert ks.delete_by_sources(("owned_a", "owned_b")) == 2
     assert ks.distinct_sources() == ["other"]
+
+
+def test_delete_by_sources_can_purge_one_account_only(ks: KnowledgeStore) -> None:
+    """Disconnecting one Google profile preserves sibling-profile chunks."""
+    _store(
+        ks,
+        content="work inbox document",
+        source="gmail",
+        doc_id="gmail:work:1",
+        metadata={"account": "work"},
+    )
+    _store(
+        ks,
+        content="personal inbox document",
+        source="gmail",
+        doc_id="gmail:personal:1",
+        metadata={"account": "personal"},
+    )
+    _store(
+        ks,
+        content="legacy inbox document",
+        source="gmail",
+        doc_id="gmail:legacy:1",
+    )
+
+    assert ks.delete_by_sources(("gmail",), account="work") == 1
+
+    remaining = ks._conn.execute(
+        "SELECT doc_id FROM knowledge_chunks ORDER BY doc_id"
+    ).fetchall()
+    assert [row["doc_id"] for row in remaining] == [
+        "gmail:legacy:1",
+        "gmail:personal:1",
+    ]
 
 
 def test_clear(ks: KnowledgeStore) -> None:

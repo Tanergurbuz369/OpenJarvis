@@ -58,3 +58,34 @@ def test_digest_collect_missing_connector():
 
     assert result.success is True  # Partial success
     assert "not available" in result.content
+
+
+def test_digest_collect_supports_account_scoped_google_source() -> None:
+    from openjarvis.tools.digest_collect import DigestCollectTool
+
+    connector_cls = MagicMock()
+    connector = connector_cls.return_value
+    connector.is_connected.return_value = True
+    connector.sync.return_value = [
+        Document(
+            doc_id="gmail:work:message-1",
+            source="gmail",
+            doc_type="email",
+            content="Work-only update",
+            title="Work update",
+            author="work@example.com",
+            metadata={"account": "work", "source_profile": "work"},
+        )
+    ]
+
+    with (
+        patch.object(ConnectorRegistry, "contains", return_value=True),
+        patch.object(ConnectorRegistry, "get", return_value=connector_cls),
+        patch("openjarvis.connectors.oauth.get_provider_for_connector") as get_provider,
+    ):
+        get_provider.return_value.name = "google"
+        result = DigestCollectTool().execute(sources=["gmail:Work"])
+
+    connector_cls.assert_called_once_with(account="work")
+    assert result.success is True
+    assert "[gmail:work id=gmail:work:message-1]" in result.content

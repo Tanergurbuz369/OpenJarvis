@@ -378,6 +378,11 @@ class KnowledgeStore(MemoryBackend):
         since_str = _to_iso(since) if since is not None else None
         until_str = _to_iso(until) if until is not None else None
         source, source_account = _split_source_account(source)
+        if account and source_account and account != source_account:
+            raise ValueError(
+                "Conflicting account filters: the scoped source and explicit "
+                "account must match"
+            )
         account = account or source_account
 
         # Build the WHERE clause for filter columns

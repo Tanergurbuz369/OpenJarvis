@@ -20,6 +20,7 @@ from openjarvis.connectors.oauth import (
     delete_tokens,
     google_account_doc_id,
     google_account_metadata,
+    google_account_source_id,
     load_tokens,
     normalize_account_alias,
     resolve_google_credentials,
@@ -281,6 +282,7 @@ class GDriveConnector(BaseConnector):
 
                 doc = Document(
                     doc_id=google_account_doc_id("gdrive", file_id, self._account),
+                    source_id=google_account_source_id(file_id, self._account),
                     source="gdrive",
                     doc_type="document",
                     content=content,
@@ -290,7 +292,11 @@ class GDriveConnector(BaseConnector):
                     metadata={
                         "file_id": file_id,
                         "mime_type": mime_type,
-                        **google_account_metadata("gdrive", self._account),
+                        **google_account_metadata(
+                            "gdrive",
+                            self._account,
+                            str(tokens.get("source_email", "")),
+                        ),
                     },
                 )
                 synced += 1

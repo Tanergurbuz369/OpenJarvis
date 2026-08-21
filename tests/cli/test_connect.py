@@ -130,3 +130,78 @@ def test_connect_google_with_account_runs_segmented_oauth() -> None:
         "secret",
         account="work",
     )
+
+
+def test_connect_rejects_conflicting_account_and_profile_aliases() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        ["connect", "--account", "work", "--profile", "personal", "google"],
+    )
+
+    assert result.exit_code == 2
+    assert "must name the same alias" in result.output
+
+
+def test_connect_accepts_equivalent_canonical_account_and_profile() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch(
+            "openjarvis.connectors.oauth.get_client_credentials",
+            return_value=("client.apps.googleusercontent.com", "secret"),
+        ),
+        mock.patch("openjarvis.connectors.oauth.run_connector_oauth") as mock_run,
+    ):
+        result = runner.invoke(
+            cli,
+            ["connect", "--account", " Work ", "--profile", "work", "google"],
+        )
+
+    assert result.exit_code == 0
+    mock_run.assert_called_once_with(
+        "gmail",
+        "client.apps.googleusercontent.com",
+        "secret",
+        account="work",
+    )
+
+
+def test_disconnect_named_google_account_purges_index_before_token() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch("openjarvis.cli.connect_cmd._purge_google_account_index") as purge,
+        mock.patch("openjarvis.connectors.oauth.delete_tokens") as delete,
+        mock.patch(
+            "openjarvis.connectors.oauth.google_account_credentials_path",
+            return_value="/tmp/work.json",
+        ),
+    ):
+        result = runner.invoke(
+            cli,
+            ["connect", "--account", "work", "--disconnect", "gmail"],
+        )
+
+    assert result.exit_code == 0
+    purge.assert_called_once_with("work")
+    delete.assert_called_once_with("/tmp/work.json")
+
+
+def test_connect_rejects_named_account_for_non_google_source() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["connect", "--account", "work", "obsidian"])
+
+    assert result.exit_code == 2
+    assert "supported only for Google connectors" in result.output
+
+
+def test_connect_rejects_unsafe_account_alias() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["connect", "--account", "../work", "google"])
+
+    assert result.exit_code == 2
+    assert "Account aliases must be" in result.output

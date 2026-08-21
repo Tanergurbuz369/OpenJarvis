@@ -96,17 +96,33 @@ def test_research_agent_strips_account_alias_person_filter():
         }
     )
 
-    agent._execute_search(
-        {
-            "query": MARKER,
-            "person": "OpenJarvis",
-            "sources": ["gmail:personal-main"],
-        }
-    )
-
     assert fake_search.calls[0]["person"] is None
     assert fake_search.calls[1]["person"] is None
-    assert fake_search.calls[2]["person"] is None
+
+
+def test_research_agent_applies_configured_default_accounts() -> None:
+    from openjarvis.agents.research_loop import ResearchAgent
+
+    class _FakeSearch:
+        def __init__(self):
+            self.calls = []
+
+        def search(self, query, **kwargs):
+            self.calls.append({"query": query, **kwargs})
+            return []
+
+    fake_search = _FakeSearch()
+    agent = ResearchAgent(  # type: ignore[arg-type]
+        engine=None,
+        search=fake_search,
+        default_accounts=[" Work "],
+    )
+
+    agent._execute_search({"query": "renewals", "sources": ["gmail"]})
+    agent._execute_search({"query": "family", "sources": ["gmail:personal"]})
+
+    assert fake_search.calls[0]["accounts"] == ["work"]
+    assert fake_search.calls[1]["accounts"] is None
 
 
 class _AccountConnector(BaseConnector):
@@ -179,31 +195,3 @@ def test_sync_engine_checkpoints_are_account_scoped(tmp_path):
         ("personal-main", 1),
         ("work-credain", 1),
     ]
-
-
-def test_sync_engine_applies_checkpoint_lookback(monkeypatch, tmp_path):
-    seen_since = []
-
-    class _RecordingConnector(_AccountConnector):
-        def sync(self, *, since=None, cursor=None):
-            seen_since.append(since)
-            return iter(())
-
-    monkeypatch.setenv("OPENJARVIS_SYNC_LOOKBACK_SECONDS", "3600")
-    store = KnowledgeStore(tmp_path / "knowledge.db")
-    engine = SyncEngine(
-        IngestionPipeline(store=store),
-        state_db=str(tmp_path / "sync_state.db"),
-    )
-    engine._conn.execute(
-        """
-        INSERT INTO sync_state (connector_id, items_synced, cursor, last_sync, error)
-        VALUES (?, ?, ?, ?, ?)
-        """,
-        ("gmail:personal-main", 1, None, "2026-06-05T20:00:00+00:00", None),
-    )
-    engine._conn.commit()
-
-    engine.sync(_RecordingConnector("personal-main", "marker"))
-
-    assert seen_since[0].isoformat() == "2026-06-05T19:00:00+00:00"
