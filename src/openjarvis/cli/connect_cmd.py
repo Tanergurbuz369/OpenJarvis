@@ -38,7 +38,13 @@ def _list_sources(registry: object) -> None:
         from openjarvis.connectors.oauth import list_google_accounts
 
         for profile in list_google_accounts():
-            status = "connected" if profile["connected"] else "pending"
+            status = (
+                "disabled"
+                if not profile.get("enabled", True)
+                else "connected"
+                if profile["connected"]
+                else "pending"
+            )
             table.add_row(f"google:{profile['account']}", "oauth", status)
     except Exception:  # noqa: BLE001
         pass
@@ -113,6 +119,82 @@ def _purge_google_account_index(account: str) -> None:
                 for key, checkpoint in old_checkpoints.items():
                     engine.restore_checkpoint(key, checkpoint)
                 raise
+
+
+def _migrate_legacy_google_index(account: str) -> None:
+    """Remove unscoped legacy Google rows/checkpoints before named reindexing."""
+    from openjarvis.connectors.oauth import OAUTH_PROVIDERS
+    from openjarvis.connectors.pipeline import IngestionPipeline
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.connectors.sync_engine import SyncEngine
+
+    connector_ids = tuple(OAUTH_PROVIDERS["google"].connector_ids)
+    with KnowledgeStore() as store:
+        with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
+            old_checkpoints = {
+                connector_id: engine.get_checkpoint(connector_id)
+                for connector_id in connector_ids
+            }
+            try:
+                for connector_id in connector_ids:
+                    engine.reset_checkpoint(connector_id)
+                store.delete_by_sources(connector_ids, unscoped_only=True)
+            except Exception:
+                for connector_id, checkpoint in old_checkpoints.items():
+                    engine.restore_checkpoint(connector_id, checkpoint)
+                raise
+
+
+def _sync_sources(registry: object, source: str = "", account: str = "") -> None:
+    """Run an incremental connector sync from the CLI."""
+    from openjarvis.connectors.oauth import OAUTH_PROVIDERS
+    from openjarvis.connectors.pipeline import IngestionPipeline
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.connectors.sync_engine import SyncEngine
+
+    console = Console()
+    if source == "google":
+        source_ids = list(OAUTH_PROVIDERS["google"].connector_ids)
+    elif source:
+        source_ids = [source]
+    else:
+        source_ids = list(registry.keys())  # type: ignore[attr-defined]
+
+    with KnowledgeStore() as store:
+        with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
+            for connector_id in source_ids:
+                if not registry.contains(connector_id):  # type: ignore[attr-defined]
+                    console.print(
+                        f"[yellow]Skipping unknown source {connector_id}.[/yellow]"
+                    )
+                    continue
+                connector_cls = registry.get(connector_id)  # type: ignore[attr-defined]
+                try:
+                    instance = (
+                        connector_cls(account=account) if account else connector_cls()
+                    )
+                except (TypeError, ValueError) as exc:
+                    console.print(
+                        f"[yellow]Skipping {connector_id}: "
+                        f"cannot configure ({exc}).[/yellow]"
+                    )
+                    continue
+                if not instance.is_connected():
+                    suffix = f":{account}" if account else ""
+                    console.print(
+                        f"[yellow]Skipping disconnected "
+                        f"{connector_id}{suffix}.[/yellow]"
+                    )
+                    continue
+                try:
+                    count = engine.sync(instance)
+                    suffix = f":{account}" if account else ""
+                    console.print(
+                        f"[green]Synced {connector_id}{suffix}: "
+                        f"{count} document(s).[/green]"
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    console.print(f"[red]Sync failed for {connector_id}: {exc}[/red]")
 
 
 def _connect_source(
@@ -322,6 +404,14 @@ def _connect_source(
     default="",
     help="Alias for --account.",
 )
+@click.option(
+    "--migrate-legacy-google",
+    is_flag=True,
+    help=(
+        "Delete unscoped legacy Google index rows/checkpoints before "
+        "reindexing them into --account."
+    ),
+)
 @click.pass_context
 def connect(
     ctx: click.Context,
@@ -332,6 +422,7 @@ def connect(
     path: str,
     account: str,
     profile: str,
+    migrate_legacy_google: bool,
 ) -> None:
     """Manage data source connections (Gmail, Obsidian, etc.)."""
     # Lazy imports to avoid top-level side effects
@@ -340,6 +431,7 @@ def connect(
         get_provider_for_connector,
         normalize_account_alias,
     )
+    from openjarvis.core.config import load_config
     from openjarvis.core.registry import ConnectorRegistry
 
     try:
@@ -350,6 +442,10 @@ def connect(
     if account_alias and profile_alias and account_alias != profile_alias:
         raise click.UsageError("--account and --profile must name the same alias")
     account_alias = account_alias or profile_alias
+    if account_alias and not load_config().connectors.google.is_enabled(account_alias):
+        raise click.UsageError(
+            f"Google account profile '{account_alias}' is disabled in config.toml"
+        )
 
     selected_source = disconnect_source or source or ""
     if account_alias and selected_source != "google":
@@ -364,9 +460,16 @@ def connect(
         _list_sources(ConnectorRegistry)
         return
 
-    if trigger_sync:
-        click.echo("Sync not yet implemented in CLI")
-        return
+    if migrate_legacy_google:
+        if not account_alias or selected_source != "google":
+            raise click.UsageError(
+                "--migrate-legacy-google requires `google --account ALIAS`"
+            )
+        _migrate_legacy_google_index(account_alias)
+        click.echo(
+            "Removed legacy unscoped Google rows and checkpoints; "
+            f"reindexing now targets '{account_alias}'."
+        )
 
     if disconnect_source:
         _disconnect_source(ConnectorRegistry, disconnect_source, account=account_alias)
@@ -374,6 +477,12 @@ def connect(
 
     if source:
         _connect_source(ConnectorRegistry, source, path=path, account=account_alias)
+        if trigger_sync:
+            _sync_sources(ConnectorRegistry, source=source, account=account_alias)
+        return
+
+    if trigger_sync:
+        _sync_sources(ConnectorRegistry, account=account_alias)
         return
 
     # No arguments — show help

@@ -501,7 +501,7 @@ class Jarvis:
 
                     section_sources[s] = expand_account_sources(
                         sc.sources,
-                        dc.accounts,
+                        self._config.connectors.google.enabled_aliases(dc.accounts),
                     )
             agent_kwargs.update(
                 {

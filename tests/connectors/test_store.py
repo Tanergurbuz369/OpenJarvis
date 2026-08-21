@@ -332,6 +332,29 @@ def test_delete_by_sources_can_purge_one_account_only(ks: KnowledgeStore) -> Non
     ]
 
 
+def test_delete_by_sources_can_purge_only_legacy_unscoped_rows(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="legacy inbox document",
+        source="gmail",
+        doc_id="gmail:legacy:1",
+    )
+    _store(
+        ks,
+        content="work inbox document",
+        source="gmail",
+        doc_id="gmail:work:1",
+        metadata={"account": "work"},
+    )
+
+    assert ks.delete_by_sources(("gmail",), unscoped_only=True) == 1
+
+    remaining = ks._conn.execute("SELECT doc_id FROM knowledge_chunks").fetchall()
+    assert [row["doc_id"] for row in remaining] == ["gmail:work:1"]
+
+
 def test_clear(ks: KnowledgeStore) -> None:
     """clear() removes all stored documents."""
     _store(ks, content="Document one about research")

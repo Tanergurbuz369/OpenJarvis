@@ -1712,6 +1712,32 @@ class GoogleConnectorsConfig:
 
     accounts: Dict[str, GoogleAccountProfileConfig] = field(default_factory=dict)
 
+    def is_enabled(self, account: str) -> bool:
+        """Return whether a configured alias may be used at runtime.
+
+        Unlisted aliases remain enabled for backwards-compatible ad-hoc CLI
+        profiles. Once declared in config, ``enabled = false`` is enforced by
+        connector-aware entry points.
+        """
+        from openjarvis.connectors.oauth import normalize_account_alias
+
+        alias = normalize_account_alias(account)
+        for configured, profile in self.accounts.items():
+            if normalize_account_alias(configured) == alias:
+                return profile.enabled
+        return True
+
+    def enabled_aliases(self, accounts: List[str]) -> List[str]:
+        """Normalize, de-duplicate, and discard disabled configured aliases."""
+        from openjarvis.connectors.oauth import normalize_account_alias
+
+        enabled: List[str] = []
+        for account in accounts:
+            alias = normalize_account_alias(account)
+            if self.is_enabled(alias) and alias not in enabled:
+                enabled.append(alias)
+        return enabled
+
 
 @dataclass
 class ConnectorsConfig:

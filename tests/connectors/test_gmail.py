@@ -205,6 +205,32 @@ def test_sync_with_account_namespaces_ids_and_metadata(
     assert docs[0].metadata["source_profile"] == "work"
     assert docs[0].metadata["connector_instance"] == "gmail:work"
     assert docs[0].metadata["source_email"] == "work@example.com"
+    assert docs[0].url == (
+        "https://mail.google.com/mail/?authuser=work%40example.com#all/msg1"
+    )
+
+
+@patch("openjarvis.connectors.gmail._gmail_api_list_messages")
+@patch("openjarvis.connectors.gmail._gmail_api_get_message")
+def test_named_sync_omits_ambiguous_link_without_source_email(
+    mock_get,
+    mock_list,
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors import oauth  # noqa: PLC0415
+    from openjarvis.connectors.gmail import GmailConnector  # noqa: PLC0415
+
+    with patch.object(oauth, "_GOOGLE_ACCOUNTS_DIR", tmp_path / "google" / "accounts"):
+        conn = GmailConnector(account="work")
+    creds_path = Path(conn._credentials_path)
+    creds_path.parent.mkdir(parents=True, exist_ok=True)
+    creds_path.write_text(json.dumps({"token": "fake-access-token"}), encoding="utf-8")
+    mock_list.return_value = {"messages": [{"id": "msg1"}]}
+    mock_get.return_value = _MSG1
+
+    [doc] = list(conn.sync())
+
+    assert doc.url == ""
 
 
 # ---------------------------------------------------------------------------

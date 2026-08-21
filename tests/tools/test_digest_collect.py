@@ -74,7 +74,11 @@ def test_digest_collect_supports_account_scoped_google_source() -> None:
             content="Work-only update",
             title="Work update",
             author="work@example.com",
-            metadata={"account": "work", "source_profile": "work"},
+            metadata={
+                "account": "work",
+                "source_profile": "work",
+                "message_id": "message-1",
+            },
         )
     ]
 
@@ -88,4 +92,6 @@ def test_digest_collect_supports_account_scoped_google_source() -> None:
 
     connector_cls.assert_called_once_with(account="work")
     assert result.success is True
-    assert "[gmail:work id=gmail:work:message-1]" in result.content
+    assert (
+        "[gmail:work id=gmail:work:message-1 account=work message_id=message-1]"
+    ) in result.content

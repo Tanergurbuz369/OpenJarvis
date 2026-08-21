@@ -431,14 +431,49 @@ class ExecutePendingActionsTool(BaseTool):
 # ---------------------------------------------------------------------------
 
 
+def _google_action_scope(
+    payload: Dict[str, Any],
+    *,
+    connector_id: str,
+    id_field: str,
+) -> Tuple[str, str]:
+    """Return normalized account and provider-native action ID.
+
+    New proposals carry explicit ``account`` plus the native ID.  The parser
+    also accepts legacy/account-prefixed document IDs so already queued
+    actions remain executable after named profiles are enabled.
+    """
+    from openjarvis.connectors.oauth import normalize_account_alias
+
+    raw_id = str(payload.get(id_field, "") or "").strip()
+    prefix = f"{connector_id}:"
+    if raw_id.startswith(prefix):
+        raw_id = raw_id[len(prefix) :]
+
+    raw_account = str(payload.get("account", "") or "").strip()
+    account = normalize_account_alias(raw_account) if raw_account else ""
+    if ":" in raw_id:
+        possible_account, native_id = raw_id.split(":", 1)
+        try:
+            possible_account = normalize_account_alias(possible_account)
+        except ValueError:
+            possible_account = ""
+        if possible_account and (not account or possible_account == account):
+            account = account or possible_account
+            raw_id = native_id
+    return account, raw_id
+
+
 def _exec_email_delete(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    msg_id = payload.get("message_id", "")
+    account, msg_id = _google_action_scope(
+        payload, connector_id="gmail", id_field="message_id"
+    )
     if not msg_id:
         return False, "Missing message_id in payload"
     try:
         from openjarvis.connectors.gmail import GmailConnector
 
-        conn = GmailConnector()
+        conn = GmailConnector(account=account)
         conn.delete_message(msg_id)
         return True, f"Deleted email {msg_id}"
     except Exception as exc:
@@ -446,13 +481,15 @@ def _exec_email_delete(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_email_archive(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    msg_id = payload.get("message_id", "")
+    account, msg_id = _google_action_scope(
+        payload, connector_id="gmail", id_field="message_id"
+    )
     if not msg_id:
         return False, "Missing message_id in payload"
     try:
         from openjarvis.connectors.gmail import GmailConnector
 
-        conn = GmailConnector()
+        conn = GmailConnector(account=account)
         conn.archive_message(msg_id)
         return True, f"Archived email {msg_id}"
     except Exception as exc:
@@ -474,14 +511,16 @@ def _exec_sms_send(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_calendar_decline(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    event_id = payload.get("event_id", "")
+    account, event_id = _google_action_scope(
+        payload, connector_id="gcalendar", id_field="event_id"
+    )
     calendar_id = payload.get("calendar_id", "primary")
     if not event_id:
         return False, "Missing event_id in payload"
     try:
         from openjarvis.connectors.gcalendar import GCalendarConnector
 
-        conn = GCalendarConnector()
+        conn = GCalendarConnector(account=account)
         conn.decline_event(event_id, calendar_id=calendar_id)
         return True, f"Declined calendar event {event_id}"
     except Exception as exc:
@@ -489,14 +528,16 @@ def _exec_calendar_decline(payload: Dict[str, Any]) -> Tuple[bool, str]:
 
 
 def _exec_calendar_accept(payload: Dict[str, Any]) -> Tuple[bool, str]:
-    event_id = payload.get("event_id", "")
+    account, event_id = _google_action_scope(
+        payload, connector_id="gcalendar", id_field="event_id"
+    )
     calendar_id = payload.get("calendar_id", "primary")
     if not event_id:
         return False, "Missing event_id in payload"
     try:
         from openjarvis.connectors.gcalendar import GCalendarConnector
 
-        conn = GCalendarConnector()
+        conn = GCalendarConnector(account=account)
         conn.accept_event(event_id, calendar_id=calendar_id)
         return True, f"Accepted calendar event {event_id}"
     except Exception as exc:

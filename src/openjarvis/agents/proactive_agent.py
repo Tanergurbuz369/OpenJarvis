@@ -83,11 +83,12 @@ Each action object must have these fields:
         ids like ``"gmail:wells_fargo"`` or ``"msg_1"`` — the executor
         will fail.  If a digest line has no ``id=...`` segment, do not
         propose an action for that line.
-      - For email actions: message_id MUST be the part of doc_id after
-        the ``gmail:`` prefix (e.g. ``"18f9abc"``).
+      - For email actions: copy ``message_id=...`` and ``account=...`` from
+        the digest line. The message_id is the provider-native ID, not the
+        account-prefixed doc_id. Omit account only for the default profile.
       - For sms actions: contact (phone/email), body (the message text)
-      - For calendar actions: event_id (the part after ``gcalendar:`` in
-        the digest's ``id=...``) and calendar_id (default "primary")
+      - For calendar actions: copy ``event_id=...`` and ``account=...`` from
+        the digest line; calendar_id defaults to "primary".
   - permission_key: pattern string like "email_delete:domain:noreply.github.com"
   - tier: one of trivial | low | medium | high
   - reasoning: one sentence why

@@ -235,6 +235,7 @@ def _mk_hit(
     title: str = "Sprint Planning",
     account: str = "",
     source_profile: str = "",
+    source_email: str = "",
 ) -> SearchHit:
     """Tiny SearchHit factory for URL-routing tests."""
     return SearchHit(
@@ -251,6 +252,7 @@ def _mk_hit(
         vector_score=0.5,
         account=account,
         source_profile=source_profile,
+        source_email=source_email,
         url=url,
     )
 
@@ -599,6 +601,25 @@ def test_shape_results_for_model_respects_ref_offset() -> None:
     shaped = shape_results_for_model(hits, ref_offset=20)
     refs = [h["ref"] for h in shaped["hits"]]
     assert refs == [21, 22, 23]
+
+
+def test_shape_results_for_model_exposes_account_provenance() -> None:
+    """The synthesis model can distinguish identically named account hits."""
+    hits = [
+        _mk_hit(
+            title="Quarterly plan",
+            document_id="gmail:work:42",
+            account="work",
+            source_profile="work",
+            source_email="user@company.example",
+        )
+    ]
+
+    shaped = shape_results_for_model(hits)
+
+    assert shaped["hits"][0]["account"] == "work"
+    assert shaped["hits"][0]["source_profile"] == "work"
+    assert shaped["hits"][0]["source_email"] == "user@company.example"
 
 
 def test_build_sources_for_client_respects_ref_offset() -> None:

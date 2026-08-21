@@ -38,6 +38,8 @@ function buildTooltip(src: ResearchSource): string {
   if (src.title) parts.push(src.title);
   const meta: string[] = [];
   if (src.sender) meta.push(src.sender);
+  if (src.source_email) meta.push(src.source_email);
+  else if (src.account) meta.push(src.account);
   const date = formatTooltipDate(src.date);
   if (date) meta.push(date);
   if (meta.length > 0) parts.push(meta.join(' · '));

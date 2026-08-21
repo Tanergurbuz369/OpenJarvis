@@ -182,7 +182,7 @@ class QueryOrchestrator:
 
                     section_sources[sec] = expand_account_sources(
                         sc.sources,
-                        dc.accounts,
+                        s.config.connectors.google.enabled_aliases(dc.accounts),
                     )
             agent_kwargs.update(
                 {

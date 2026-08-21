@@ -72,6 +72,9 @@ export interface ResearchSource {
   sender?: string;
   date?: string;
   url?: string;
+  account?: string;
+  source_profile?: string;
+  source_email?: string;
 }
 
 export interface ResearchSearchTrace {

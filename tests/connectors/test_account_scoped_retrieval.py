@@ -120,9 +120,16 @@ def test_research_agent_applies_configured_default_accounts() -> None:
 
     agent._execute_search({"query": "renewals", "sources": ["gmail"]})
     agent._execute_search({"query": "family", "sources": ["gmail:personal"]})
+    agent._execute_search(
+        {"query": "family", "sources": ["gmail"], "accounts": ["Personal"]}
+    )
+    agent._execute_search({"query": "renewals", "sources": ["gmail:Work"]})
 
     assert fake_search.calls[0]["accounts"] == ["work"]
-    assert fake_search.calls[1]["accounts"] is None
+    assert fake_search.calls[1]["accounts"] == ["work"]
+    assert fake_search.calls[2]["accounts"] == ["__openjarvis_no_matching_account__"]
+    assert fake_search.calls[3]["sources"] == ["gmail:work"]
+    assert fake_search.calls[3]["accounts"] == ["work"]
 
 
 class _AccountConnector(BaseConnector):

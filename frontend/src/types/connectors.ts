@@ -44,6 +44,7 @@ export interface ConnectorInfo {
   account?: string | null;
   accounts?: Array<{
     account: string;
+    enabled?: boolean;
     connected: boolean;
     source_email?: string;
   }>;

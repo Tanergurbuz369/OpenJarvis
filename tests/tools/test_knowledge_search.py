@@ -88,13 +88,19 @@ class TestKnowledgeSearchTool:
             source="gmail",
             source_id="work:renewal",
             doc_type="email",
-            metadata={"account": "work"},
+            metadata={
+                "account": "work",
+                "source_profile": "work",
+                "source_email": "user@company.example",
+            },
         )
         tool = KnowledgeSearchTool(store=store)
 
         result = tool.execute(query="renewal", account="work")
 
         assert "[gmail:work]" in result.content
+        assert "account user@company.example" in result.content
+        assert result.metadata["sources"][0]["source_email"] == ("user@company.example")
 
     def test_filter_by_author(self, store):
         """author filter restricts results to sarah only."""

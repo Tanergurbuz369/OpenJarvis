@@ -125,7 +125,7 @@ does not hide or overwrite `gmail:personal` status.
 For a clean install that already has one legacy Google profile:
 
 ```bash
-jarvis connect google --account work
+jarvis connect google --account work --migrate-legacy-google --sync
 ```
 
 This creates a fresh token at:
@@ -142,7 +142,12 @@ cp ~/.openjarvis/connectors/google.json \
   ~/.openjarvis/connectors/google/accounts/work.json
 ```
 
-Then run a profile sync so newly indexed chunks receive account metadata.
+Then run the same explicit migration command so legacy unscoped rows and
+checkpoints are removed before the named profile is reindexed:
+
+```bash
+jarvis connect google --account work --migrate-legacy-google --sync
+```
 
 ## Test Plan
 

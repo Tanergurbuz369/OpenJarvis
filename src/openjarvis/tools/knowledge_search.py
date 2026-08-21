@@ -161,6 +161,7 @@ class KnowledgeSearchTool(BaseTool):
             meta = result.metadata
             src_label = result.source or meta.get("source", "")
             result_account = str(meta.get("account", "") or "")
+            source_email = str(meta.get("source_email", "") or "")
             if src_label and result_account:
                 src_label = f"{src_label}:{result_account}"
             title = meta.get("title", "")
@@ -175,6 +176,8 @@ class KnowledgeSearchTool(BaseTool):
                 header_parts.append(title)
             if result_author:
                 header_parts.append(f"by {result_author}")
+            if source_email:
+                header_parts.append(f"account {source_email}")
             if url:
                 header_parts.append(f"({url})")
 
@@ -189,7 +192,22 @@ class KnowledgeSearchTool(BaseTool):
             tool_name="knowledge_search",
             content=formatted,
             success=True,
-            metadata={"num_results": len(results)},
+            metadata={
+                "num_results": len(results),
+                "sources": [
+                    {
+                        "source": result.source,
+                        "account": str(result.metadata.get("account", "") or ""),
+                        "source_profile": str(
+                            result.metadata.get("source_profile", "") or ""
+                        ),
+                        "source_email": str(
+                            result.metadata.get("source_email", "") or ""
+                        ),
+                    }
+                    for result in results
+                ],
+            },
         )
 
 

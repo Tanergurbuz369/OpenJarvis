@@ -168,7 +168,13 @@ def _format_gmail(doc: Document) -> str:
     subject = doc.title or "(no subject)"
     ago = _time_ago(doc.timestamp)
     body = doc.content.replace("\n", " ").strip()[:150] if doc.content else ""
-    line = f'[gmail id={doc.doc_id}] From: {sender} — "{subject}" ({ago})'
+    account = str(doc.metadata.get("account", "") or "")
+    message_id = str(doc.metadata.get("message_id", "") or doc.source_id)
+    scope = f" account={account}" if account else ""
+    native = f" message_id={message_id}" if message_id else ""
+    line = (
+        f'[gmail id={doc.doc_id}{scope}{native}] From: {sender} — "{subject}" ({ago})'
+    )
     if body:
         line += f"\n  Preview: {body}"
     return line
@@ -276,7 +282,13 @@ def _format_gcalendar(doc: Document) -> str:
                 time_range = f" ({duration})"
             except (ValueError, TypeError):
                 pass
-    return f"[gcalendar id={doc.doc_id}] {time_str} — {title}{time_range}"
+    account = str(doc.metadata.get("account", "") or "")
+    event_id = str(doc.metadata.get("event_id", "") or doc.source_id)
+    scope = f" account={account}" if account else ""
+    native = f" event_id={event_id}" if event_id else ""
+    return (
+        f"[gcalendar id={doc.doc_id}{scope}{native}] {time_str} — {title}{time_range}"
+    )
 
 
 def _format_spotify(doc: Document) -> str:

@@ -232,14 +232,51 @@ def test_list_google_accounts_reports_aliases_without_secrets(tmp_path: Path) ->
         profiles = oauth.list_google_accounts()
 
     assert profiles == [
-        {"account": "personal", "connected": False, "source_email": ""},
-        {"account": "work", "connected": True, "source_email": ""},
+        {
+            "account": "personal",
+            "enabled": True,
+            "connected": False,
+            "source_email": "",
+        },
+        {
+            "account": "work",
+            "enabled": True,
+            "connected": True,
+            "source_email": "",
+        },
     ]
     assert "ya29.secret" not in repr(profiles)
     assert "1//secret" not in repr(profiles)
 
 
-def test_google_source_email_requires_verified_id_token_claim() -> None:
+def test_list_google_accounts_includes_disabled_declared_profile(
+    tmp_path: Path,
+) -> None:
+    from openjarvis.connectors import oauth
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+
+    config = JarvisConfig()
+    config.connectors.google.accounts["Work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+
+    with (
+        patch.object(oauth, "_GOOGLE_ACCOUNTS_DIR", tmp_path / "accounts"),
+        patch("openjarvis.core.config.load_config", return_value=config),
+    ):
+        profiles = oauth.list_google_accounts()
+
+    assert profiles == [
+        {
+            "account": "work",
+            "enabled": False,
+            "connected": False,
+            "source_email": "",
+        }
+    ]
+
+
+def test_google_source_email_requires_provider_asserted_verified_email() -> None:
     from openjarvis.connectors.oauth import google_source_email_from_tokens
 
     def _id_token(payload: dict) -> str:

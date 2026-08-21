@@ -14,6 +14,7 @@ import re
 from datetime import datetime
 from html.parser import HTMLParser
 from typing import Any, Dict, Iterator, List, Optional, Tuple
+from urllib.parse import quote
 
 import httpx
 
@@ -50,6 +51,22 @@ logger = logging.getLogger(__name__)
 _GMAIL_API_BASE = "https://gmail.googleapis.com/gmail/v1/users/me"
 _GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 _DEFAULT_CREDENTIALS_PATH = str(DEFAULT_CONFIG_DIR / "connectors" / "gmail.json")
+
+
+def _gmail_message_url(msg_id: str, account: str, source_email: str) -> str:
+    """Build a browser link that cannot silently select the wrong profile."""
+    if not account:
+        return f"https://mail.google.com/mail/u/0/#all/{msg_id}"
+    if not source_email.strip():
+        # A numeric /u/N slot is browser-session-specific and can open a
+        # different identity.  Omit the link until Google supplied an email
+        # provenance claim for this named profile.
+        return ""
+    return (
+        "https://mail.google.com/mail/?authuser="
+        f"{quote(source_email.strip(), safe='')}#all/{msg_id}"
+    )
+
 
 # Token refresh is delegated to the shared google_auth helper so Calendar,
 # Contacts, Drive, and Tasks get the same one-shot 401 retry. ``GmailAuthError``
@@ -512,7 +529,11 @@ class GmailConnector(BaseConnector):
                     # internal hex id, which the ``#all/<id>`` permalink
                     # resolves directly — so citations have a working URL
                     # without relying on _hit_url reconstruction at query time.
-                    url=f"https://mail.google.com/mail/u/0/#all/{msg_id}",
+                    url=_gmail_message_url(
+                        msg_id,
+                        self._account,
+                        str(tokens.get("source_email", "")),
+                    ),
                     metadata={
                         "message_id": msg_id,
                         "rfc_message_id": rfc_message_id,

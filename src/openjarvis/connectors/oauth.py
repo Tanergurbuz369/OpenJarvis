@@ -179,18 +179,34 @@ def google_account_credentials_path(account: str) -> str:
 
 def list_google_accounts() -> List[Dict[str, Any]]:
     """Return named Google profiles without exposing credential contents."""
-    if not _GOOGLE_ACCOUNTS_DIR.is_dir():
-        return []
+    configured: Dict[str, bool] = {}
+    try:
+        from openjarvis.core.config import load_config
+
+        for raw_alias, profile in load_config().connectors.google.accounts.items():
+            configured[normalize_account_alias(raw_alias)] = profile.enabled
+    except (OSError, ValueError):
+        configured = {}
+
+    paths_by_alias: Dict[str, Path] = {}
+    if _GOOGLE_ACCOUNTS_DIR.is_dir():
+        for path in sorted(_GOOGLE_ACCOUNTS_DIR.glob("*.json")):
+            try:
+                paths_by_alias[normalize_account_alias(path.stem)] = path
+            except ValueError:
+                continue
+
     accounts: List[Dict[str, Any]] = []
-    for path in sorted(_GOOGLE_ACCOUNTS_DIR.glob("*.json")):
+    for alias in sorted(set(configured) | set(paths_by_alias)):
+        path = paths_by_alias.get(alias)
         try:
-            alias = normalize_account_alias(path.stem)
-        except ValueError:
-            continue
-        tokens = load_tokens(str(path))
+            tokens = load_tokens(str(path)) if path else None
+        except OSError:
+            tokens = None
         accounts.append(
             {
                 "account": alias,
+                "enabled": configured.get(alias, True),
                 "connected": bool(
                     tokens and (tokens.get("access_token") or tokens.get("token"))
                 ),
@@ -221,11 +237,12 @@ def google_account_metadata(
 
 
 def google_source_email_from_tokens(tokens: Dict[str, Any]) -> str:
-    """Extract Google's verified email claim for provenance metadata only.
+    """Extract Google's provider-asserted email claim for provenance only.
 
     The ID token arrives directly from Google's TLS-authenticated token
-    endpoint. The claim is not used for authorization or account selection;
-    the user-controlled local alias remains the security boundary.
+    endpoint, but this helper does not independently verify its signature,
+    issuer, audience, or nonce. The claim is never used for authorization or
+    account selection; the user-controlled local alias remains the boundary.
     """
     id_token = tokens.get("id_token")
     if not isinstance(id_token, str):

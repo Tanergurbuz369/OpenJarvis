@@ -163,7 +163,11 @@ def _run_research(
         model=planner_model,
         on_event=on_event,
         default_accounts=(
-            accounts if accounts is not None else load_config().agent.default_accounts
+            accounts
+            if accounts is not None
+            else load_config().connectors.google.enabled_aliases(
+                load_config().agent.default_accounts
+            )
         ),
     )
 
@@ -753,6 +757,15 @@ def ask(
     except ValueError as exc:
         raise click.UsageError(str(exc)) from exc
     if requested_accounts:
+        disabled_accounts = [
+            account
+            for account in requested_accounts
+            if not config.connectors.google.is_enabled(account)
+        ]
+        if disabled_accounts:
+            raise click.UsageError(
+                "Disabled Google account profile(s): " + ", ".join(disabled_accounts)
+            )
         research_mode = True
 
     # Resolve effective MemoryFilesConfig with --persona override

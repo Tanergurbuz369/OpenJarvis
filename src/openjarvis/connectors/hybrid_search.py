@@ -116,6 +116,7 @@ class SearchHit:
     thread_context: List[Dict[str, Any]] = field(default_factory=list)
     account: str = ""
     source_profile: str = ""
+    source_email: str = ""
     # ``url`` is the connector-provided deep-link, persisted on
     # ``knowledge_chunks.url``. Empty when the source didn't supply one — in
     # that case callers may fall back to a doc_id-based reconstruction (Slack,
@@ -136,6 +137,7 @@ class SearchHit:
             "thread_context": self.thread_context,
             "account": self.account,
             "source_profile": self.source_profile,
+            "source_email": self.source_email,
         }
 
 
@@ -838,6 +840,7 @@ class HybridSearch:
                     ),
                     account=str(metadata.get("account", "") or ""),
                     source_profile=str(metadata.get("source_profile", "") or ""),
+                    source_email=str(metadata.get("source_email", "") or ""),
                     url=r["url"] or "",
                 )
             )

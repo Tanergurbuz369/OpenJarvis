@@ -205,3 +205,73 @@ def test_connect_rejects_unsafe_account_alias() -> None:
 
     assert result.exit_code == 2
     assert "Account aliases must be" in result.output
+
+
+def test_connect_google_account_can_sync_after_oauth() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch("openjarvis.cli.connect_cmd._connect_source") as connect_source,
+        mock.patch("openjarvis.cli.connect_cmd._sync_sources") as sync_sources,
+    ):
+        result = runner.invoke(
+            cli,
+            ["connect", "--account", "work", "--sync", "google"],
+        )
+
+    assert result.exit_code == 0
+    connect_source.assert_called_once()
+    sync_sources.assert_called_once()
+    assert sync_sources.call_args.kwargs == {"source": "google", "account": "work"}
+
+
+def test_legacy_migration_is_explicit_and_precedes_named_sync() -> None:
+    runner = CliRunner()
+    calls: list[str] = []
+
+    with (
+        mock.patch(
+            "openjarvis.cli.connect_cmd._migrate_legacy_google_index",
+            side_effect=lambda account: calls.append(f"migrate:{account}"),
+        ),
+        mock.patch(
+            "openjarvis.cli.connect_cmd._connect_source",
+            side_effect=lambda *args, **kwargs: calls.append("connect"),
+        ),
+        mock.patch(
+            "openjarvis.cli.connect_cmd._sync_sources",
+            side_effect=lambda *args, **kwargs: calls.append("sync"),
+        ),
+    ):
+        result = runner.invoke(
+            cli,
+            [
+                "connect",
+                "--account",
+                "work",
+                "--migrate-legacy-google",
+                "--sync",
+                "google",
+            ],
+        )
+
+    assert result.exit_code == 0
+    assert calls == ["migrate:work", "connect", "sync"]
+
+
+def test_disabled_configured_google_account_is_rejected(monkeypatch) -> None:
+    from openjarvis.core.config import (
+        GoogleAccountProfileConfig,
+        JarvisConfig,
+    )
+
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+    monkeypatch.setattr("openjarvis.core.config.load_config", lambda: config)
+
+    result = CliRunner().invoke(cli, ["connect", "--account", "work", "google"])
+
+    assert result.exit_code == 2
+    assert "disabled in config.toml" in result.output

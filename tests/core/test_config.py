@@ -248,6 +248,13 @@ class TestAgentConfigNew:
         assert cfg.connectors.google.accounts["personal"].enabled is True
         assert cfg.connectors.google.accounts["work"].enabled is False
 
+        assert cfg.connectors.google.is_enabled("PERSONAL") is True
+        assert cfg.connectors.google.is_enabled("work") is False
+        assert cfg.connectors.google.is_enabled("unlisted") is True
+        assert cfg.connectors.google.enabled_aliases(
+            ["Work", "Personal", "personal"]
+        ) == ["personal"]
+
     def test_default_tools_backward_compat(self) -> None:
         ac = AgentConfig()
         ac.default_tools = "calculator,think"

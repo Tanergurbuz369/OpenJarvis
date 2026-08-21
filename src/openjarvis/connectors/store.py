@@ -496,8 +496,11 @@ class KnowledgeStore(MemoryBackend):
         sources: Iterable[str],
         *,
         account: Optional[str] = None,
+        unscoped_only: bool = False,
     ) -> int:
         """Atomically delete chunks belonging to *sources* and optional account."""
+        if account is not None and unscoped_only:
+            raise ValueError("account and unscoped_only are mutually exclusive")
         unique_sources = tuple(dict.fromkeys(sources))
         if not unique_sources:
             return 0
@@ -507,6 +510,8 @@ class KnowledgeStore(MemoryBackend):
         if account is not None:
             where += " AND json_extract(metadata, '$.account') = ?"
             params = (*params, account)
+        elif unscoped_only:
+            where += " AND COALESCE(json_extract(metadata, '$.account'), '') = ''"
         try:
             cur = self._conn.execute(
                 f"DELETE FROM knowledge_chunks WHERE {where}",

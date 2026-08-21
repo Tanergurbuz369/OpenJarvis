@@ -66,15 +66,18 @@ The legacy single-profile token path is still read for compatibility:
 ## Migrating A Clean Install With One Existing Profile
 
 If a machine already has one Google connection from before profile aliases,
-choose the alias you want that account to become and reconnect:
+choose the alias you want that account to become, explicitly remove the
+unscoped legacy index rows/checkpoints, and reindex:
 
 ```bash
-jarvis connect google --account work
+jarvis connect google --account work --migrate-legacy-google --sync
 ```
 
-That is the safest path because it creates a fresh profile token in the new
-segmented location. Existing indexed data can remain in the knowledge store;
-new syncs will write account metadata for the chosen alias.
+The migration flag is intentionally explicit because it deletes only legacy
+Google rows whose metadata has no account alias. It preserves every already
+named profile. Reindexing then writes collision-safe IDs and account metadata,
+preventing duplicates and ensuring a later named disconnect removes all data
+owned by that profile.
 
 If you need to preserve the existing token without reauthenticating, copy the
 legacy token into the new account directory:
@@ -85,11 +88,11 @@ cp ~/.openjarvis/connectors/google.json \
   ~/.openjarvis/connectors/google/accounts/work.json
 ```
 
-After copying, run a sync for that account so newly indexed chunks receive the
-account metadata:
+After copying, run the same explicit migration and sync so indexed chunks
+receive the account metadata:
 
 ```bash
-jarvis connect google --account work
+jarvis connect google --account work --migrate-legacy-google --sync
 ```
 
 ## Analysis And Queries
@@ -154,9 +157,15 @@ sources = ["gmail", "google_tasks"]
 
 An explicitly scoped source such as `gmail:research` is left unchanged. Without
 `digest.accounts`, section sources keep their legacy default-profile behavior.
-Google sync documents include the local alias, connector, and the verified
-`source_email` claim returned by Google, when available. The email is
-provenance for display and citation; the alias remains the retrieval boundary.
+Google sync documents include the local alias, connector, and the
+provider-asserted `source_email` claim delivered by Google's TLS token endpoint,
+when available. The email is provenance for display and citation only; it is
+not independently signature-validated and never controls authorization. The
+local alias remains the retrieval boundary.
+
+Setting a declared profile to `enabled = false` prevents CLI/server use and
+removes it from configured default research and digest account lists. Unlisted
+ad-hoc aliases remain enabled for backwards compatibility.
 
 ## UI And API Sync
 

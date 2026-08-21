@@ -215,6 +215,9 @@ def shape_results_for_model(
             "sender": sender,
             "timestamp": h.timestamp,
             "source": h.source,
+            "account": h.account,
+            "source_profile": h.source_profile,
+            "source_email": h.source_email,
             "score": round(h.score, 4),
         }
         if i < detailed_top:
@@ -415,6 +418,7 @@ def build_sources_for_client(
                 "source": h.source,
                 "account": h.account,
                 "source_profile": h.source_profile,
+                "source_email": h.source_email,
                 "source_id": _bare_doc_id(h.source, h.document_id),
                 "url": url,
             }
@@ -574,12 +578,54 @@ class ResearchAgent:
         sources = args.get("sources") or None
         if sources and not isinstance(sources, list):
             sources = [str(sources)]
+        from openjarvis.connectors.oauth import normalize_account_alias
+
+        normalized_sources: List[str] = []
+        for source in sources or []:
+            source_text = str(source).strip()
+            if not source_text:
+                continue
+            if ":" not in source_text:
+                normalized_sources.append(source_text)
+                continue
+            connector_id, raw_account = source_text.split(":", 1)
+            try:
+                scoped_account = normalize_account_alias(raw_account)
+            except ValueError:
+                scoped_account = "__openjarvis_no_matching_account__"
+            normalized_sources.append(f"{connector_id}:{scoped_account}")
+        sources = normalized_sources or None
         accounts = args.get("accounts") or args.get("account") or None
         if accounts and not isinstance(accounts, list):
             accounts = [str(accounts)]
-        has_scoped_source = any(":" in str(source) for source in (sources or []))
-        if not accounts and not has_scoped_source and self._default_accounts:
-            accounts = list(self._default_accounts)
+        if accounts:
+            normalized_accounts: List[str] = []
+            for account in accounts:
+                try:
+                    normalized_accounts.append(normalize_account_alias(str(account)))
+                except ValueError:
+                    normalized_accounts.append("__openjarvis_no_matching_account__")
+            accounts = normalized_accounts
+        if self._default_accounts:
+            # User/configured account scope is an authorization-style
+            # boundary, not a planner hint.  A model-generated scoped source
+            # (for example ``gmail:personal``) must never bypass an explicit
+            # ``--account work`` restriction.  Planner-provided account
+            # filters may narrow a multi-account boundary, but never widen it.
+            if accounts:
+                requested = set(accounts)
+                accounts = [
+                    account
+                    for account in self._default_accounts
+                    if account in requested
+                ]
+                if not accounts:
+                    # HybridSearch treats an empty list as no filter.  Use an
+                    # impossible stored alias so a disjoint planner request
+                    # deterministically returns zero rows instead.
+                    accounts = ["__openjarvis_no_matching_account__"]
+            else:
+                accounts = list(self._default_accounts)
         if person:
             # The planner can also mistake an account alias from a scoped
             # source like gmail:personal-main for a person filter (e.g.
