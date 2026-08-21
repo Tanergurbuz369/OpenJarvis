@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from openjarvis.tools.storage.chunking import ChunkConfig, chunk_text
 
 
@@ -127,6 +129,40 @@ def test_short_paragraph_before_full_normal_paragraph_is_not_dropped():
     assert set(short.split()) | set(full.split()) == {
         token for chunk in chunks for token in chunk.content.split()
     }
+    assert all(len(chunk.content.split()) <= cfg.chunk_size for chunk in chunks)
+
+
+@pytest.mark.parametrize(
+    ("chunk_size", "chunk_overlap", "min_chunk_size", "lead_size", "body_size"),
+    [
+        (10, 0, 5, 3, 10),
+        (10, 2, 5, 3, 10),
+        (8, 7, 6, 2, 8),
+        (7, 0, 4, 3, 12),
+        (16, 4, 8, 4, 33),
+    ],
+)
+def test_preserved_short_lead_in_never_breaks_hard_chunk_bound(
+    chunk_size, chunk_overlap, min_chunk_size, lead_size, body_size
+):
+    """Adversarial boundaries preserve every token in bounded chunks."""
+    cfg = ChunkConfig(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+        min_chunk_size=min_chunk_size,
+    )
+    lead = [f"lead{i}" for i in range(lead_size)]
+    body = [f"body{i}" for i in range(body_size)]
+
+    chunks = chunk_text(
+        f"{' '.join(lead)}\n\n{' '.join(body)}",
+        config=cfg,
+    )
+
+    output_tokens = {token for chunk in chunks for token in chunk.content.split()}
+    assert set(lead + body).issubset(output_tokens)
+    assert all(0 < len(chunk.content.split()) <= chunk_size for chunk in chunks)
+    assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
 
 
 def test_source_propagated():

@@ -69,84 +69,72 @@ def chunk_text(
     current_tokens: List[str] = []
     current_offset = 0
     chunk_start_offset = 0
+    force_final_chunk = False
+
+    def emit_current(consumed_offset: int) -> None:
+        """Emit the buffer and retain a bounded overlap for the next chunk."""
+        nonlocal current_tokens, chunk_start_offset, force_final_chunk
+
+        chunks.append(
+            Chunk(
+                content=" ".join(current_tokens),
+                source=source,
+                offset=chunk_start_offset,
+                index=len(chunks),
+            )
+        )
+
+        # Even a malformed overlap >= chunk_size must leave room for forward
+        # progress and may never make the next chunk exceed the hard bound.
+        keep = min(cfg.chunk_overlap, max(0, len(current_tokens) - 1))
+        current_tokens = current_tokens[-keep:] if keep else []
+        chunk_start_offset = consumed_offset - keep
+        force_final_chunk = False
 
     for para in paragraphs:
         para_tokens = para.split()
+        would_overflow = len(current_tokens) + len(para_tokens) > cfg.chunk_size
 
-        # Split an oversized paragraph directly.  Any sub-floor content that
-        # precedes it must travel with the first window instead of being
-        # discarded by the pre-flush (#754).
-        if len(para_tokens) > cfg.chunk_size:
-            window_tokens = para_tokens
-            window_offset = current_offset
+        # Preserve a paragraph boundary when the buffered paragraph is large
+        # enough to stand alone.  A sub-floor lead-in instead stays attached
+        # to the following text; dropping it was the original #754 bug.
+        preserve_sequence = force_final_chunk
+        if current_tokens and would_overflow:
+            if len(current_tokens) >= cfg.min_chunk_size:
+                emit_current(current_offset)
+            else:
+                preserve_sequence = True
 
-            if current_tokens:
-                chunk_content = " ".join(current_tokens)
-                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
-                    chunks.append(
-                        Chunk(
-                            content=chunk_content,
-                            source=source,
-                            offset=chunk_start_offset,
-                            index=len(chunks),
-                        )
-                    )
-                    if (
-                        cfg.chunk_overlap > 0
-                        and len(current_tokens) > cfg.chunk_overlap
-                    ):
-                        prefix = current_tokens[-cfg.chunk_overlap :]
-                        window_tokens = [*prefix, *para_tokens]
-                        window_offset = current_offset - len(prefix)
-                else:
-                    window_tokens = [*current_tokens, *para_tokens]
-                    window_offset = chunk_start_offset
-                current_tokens = []
+        para_index = 0
+        while para_index < len(para_tokens):
+            capacity = cfg.chunk_size - len(current_tokens)
+            remaining = len(para_tokens) - para_index
 
-            idx = 0
-            while idx < len(window_tokens):
-                window = window_tokens[idx : idx + cfg.chunk_size]
-                chunk_content = " ".join(window)
-                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
-                    chunks.append(
-                        Chunk(
-                            content=chunk_content,
-                            source=source,
-                            offset=window_offset + idx,
-                            index=len(chunks),
-                        )
-                    )
-                step = max(1, cfg.chunk_size - cfg.chunk_overlap)
-                idx += step
+            if remaining <= capacity:
+                current_tokens.extend(para_tokens[para_index:])
+                para_index = len(para_tokens)
+                force_final_chunk = preserve_sequence
+                break
 
-            current_offset += len(para_tokens)
-            chunk_start_offset = current_offset
-            continue
+            take = capacity
+            remainder = remaining - take
+            overlap = min(cfg.chunk_overlap, max(0, cfg.chunk_size - 1))
 
-        # If adding this paragraph would exceed chunk_size and we already
-        # have content, flush the current chunk first.
-        if current_tokens and len(current_tokens) + len(para_tokens) > cfg.chunk_size:
-            chunk_content = " ".join(current_tokens)
-            if _count_tokens(chunk_content) >= cfg.min_chunk_size:
-                chunks.append(
-                    Chunk(
-                        content=chunk_content,
-                        source=source,
-                        offset=chunk_start_offset,
-                        index=len(chunks),
-                    )
-                )
-                # Keep the overlap tail for the next chunk.  If the buffered
-                # content is below the floor, leave it intact so the next
-                # paragraph can make it large enough to emit.
-                if cfg.chunk_overlap > 0 and len(current_tokens) > cfg.chunk_overlap:
-                    overlap = current_tokens[-cfg.chunk_overlap :]
-                    current_tokens = list(overlap)
-                else:
-                    current_tokens = []
-                chunk_start_offset = current_offset
+            # With no (or a small) configured overlap, a full window can
+            # strand a sub-floor tail.  Rebalance the two windows when both
+            # can satisfy the minimum; otherwise the preservation flag below
+            # keeps the unavoidable short tail rather than losing content.
+            tail_size = overlap + remainder
+            if preserve_sequence and tail_size < cfg.min_chunk_size:
+                shift = cfg.min_chunk_size - tail_size
+                if len(current_tokens) + take - shift >= cfg.min_chunk_size:
+                    take -= shift
 
-        current_tokens.extend(para_tokens)
+            current_tokens.extend(para_tokens[para_index : para_index + take])
+            para_index += take
+            emit_current(current_offset + para_index)
+            force_final_chunk = preserve_sequence
+
         current_offset += len(para_tokens)
 
     # Flush remaining tokens.
@@ -159,7 +147,11 @@ def chunk_text(
     # floor.
     if current_tokens:
         chunk_content = " ".join(current_tokens)
-        if not chunks or _count_tokens(chunk_content) >= cfg.min_chunk_size:
+        if (
+            not chunks
+            or force_final_chunk
+            or _count_tokens(chunk_content) >= cfg.min_chunk_size
+        ):
             chunks.append(
                 Chunk(
                     content=chunk_content,
