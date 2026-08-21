@@ -1,7 +1,8 @@
 import { useReducer, useState, type FormEvent } from 'react';
 import { ArrowLeft, Cpu, Download, Loader2, Server, ShieldCheck } from 'lucide-react';
 import {
-  setInferenceSource,
+  resetInferenceSource,
+  stageInferenceSource,
   startBackend,
   type InferenceSource,
 } from '../lib/api';
@@ -33,11 +34,21 @@ export function inferenceSetupReducer(
  */
 export async function persistAndStartInferenceSource(
   source: InferenceSourceSubmission,
-  persist: (value: InferenceSourceSubmission) => Promise<void> = setInferenceSource,
+  persist: (value: InferenceSourceSubmission) => Promise<void> = stageInferenceSource,
   start: () => Promise<void> = startBackend,
+  rollback: () => Promise<void> = resetInferenceSource,
 ): Promise<void> {
-  await persist(source);
-  await start();
+  let persisted = false;
+  try {
+    await persist(source);
+    persisted = true;
+    await start();
+  } catch (error) {
+    if (persisted) {
+      await rollback().catch(() => {});
+    }
+    throw error;
+  }
 }
 
 function SetupFrame({ children }: { children: React.ReactNode }) {
@@ -125,6 +136,30 @@ function BackButton({ onClick, label = 'Back', disabled = false }: { onClick: ()
     >
       <ArrowLeft size={15} />
       {label}
+    </button>
+  );
+}
+
+export function InferenceRecoveryButton({
+  recovering,
+  onChange,
+}: {
+  recovering: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      disabled={recovering}
+      className="w-full mt-4 py-2.5 px-4 rounded-xl text-sm font-medium cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+      style={{
+        color: 'var(--color-text-secondary)',
+        border: '1px solid var(--color-border)',
+        background: 'var(--color-surface)',
+      }}
+    >
+      {recovering ? 'Stopping setup...' : 'Change inference source'}
     </button>
   );
 }

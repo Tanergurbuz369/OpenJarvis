@@ -379,6 +379,7 @@ struct BackendManager {
     ollama: Option<ChildHandle>,
     jarvis: Option<ChildHandle>,
     jarvis_stderr_tail: StderrTail,
+    boot_task: Option<tauri::async_runtime::JoinHandle<()>>,
 }
 
 impl Default for BackendManager {
@@ -387,12 +388,16 @@ impl Default for BackendManager {
             ollama: None,
             jarvis: None,
             jarvis_stderr_tail: Arc::new(Mutex::new(Vec::new())),
+            boot_task: None,
         }
     }
 }
 
 impl BackendManager {
     async fn stop_all(&mut self) {
+        if let Some(task) = self.boot_task.take() {
+            task.abort();
+        }
         if let Some(ref mut h) = self.jarvis {
             h.kill().await;
         }
@@ -405,6 +410,18 @@ impl BackendManager {
 }
 
 type SharedBackend = Arc<Mutex<BackendManager>>;
+
+/// Spawn exactly one tracked boot task. Keeping its handle lets recovery
+/// abort an in-flight endpoint check/model download before killing children.
+async fn start_managed_boot(backend: SharedBackend, status: SharedStatus) {
+    let mut manager = backend.lock().await;
+    if let Some(task) = manager.boot_task.take() {
+        task.abort();
+    }
+    let task_backend = backend.clone();
+    let task = tauri::async_runtime::spawn(boot_backend(task_backend, status));
+    manager.boot_task = Some(task);
+}
 
 // ---------------------------------------------------------------------------
 // Setup status (reported to frontend)
@@ -668,9 +685,18 @@ fn matching_installed_model(models: &[String], requested: &str) -> Option<String
 
 fn model_name_looks_embedding_only(model: &str) -> bool {
     let name = model.to_ascii_lowercase();
-    ["embed", "embedding", "rerank", "minilm", "bge-", "bge_", "e5-", "e5_"]
-        .iter()
-        .any(|marker| name.contains(marker))
+    [
+        "embed",
+        "embedding",
+        "rerank",
+        "minilm",
+        "bge-",
+        "bge_",
+        "e5-",
+        "e5_",
+    ]
+    .iter()
+    .any(|marker| name.contains(marker))
 }
 
 fn preferred_installed_model(models: &[String]) -> Option<String> {
@@ -739,18 +765,19 @@ async fn pull_model(model: &str) -> Result<(), String> {
 fn uv_sync_stderr_tail(stderr: &str, max_chars: usize) -> String {
     let total = stderr.chars().count();
     let skip = total.saturating_sub(max_chars);
-    stderr.chars().skip(skip).collect::<String>().trim().to_string()
+    stderr
+        .chars()
+        .skip(skip)
+        .collect::<String>()
+        .trim()
+        .to_string()
 }
 
 /// Error message shown when `uv sync` runs but exits non-zero (#331).
 ///
 /// `exit_code` is `None` when the process was terminated by a signal with
 /// no exit code (rendered as "unknown" rather than a misleading -1).
-fn format_uv_sync_failure(
-    root: &std::path::Path,
-    exit_code: Option<i32>,
-    stderr: &str,
-) -> String {
+fn format_uv_sync_failure(root: &std::path::Path, exit_code: Option<i32>, stderr: &str) -> String {
     let code = exit_code
         .map(|c| c.to_string())
         .unwrap_or_else(|| "unknown".to_string());
@@ -941,10 +968,11 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
     // Never infer consent from a missing or malformed config. A fresh desktop
     // install must persist an explicit source choice before this function can
     // launch Ollama, contact a custom endpoint, or download a model.
-    let Some(cfg) = read_configured_inference_config() else {
+    let Some(mut cfg) = read_configured_inference_config() else {
         *status.lock().await = SetupStatus::default();
         return;
     };
+    let mut pending_rollback = PendingInferenceRollback::new(&cfg);
     let plan = boot_plan(&cfg, total_ram_gb());
     {
         let mut s = status.lock().await;
@@ -1016,7 +1044,9 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         }
 
         let installed_models = ollama_model_names().await;
-        let resolved_model = if let Some(installed) = startup_installed_model(&model, &installed_models) {
+        let resolved_model = if let Some(installed) =
+            startup_installed_model(&model, &installed_models)
+        {
             installed
         } else {
             {
@@ -1030,7 +1060,8 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
 
                     // If a local model appeared while pulling, use it instead of
                     // making startup depend on another network pull.
-                    if let Some(installed) = preferred_installed_model(&ollama_model_names().await) {
+                    if let Some(installed) = preferred_installed_model(&ollama_model_names().await)
+                    {
                         installed
                     } else if ollama_has_model(FALLBACK_MODEL).await {
                         FALLBACK_MODEL.to_string()
@@ -1070,7 +1101,9 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         if should_persist_resolved_model(&cfg) {
             let mut persisted = cfg.clone();
             persisted.model = Some(resolved_model);
-            let _ = write_inference_config(&persisted);
+            if write_inference_config(&persisted).is_ok() {
+                cfg = persisted;
+            }
         }
 
         {
@@ -1094,8 +1127,12 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
             let mut s = status.lock().await;
             s.error = Some(format!(
                 "Could not reach your custom inference server at {}. \
-                 Start the server (e.g. LM Studio) and check the URL in Settings, then relaunch.",
-                if host.is_empty() { "(no URL set)" } else { host.as_str() }
+                 Start the server (e.g. LM Studio), or choose Change inference source below.",
+                if host.is_empty() {
+                    "(no URL set)"
+                } else {
+                    host.as_str()
+                }
             ));
             return;
         }
@@ -1299,10 +1336,8 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
                     // false otherwise because we skipped those steps).
                     let mut s = status.lock().await;
                     s.phase = "ready".into();
-                    s.detail = format!(
-                        "Connected to existing API server on port {}.",
-                        JARVIS_PORT,
-                    );
+                    s.detail =
+                        format!("Connected to existing API server on port {}.", JARVIS_PORT,);
                     s.server_ready = true;
                     s.model_ready = true;
                     s.ollama_ready = true;
@@ -1378,12 +1413,16 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
     sync_cmd
         .args([
             "sync",
-            "--extra", "desktop",
-            "--extra", "inference-cloud",
-            "--extra", "inference-google",
+            "--extra",
+            "desktop",
+            "--extra",
+            "inference-cloud",
+            "--extra",
+            "inference-google",
             // openjarvis_rust lives in a uv dependency group (not the published
             // `desktop` extra) so pip installs from PyPI don't require it (#584).
-            "--group", "desktop-native",
+            "--group",
+            "desktop-native",
         ])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())
@@ -1559,6 +1598,17 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         }
     }
 
+    if !cfg.confirmed {
+        let mut confirmed = cfg.clone();
+        confirmed.confirmed = true;
+        if let Err(err) = write_inference_config(&confirmed) {
+            let mut s = status.lock().await;
+            s.error = Some(format!("Could not confirm inference setup: {}", err));
+            return;
+        }
+        pending_rollback.disarm();
+    }
+
     {
         let mut s = status.lock().await;
         s.server_ready = true;
@@ -1605,13 +1655,26 @@ async fn start_backend(
     }
     let b = backend.inner().clone();
     let s = status.inner().clone();
-    tauri::async_runtime::spawn(boot_backend(b, s));
+    start_managed_boot(b, s).await;
     Ok(())
 }
 
 #[tauri::command]
 async fn stop_backend(backend: tauri::State<'_, SharedBackend>) -> Result<(), String> {
     backend.lock().await.stop_all().await;
+    Ok(())
+}
+
+/// Abort startup, stop every child, discard an unworkable source, and return
+/// the UI to the inert chooser. This is the recovery path for setup failures.
+#[tauri::command]
+async fn reset_inference_source(
+    backend: tauri::State<'_, SharedBackend>,
+    status: tauri::State<'_, SharedStatus>,
+) -> Result<(), String> {
+    backend.lock().await.stop_all().await;
+    remove_inference_config()?;
+    *status.lock().await = SetupStatus::default();
     Ok(())
 }
 
@@ -2034,7 +2097,9 @@ fn managed_cloud_key_names() -> Vec<String> {
 
     let cfg = read_inference_config();
     if matches!(&cfg.kind, SourceKind::Custom) {
-        let engine = cfg.engine.unwrap_or_else(|| CUSTOM_FALLBACK_ENGINE.to_string());
+        let engine = cfg
+            .engine
+            .unwrap_or_else(|| CUSTOM_FALLBACK_ENGINE.to_string());
         let key_name = engine_api_key_name(&engine);
         if validate_cloud_key_name(&key_name).is_ok() {
             names.push(key_name);
@@ -2048,19 +2113,30 @@ fn managed_cloud_key_names() -> Vec<String> {
 
 fn secure_store_get(key_name: &str) -> Result<Option<String>, String> {
     validate_cloud_key_name(key_name)?;
-    let entry = keyring::Entry::new(SECURE_KEY_SERVICE, key_name)
-        .map_err(|err| format!("Failed to open secure key storage for {}: {}", key_name, err))?;
+    let entry = keyring::Entry::new(SECURE_KEY_SERVICE, key_name).map_err(|err| {
+        format!(
+            "Failed to open secure key storage for {}: {}",
+            key_name, err
+        )
+    })?;
     match entry.get_password() {
         Ok(value) => Ok(Some(value)),
         Err(keyring::Error::NoEntry) => Ok(None),
-        Err(err) => Err(format!("Failed to read {} from secure key storage: {}", key_name, err)),
+        Err(err) => Err(format!(
+            "Failed to read {} from secure key storage: {}",
+            key_name, err
+        )),
     }
 }
 
 fn secure_store_set(key_name: &str, key_value: &str) -> Result<(), String> {
     validate_cloud_key_name(key_name)?;
-    let entry = keyring::Entry::new(SECURE_KEY_SERVICE, key_name)
-        .map_err(|err| format!("Failed to open secure key storage for {}: {}", key_name, err))?;
+    let entry = keyring::Entry::new(SECURE_KEY_SERVICE, key_name).map_err(|err| {
+        format!(
+            "Failed to open secure key storage for {}: {}",
+            key_name, err
+        )
+    })?;
     if key_value.is_empty() {
         return match entry.delete_credential() {
             Ok(()) => Ok(()),
@@ -2189,6 +2265,7 @@ async fn set_inference_source(
     host: Option<String>,
     engine: Option<String>,
     api_key: Option<String>,
+    pending: Option<bool>,
 ) -> Result<(), String> {
     let kind = match kind.as_str() {
         "ollama" => SourceKind::Ollama,
@@ -2197,6 +2274,7 @@ async fn set_inference_source(
     };
     let cfg = InferenceConfig {
         kind,
+        confirmed: !pending.unwrap_or(false),
         model: model.filter(|m| !m.is_empty()),
         host: host.map(|h| normalize_host(&h)).filter(|h| !h.is_empty()),
         engine: engine.filter(|e| !e.is_empty()),
@@ -2275,6 +2353,10 @@ impl Default for SourceKind {
 struct InferenceConfig {
     #[serde(default)]
     kind: SourceKind,
+    /// First-run choices stay pending until the complete backend reaches
+    /// ready. Legacy configs predate this field and remain trusted.
+    #[serde(default = "legacy_config_is_confirmed")]
+    confirmed: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     model: Option<String>,
     /// Bare base URL (no trailing `/v1`), custom only.
@@ -2285,11 +2367,53 @@ struct InferenceConfig {
     engine: Option<String>,
 }
 
+fn legacy_config_is_confirmed() -> bool {
+    true
+}
+
 /// Path to the inference-source config (~/.openjarvis/inference.json).
 fn inference_config_path() -> std::path::PathBuf {
     std::path::PathBuf::from(home_dir())
         .join(".openjarvis")
         .join("inference.json")
+}
+
+fn remove_inference_config() -> Result<(), String> {
+    match std::fs::remove_file(inference_config_path()) {
+        Ok(()) => Ok(()),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(err) => Err(format!("Failed to clear inference config: {}", err)),
+    }
+}
+
+/// Rolls a first-run choice back whenever boot exits before confirmation.
+/// Confirmed returning-user configs are never removed by a transient outage.
+struct PendingInferenceRollback {
+    path: Option<std::path::PathBuf>,
+}
+
+impl PendingInferenceRollback {
+    fn new(cfg: &InferenceConfig) -> Self {
+        Self::at_path(cfg, inference_config_path())
+    }
+
+    fn at_path(cfg: &InferenceConfig, path: std::path::PathBuf) -> Self {
+        Self {
+            path: (!cfg.confirmed).then_some(path),
+        }
+    }
+
+    fn disarm(&mut self) {
+        self.path = None;
+    }
+}
+
+impl Drop for PendingInferenceRollback {
+    fn drop(&mut self) {
+        if let Some(path) = self.path.take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }
 }
 
 /// Parse only an explicitly persisted source choice. Missing/invalid config is
@@ -2321,7 +2445,8 @@ fn write_inference_config(cfg: &InferenceConfig) -> Result<(), String> {
         let _ = std::fs::create_dir_all(parent);
     }
     let json = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json + "\n").map_err(|e| format!("Failed to save inference config: {}", e))
+    std::fs::write(&path, json + "\n")
+        .map_err(|e| format!("Failed to save inference config: {}", e))
 }
 
 /// Upsert `[engine.<engine>] host = "<host>"` into an existing config.toml
@@ -2479,7 +2604,7 @@ mod native_overlay {
         // Also inject CSS to nuke any remaining background
         let js = nsstring(
             "document.documentElement.style.background='transparent';\
-             document.body.style.background='transparent';"
+             document.body.style.background='transparent';",
         );
         let nil: *mut Object = std::ptr::null_mut();
         let _: () = msg_send![wv, evaluateJavaScript: js completionHandler: nil];
@@ -2510,7 +2635,9 @@ mod native_overlay {
             let sup = Class::get("NSObject").unwrap();
             let mut decl = ClassDecl::new("JarvisOverlayNavDelegate", sup).unwrap();
             extern "C" fn did_finish(_: &Object, _: Sel, wv: *mut Object, _nav: *mut Object) {
-                unsafe { force_transparent(wv); }
+                unsafe {
+                    force_transparent(wv);
+                }
             }
             decl.add_method(
                 sel!(webView:didFinishNavigation:),
@@ -2767,7 +2894,16 @@ async fn hide_overlay() -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let backend: SharedBackend = Arc::new(Mutex::new(BackendManager::default()));
-    let configured_at_launch = read_configured_inference_config();
+    let configured_at_launch = match read_configured_inference_config() {
+        Some(cfg) if cfg.confirmed => Some(cfg),
+        Some(_) => {
+            // A prior first-run boot was interrupted or failed before it
+            // reached ready. Never replay that unvalidated choice on launch.
+            let _ = remove_inference_config();
+            None
+        }
+        None => None,
+    };
     let initial_status = configured_at_launch
         .as_ref()
         .map(SetupStatus::starting)
@@ -2861,7 +2997,7 @@ pub fn run() {
             // a source. Fresh installs stay inert until the setup UI records
             // explicit consent and invokes `start_backend`.
             if configured_at_launch.is_some() {
-                tauri::async_runtime::spawn(boot_backend(boot_backend_ref, boot_status_ref));
+                tauri::async_runtime::spawn(start_managed_boot(boot_backend_ref, boot_status_ref));
             }
 
             Ok(())
@@ -2871,6 +3007,7 @@ pub fn run() {
             get_api_base,
             start_backend,
             stop_backend,
+            reset_inference_source,
             check_health,
             fetch_energy,
             fetch_telemetry,
@@ -2921,7 +3058,8 @@ mod tests {
         format_uv_sync_spawn_error, matching_installed_model, model_names_match, normalize_host,
         parse_configured_inference_config, parse_ollama_model_names, preferred_installed_model,
         should_persist_resolved_model, startup_installed_model, upsert_engine_host,
-        uv_sync_stderr_tail, InferenceConfig, SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
+        uv_sync_stderr_tail, BackendManager, InferenceConfig, PendingInferenceRollback,
+        SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
     };
     use std::path::Path;
 
@@ -3034,10 +3172,10 @@ mod tests {
     #[test]
     fn default_local_model_picks_second_largest_that_fits() {
         // QWEN35_MODELS min_ram ladder: 4,6,8,12,24,32,96 GB
-        assert_eq!(default_local_model(4.0), "qwen3.5:0.8b");  // only one fits
-        assert_eq!(default_local_model(8.0), "qwen3.5:2b");    // fits 0.8/2/4 → 2nd-largest
-        assert_eq!(default_local_model(16.0), "qwen3.5:4b");   // fits ..9b → 2nd-largest
-        assert_eq!(default_local_model(32.0), "qwen3.5:27b");  // fits 0.8/2/4/9/27/35b → 2nd-largest is 27b
+        assert_eq!(default_local_model(4.0), "qwen3.5:0.8b"); // only one fits
+        assert_eq!(default_local_model(8.0), "qwen3.5:2b"); // fits 0.8/2/4 → 2nd-largest
+        assert_eq!(default_local_model(16.0), "qwen3.5:4b"); // fits ..9b → 2nd-largest
+        assert_eq!(default_local_model(32.0), "qwen3.5:27b"); // fits 0.8/2/4/9/27/35b → 2nd-largest is 27b
         assert_eq!(default_local_model(128.0), "qwen3.5:35b"); // fits all → 2nd-largest
     }
 
@@ -3119,7 +3257,10 @@ mod tests {
 
     #[test]
     fn resolved_model_is_only_persisted_when_no_model_was_configured() {
-        let default_cfg = InferenceConfig { kind: SourceKind::Ollama, ..Default::default() };
+        let default_cfg = InferenceConfig {
+            kind: SourceKind::Ollama,
+            ..Default::default()
+        };
         assert!(should_persist_resolved_model(&default_cfg));
 
         let empty_cfg = InferenceConfig {
@@ -3145,12 +3286,20 @@ mod tests {
 
         let ollama = parse_configured_inference_config(r#"{"kind":"ollama"}"#).unwrap();
         assert!(matches!(ollama.kind, SourceKind::Ollama));
+        assert!(ollama.confirmed, "legacy explicit configs remain trusted");
 
         let custom = parse_configured_inference_config(
             r#"{"kind":"custom","model":"m","host":"http://localhost:1234"}"#,
         )
         .unwrap();
         assert!(matches!(custom.kind, SourceKind::Custom));
+        assert!(custom.confirmed);
+
+        let pending = parse_configured_inference_config(
+            r#"{"kind":"custom","confirmed":false,"model":"m","host":"http://localhost:1234"}"#,
+        )
+        .unwrap();
+        assert!(!pending.confirmed);
     }
 
     #[test]
@@ -3168,6 +3317,7 @@ mod tests {
     fn persisted_source_status_can_enter_startup() {
         let cfg = InferenceConfig {
             kind: SourceKind::Custom,
+            confirmed: true,
             model: Some("m".into()),
             host: Some("http://localhost:1234".into()),
             engine: Some("lmstudio".into()),
@@ -3192,21 +3342,39 @@ mod tests {
 
     #[test]
     fn normalize_host_strips_trailing_slash_and_v1() {
-        assert_eq!(normalize_host("http://localhost:1234/v1"), "http://localhost:1234");
-        assert_eq!(normalize_host("http://localhost:1234/v1/"), "http://localhost:1234");
-        assert_eq!(normalize_host("http://localhost:1234/"), "http://localhost:1234");
+        assert_eq!(
+            normalize_host("http://localhost:1234/v1"),
+            "http://localhost:1234"
+        );
+        assert_eq!(
+            normalize_host("http://localhost:1234/v1/"),
+            "http://localhost:1234"
+        );
+        assert_eq!(
+            normalize_host("http://localhost:1234/"),
+            "http://localhost:1234"
+        );
         assert_eq!(normalize_host("http://host:8000"), "http://host:8000");
     }
 
     #[test]
     fn boot_plan_ollama_launches_and_pulls_one_model() {
-        let cfg = InferenceConfig { kind: SourceKind::Ollama, ..Default::default() };
+        let cfg = InferenceConfig {
+            kind: SourceKind::Ollama,
+            ..Default::default()
+        };
         let plan = boot_plan(&cfg, 16.0);
         assert!(plan.launch_ollama);
         assert_eq!(plan.model_to_pull.as_deref(), Some("qwen3.5:4b"));
         assert!(plan.engine_host.is_none());
-        assert!(plan.serve_args.windows(2).any(|w| w == ["--engine", "ollama"]));
-        assert!(plan.serve_args.windows(2).any(|w| w == ["--model", "qwen3.5:4b"]));
+        assert!(plan
+            .serve_args
+            .windows(2)
+            .any(|w| w == ["--engine", "ollama"]));
+        assert!(plan
+            .serve_args
+            .windows(2)
+            .any(|w| w == ["--model", "qwen3.5:4b"]));
     }
 
     #[test]
@@ -3224,6 +3392,7 @@ mod tests {
     fn boot_plan_custom_skips_ollama_and_sets_engine_host() {
         let cfg = InferenceConfig {
             kind: SourceKind::Custom,
+            confirmed: true,
             model: Some("qwen2.5-7b".into()),
             host: Some("http://localhost:1234".into()),
             engine: Some("lmstudio".into()),
@@ -3235,21 +3404,31 @@ mod tests {
             plan.engine_host,
             Some(("lmstudio".to_string(), "http://localhost:1234".to_string()))
         );
-        assert!(plan.serve_args.windows(2).any(|w| w == ["--engine", "lmstudio"]));
-        assert!(plan.serve_args.windows(2).any(|w| w == ["--model", "qwen2.5-7b"]));
+        assert!(plan
+            .serve_args
+            .windows(2)
+            .any(|w| w == ["--engine", "lmstudio"]));
+        assert!(plan
+            .serve_args
+            .windows(2)
+            .any(|w| w == ["--model", "qwen2.5-7b"]));
     }
 
     #[test]
     fn boot_plan_custom_defaults_engine_to_lmstudio() {
         let cfg = InferenceConfig {
             kind: SourceKind::Custom,
+            confirmed: true,
             model: Some("m".into()),
             host: Some("http://h:1".into()),
             engine: None,
         };
         let plan = boot_plan(&cfg, 16.0);
         assert_eq!(plan.engine_host.as_ref().unwrap().0, "lmstudio");
-        assert!(plan.serve_args.windows(2).any(|w| w == ["--engine", "lmstudio"]));
+        assert!(plan
+            .serve_args
+            .windows(2)
+            .any(|w| w == ["--engine", "lmstudio"]));
     }
 
     #[test]
@@ -3257,6 +3436,7 @@ mod tests {
         // No configured host → don't set engine_host (no override to write).
         let cfg = InferenceConfig {
             kind: SourceKind::Custom,
+            confirmed: true,
             model: Some("m".into()),
             host: None,
             engine: Some("lmstudio".into()),
@@ -3266,9 +3446,74 @@ mod tests {
     }
 
     #[test]
+    fn pending_config_rolls_back_unless_boot_confirms_it() {
+        let root = std::env::temp_dir().join(format!(
+            "openjarvis-pending-inference-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let pending_path = root.join("pending.json");
+        std::fs::write(&pending_path, "pending").unwrap();
+        let pending = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1".into()),
+            engine: Some("lmstudio".into()),
+        };
+
+        {
+            let _rollback = PendingInferenceRollback::at_path(&pending, pending_path.clone());
+        }
+        assert!(!pending_path.exists());
+
+        let confirmed_path = root.join("confirmed.json");
+        std::fs::write(&confirmed_path, "confirmed").unwrap();
+        let mut confirmed = pending;
+        confirmed.confirmed = true;
+        {
+            let _rollback = PendingInferenceRollback::at_path(&confirmed, confirmed_path.clone());
+        }
+        assert!(confirmed_path.exists());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn stopping_backend_aborts_the_tracked_boot_task() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        use std::sync::Arc;
+
+        struct DropSignal(Arc<AtomicBool>);
+        impl Drop for DropSignal {
+            fn drop(&mut self) {
+                self.0.store(true, Ordering::SeqCst);
+            }
+        }
+
+        let dropped = Arc::new(AtomicBool::new(false));
+        let signal = DropSignal(dropped.clone());
+        let task = tokio::spawn(async move {
+            let _signal = signal;
+            std::future::pending::<()>().await;
+        });
+        tokio::task::yield_now().await;
+
+        let mut manager = BackendManager::default();
+        manager.boot_task = Some(tauri::async_runtime::JoinHandle::Tokio(task));
+        manager.stop_all().await;
+        tokio::task::yield_now().await;
+
+        assert!(manager.boot_task.is_none());
+        assert!(dropped.load(Ordering::SeqCst));
+    }
+
+    #[test]
     fn boot_plan_ollama_uses_fallback_model_on_low_ram() {
         // Below the smallest model's min_ram → default_local_model → FALLBACK_MODEL.
-        let cfg = InferenceConfig { kind: SourceKind::Ollama, ..Default::default() };
+        let cfg = InferenceConfig {
+            kind: SourceKind::Ollama,
+            ..Default::default()
+        };
         let plan = boot_plan(&cfg, 1.0);
         assert_eq!(plan.model_to_pull.as_deref(), Some(super::FALLBACK_MODEL));
     }
@@ -3288,8 +3533,14 @@ mod tests {
         let existing = "[intelligence]\ndefault_model = \"keep-me\"\n";
         let out = upsert_engine_host(existing, "vllm", "http://host:8000").unwrap();
         let doc: toml_edit::DocumentMut = out.parse().unwrap();
-        assert_eq!(doc["intelligence"]["default_model"].as_str(), Some("keep-me"));
-        assert_eq!(doc["engine"]["vllm"]["host"].as_str(), Some("http://host:8000"));
+        assert_eq!(
+            doc["intelligence"]["default_model"].as_str(),
+            Some("keep-me")
+        );
+        assert_eq!(
+            doc["engine"]["vllm"]["host"].as_str(),
+            Some("http://host:8000")
+        );
     }
 
     #[test]
@@ -3297,7 +3548,10 @@ mod tests {
         let existing = "[engine.lmstudio]\nhost = \"http://old:1\"\n";
         let out = upsert_engine_host(existing, "lmstudio", "http://new:2").unwrap();
         let doc: toml_edit::DocumentMut = out.parse().unwrap();
-        assert_eq!(doc["engine"]["lmstudio"]["host"].as_str(), Some("http://new:2"));
+        assert_eq!(
+            doc["engine"]["lmstudio"]["host"].as_str(),
+            Some("http://new:2")
+        );
     }
 
     // -----------------------------------------------------------------

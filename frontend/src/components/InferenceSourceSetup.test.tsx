@@ -2,6 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import {
   CustomEndpointSetup,
+  InferenceRecoveryButton,
   InferenceSourceChooser,
   OllamaConsent,
   inferenceSetupReducer,
@@ -53,6 +54,20 @@ describe('first-run inference source navigation', () => {
     expect(html).toContain('Ollama will not start or download models');
     expect(html).toContain('Cancel');
   });
+
+  it('renders a source-change recovery action with a guarded busy state', () => {
+    const ready = renderToStaticMarkup(
+      <InferenceRecoveryButton recovering={false} onChange={vi.fn()} />,
+    );
+    const stopping = renderToStaticMarkup(
+      <InferenceRecoveryButton recovering onChange={vi.fn()} />,
+    );
+
+    expect(ready).toContain('Change inference source');
+    expect(ready).not.toMatch(/ disabled(?:=""|>)/);
+    expect(stopping).toContain('Stopping setup...');
+    expect(stopping).toMatch(/ disabled(?:=""|>)/);
+  });
 });
 
 describe('first-run inference source persistence', () => {
@@ -90,5 +105,29 @@ describe('first-run inference source persistence', () => {
       persistAndStartInferenceSource({ kind: 'ollama' }, persist, start),
     ).rejects.toThrow('secure storage unavailable');
     expect(start).not.toHaveBeenCalled();
+  });
+
+  it('rolls a staged choice back when startup rejects', async () => {
+    const calls: string[] = [];
+    const persist = vi.fn(async () => {
+      calls.push('persist');
+    });
+    const start = vi.fn(async () => {
+      calls.push('start');
+      throw new Error('endpoint unavailable');
+    });
+    const rollback = vi.fn(async () => {
+      calls.push('rollback');
+    });
+
+    await expect(
+      persistAndStartInferenceSource(
+        { kind: 'custom', host: 'http://localhost:1234', model: 'missing' },
+        persist,
+        start,
+        rollback,
+      ),
+    ).rejects.toThrow('endpoint unavailable');
+    expect(calls).toEqual(['persist', 'start', 'rollback']);
   });
 });
