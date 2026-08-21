@@ -359,6 +359,35 @@ def test_delete_by_sources_can_purge_one_account_only(ks: KnowledgeStore) -> Non
     ]
 
 
+def test_delete_by_sources_account_filter_tolerates_malformed_metadata(
+    ks: KnowledgeStore,
+) -> None:
+    """A corrupt legacy/IMAP row must not abort named-account cleanup."""
+    _store(
+        ks,
+        content="work inbox document",
+        source="gmail",
+        doc_id="gmail:work:1",
+        metadata={"account": "work"},
+    )
+    _store(
+        ks,
+        content="legacy IMAP document",
+        source="gmail",
+        doc_id="gmail:imap:1",
+    )
+    ks._conn.execute(
+        "UPDATE knowledge_chunks SET metadata = 'not-json' WHERE doc_id = ?",
+        ("gmail:imap:1",),
+    )
+    ks._conn.commit()
+
+    assert ks.delete_by_sources(("gmail",), account="work") == 1
+
+    remaining = ks._conn.execute("SELECT doc_id FROM knowledge_chunks").fetchall()
+    assert [row["doc_id"] for row in remaining] == ["gmail:imap:1"]
+
+
 def test_delete_by_sources_can_purge_only_legacy_unscoped_rows(
     ks: KnowledgeStore,
 ) -> None:

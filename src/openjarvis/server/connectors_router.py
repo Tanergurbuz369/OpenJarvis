@@ -901,25 +901,12 @@ def create_connectors_router():
                 ),
             )
 
-        _revoke_oauth_states(tuple(target_ids), account)
-
-        # Only revoke/delete credentials after the worker has relinquished
-        # the old connection.  A timeout must leave the connector usable and
-        # reject reconnect attempts, rather than silently switching source
-        # state underneath a still-running writer.
-        try:
-            for instance in targets.values():
-                instance.disconnect()
-            if provider and provider.name == "google":
-                from openjarvis.connectors.oauth import delete_provider_tokens
-
-                delete_provider_tokens(provider, account=account)
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
         # A source can be shared by multiple connector implementations
         # (Gmail OAuth and Gmail IMAP both write source='gmail'). Preserve it
-        # while another owner is connected; otherwise purge it only after the
-        # in-flight writer has stopped.
+        # while another owner is connected.  Determine ownership before
+        # disconnecting the target provider so cleanup can fail without
+        # destroying credentials and trapping the user in a half-disconnected
+        # state.
         purge_sources = {
             source
             for target_id, instance in targets.items()
@@ -927,7 +914,7 @@ def create_connectors_router():
         }
         if not account:
             for other_id in ConnectorRegistry.keys():
-                if other_id == connector_id:
+                if other_id in target_ids:
                     continue
                 other_cls = ConnectorRegistry.get(other_id)
                 shared = purge_sources.intersection(
@@ -972,8 +959,22 @@ def create_connectors_router():
             )
             raise HTTPException(
                 status_code=500,
-                detail=f"Disconnected, but indexed-data cleanup failed: {exc}",
+                detail=f"Disconnect cleanup failed; credentials were preserved: {exc}",
             )
+
+        # Revoke credentials only after all indexed data and checkpoints have
+        # been cleaned successfully.  A cleanup error must leave the existing
+        # connection intact so the operation can be retried safely.
+        _revoke_oauth_states(tuple(target_ids), account)
+        try:
+            for instance in targets.values():
+                instance.disconnect()
+            if provider and provider.name == "google":
+                from openjarvis.connectors.oauth import delete_provider_tokens
+
+                delete_provider_tokens(provider, account=account)
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
 
         with _sync_lock:
             for sync_key in sync_keys.values():

@@ -448,11 +448,14 @@ def test_disconnect_restores_checkpoint_when_purge_fails(app, monkeypatch) -> No
     class FakeObsidian:
         indexed_sources = ("obsidian",)
 
+        def __init__(self):
+            self.connected = True
+
         def is_connected(self):
-            return True
+            return self.connected
 
         def disconnect(self):
-            pass
+            self.connected = False
 
     with KnowledgeStore() as store:
         with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
@@ -462,10 +465,15 @@ def test_disconnect_restores_checkpoint_when_purge_fails(app, monkeypatch) -> No
         raise RuntimeError("simulated purge failure")
 
     monkeypatch.setattr(KnowledgeStore, "delete_by_sources", fail_purge)
-    _instances["obsidian"] = FakeObsidian()
+    instance = FakeObsidian()
+    _instances["obsidian"] = instance
     try:
         response = app.post("/v1/connectors/obsidian/disconnect")
         assert response.status_code == 500
+        assert response.json()["detail"].startswith(
+            "Disconnect cleanup failed; credentials were preserved:"
+        )
+        assert instance.is_connected() is True
         with KnowledgeStore() as store:
             with SyncEngine(pipeline=IngestionPipeline(store=store)) as engine:
                 checkpoint = engine.get_checkpoint("obsidian")

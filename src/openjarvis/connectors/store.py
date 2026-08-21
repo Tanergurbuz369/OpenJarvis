@@ -556,12 +556,21 @@ class KnowledgeStore(MemoryBackend):
         where = f"source IN ({placeholders})"
         params: tuple[Any, ...] = unique_sources
         if account is not None:
-            where += " AND json_extract(metadata, '$.account') = ?"
+            where += (
+                " AND CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.account') END = ?"
+            )
             params = (*params, account)
         elif unscoped_only:
-            where += " AND COALESCE(json_extract(metadata, '$.account'), '') = ''"
+            where += (
+                " AND COALESCE(CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.account') END, '') = ''"
+            )
         if metadata_connector is not None:
-            where += " AND json_extract(metadata, '$.connector') = ?"
+            where += (
+                " AND CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.connector') END = ?"
+            )
             params = (*params, metadata_connector)
         try:
             cur = self._conn.execute(
