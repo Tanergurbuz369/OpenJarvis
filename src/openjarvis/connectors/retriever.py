@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List, Optional, Sequence
 
 from openjarvis.connectors.store import KnowledgeStore
 from openjarvis.tools.storage._stubs import RetrievalResult
@@ -241,6 +241,7 @@ class TwoStageRetriever:
         top_k: int = 10,
         source: str = "",
         account: str = "",
+        accounts: Optional[Sequence[str]] = None,
         doc_type: str = "",
         author: str = "",
         since: str = "",
@@ -259,6 +260,9 @@ class TwoStageRetriever:
             ``"gmail:work"``).
         account:
             Restrict to chunks from a named connector account alias.
+        accounts:
+            Restrict Google rows to these aliases while retaining unscoped
+            rows from non-Google connectors. An empty list excludes Google.
         doc_type:
             Restrict to chunks of this doc type (e.g. ``"email"``).
         author:
@@ -282,6 +286,8 @@ class TwoStageRetriever:
             filter_kwargs["source"] = source
         if account:
             filter_kwargs["account"] = account
+        elif accounts is not None:
+            filter_kwargs["accounts"] = accounts
         if doc_type:
             filter_kwargs["doc_type"] = doc_type
         if author:

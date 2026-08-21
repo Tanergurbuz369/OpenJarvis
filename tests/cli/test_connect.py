@@ -87,7 +87,7 @@ def test_connect_specific_source(tmp_path: object) -> None:
 
 
 def test_connect_disconnect() -> None:
-    """--disconnect gmail exits 0."""
+    """A non-provider --disconnect invokes the connector directly."""
     runner = CliRunner()
 
     mock_cls = mock.MagicMock()
@@ -104,7 +104,7 @@ def test_connect_disconnect() -> None:
             return_value=mock_cls,
         ),
     ):
-        result = runner.invoke(cli, ["connect", "--disconnect", "gmail"])
+        result = runner.invoke(cli, ["connect", "--disconnect", "obsidian"])
 
     assert result.exit_code == 0
     mock_instance.disconnect.assert_called_once()
@@ -173,11 +173,7 @@ def test_disconnect_named_google_account_purges_index_before_token() -> None:
 
     with (
         mock.patch("openjarvis.cli.connect_cmd._purge_google_account_index") as purge,
-        mock.patch("openjarvis.connectors.oauth.delete_tokens") as delete,
-        mock.patch(
-            "openjarvis.connectors.oauth.google_account_credentials_path",
-            return_value="/tmp/work.json",
-        ),
+        mock.patch("openjarvis.connectors.oauth.delete_provider_tokens") as delete,
     ):
         result = runner.invoke(
             cli,
@@ -186,7 +182,23 @@ def test_disconnect_named_google_account_purges_index_before_token() -> None:
 
     assert result.exit_code == 0
     purge.assert_called_once_with("work")
-    delete.assert_called_once_with("/tmp/work.json")
+    delete.assert_called_once()
+    assert delete.call_args.kwargs == {"account": "work"}
+
+
+def test_disconnect_default_google_is_provider_wide() -> None:
+    runner = CliRunner()
+
+    with (
+        mock.patch("openjarvis.cli.connect_cmd._migrate_legacy_google_index") as purge,
+        mock.patch("openjarvis.connectors.oauth.delete_provider_tokens") as delete,
+    ):
+        result = runner.invoke(cli, ["connect", "--disconnect", "gdrive"])
+
+    assert result.exit_code == 0, result.output
+    purge.assert_called_once_with("")
+    delete.assert_called_once()
+    assert delete.call_args.kwargs == {"account": ""}
 
 
 def test_connect_rejects_named_account_for_non_google_source() -> None:

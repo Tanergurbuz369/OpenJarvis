@@ -126,61 +126,40 @@ class KnowledgeSearchTool(BaseTool):
         until: Optional[str] = params.get("until")
 
         try:
-            source, query_accounts = self._account_scope(source, account)
+            source, strict_account, default_accounts = self._account_scope(
+                source,
+                account,
+            )
         except ValueError as exc:
             return ToolResult(
                 tool_name="knowledge_search",
                 content=str(exc),
                 success=False,
             )
-        if query_accounts == []:
-            return ToolResult(
-                tool_name="knowledge_search",
-                content="No relevant results found.",
-                success=True,
-                metadata={"num_results": 0},
+        if self._retriever is not None:
+            results = self._retriever.retrieve(
+                query,
+                top_k=top_k,
+                source=source or "",
+                account=strict_account or "",
+                accounts=default_accounts,
+                doc_type=doc_type or "",
+                author=author or "",
+                since=since or "",
+                until=until or "",
             )
-
-        def retrieve_one(query_account: Optional[str]):
-            if self._retriever is not None:
-                return self._retriever.retrieve(
-                    query,
-                    top_k=top_k,
-                    source=source or "",
-                    account=query_account or "",
-                    doc_type=doc_type or "",
-                    author=author or "",
-                    since=since or "",
-                    until=until or "",
-                )
-            return self._store.retrieve(  # type: ignore[union-attr]
+        else:
+            results = self._store.retrieve(  # type: ignore[union-attr]
                 query,
                 top_k=top_k,
                 source=source,
-                account=query_account,
+                account=strict_account,
+                accounts=default_accounts,
                 doc_type=doc_type,
                 author=author,
                 since=since,
                 until=until,
             )
-
-        if query_accounts is None:
-            results = retrieve_one(None)
-        else:
-            by_chunk: dict[str, Any] = {}
-            for query_account in query_accounts:
-                for result in retrieve_one(query_account):
-                    chunk_id = str(result.metadata.get("chunk_id", "")) or str(
-                        id(result)
-                    )
-                    previous = by_chunk.get(chunk_id)
-                    if previous is None or result.score > previous.score:
-                        by_chunk[chunk_id] = result
-            results = sorted(
-                by_chunk.values(),
-                key=lambda result: result.score,
-                reverse=True,
-            )[:top_k]
 
         if not results:
             return ToolResult(
@@ -248,7 +227,7 @@ class KnowledgeSearchTool(BaseTool):
     def _account_scope(
         source: Optional[str],
         account: Optional[str],
-    ) -> tuple[Optional[str], Optional[list[str]]]:
+    ) -> tuple[Optional[str], Optional[str], Optional[list[str]]]:
         """Resolve requested filters within configured Google boundaries."""
         from openjarvis.connectors.oauth import (
             get_provider_for_connector,
@@ -282,19 +261,15 @@ class KnowledgeSearchTool(BaseTool):
 
         configured_scope = google_config.account_scope(config.agent.default_accounts)
         if configured_scope is None:
-            return normalized_source, (
-                [requested_account] if requested_account else None
-            )
-        if not configured_scope:
-            return normalized_source, []
+            return normalized_source, requested_account or None, None
         if requested_account:
             if requested_account not in configured_scope:
                 raise ValueError(
                     f"Google account profile '{requested_account}' is outside "
                     "the configured agent account boundary"
                 )
-            return normalized_source, [requested_account]
-        return normalized_source, configured_scope
+            return normalized_source, requested_account, None
+        return normalized_source, None, configured_scope
 
 
 __all__ = ["KnowledgeSearchTool"]

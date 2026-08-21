@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 from openjarvis.connectors.store import KnowledgeStore
 from openjarvis.core.registry import ToolRegistry
@@ -45,8 +45,13 @@ class KnowledgeSQLTool(BaseTool):
 
     tool_id = "knowledge_sql"
 
-    def __init__(self, store: Optional[KnowledgeStore] = None) -> None:
+    def __init__(
+        self,
+        store: Optional[KnowledgeStore] = None,
+        accounts: Optional[Sequence[str]] = None,
+    ) -> None:
         self._store = store
+        self._accounts = None if accounts is None else tuple(accounts)
 
     @property
     def spec(self) -> ToolSpec:
@@ -81,6 +86,15 @@ class KnowledgeSQLTool(BaseTool):
             return ToolResult(
                 tool_name="knowledge_sql",
                 content="No knowledge store configured.",
+                success=False,
+            )
+        if self._accounts is not None:
+            return ToolResult(
+                tool_name="knowledge_sql",
+                content=(
+                    "Raw SQL is unavailable while a named Google account "
+                    "boundary is configured; use knowledge_search instead."
+                ),
                 success=False,
             )
 

@@ -483,6 +483,16 @@ def delete_tokens(path: str) -> None:
         p.unlink()
 
 
+def delete_provider_tokens(provider: OAuthProvider, *, account: str = "") -> None:
+    """Delete every credential file owned by one provider lifecycle."""
+    alias = normalize_account_alias(account)
+    if provider.name == "google" and alias:
+        delete_tokens(google_account_credentials_path(alias))
+        return
+    for filename in provider.credential_files:
+        delete_tokens(str(_CONNECTORS_DIR / filename))
+
+
 def _persist_google_oauth_tokens(
     credentials_path: str,
     token_payload: Dict[str, Any],

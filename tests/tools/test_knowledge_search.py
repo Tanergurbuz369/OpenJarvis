@@ -118,6 +118,11 @@ class TestKnowledgeSearchTool:
             source_id="work:message",
             metadata={"account": "work", "source_profile": "work"},
         )
+        store.store(
+            f"Shared {marker}",
+            source="slack",
+            source_id="shared:message",
+        )
         config = JarvisConfig()
         config.agent.default_accounts = ["personal"]
         config.connectors.google.accounts = {
@@ -133,6 +138,7 @@ class TestKnowledgeSearchTool:
 
         assert unscoped.success is True
         assert "Personal" in unscoped.content
+        assert "Shared" in unscoped.content
         assert "Work" not in unscoped.content
         assert disabled_account.success is False
         assert "disabled" in disabled_account.content
@@ -147,6 +153,11 @@ class TestKnowledgeSearchTool:
             source_id="work:message",
             metadata={"account": "work", "source_profile": "work"},
         )
+        store.store(
+            f"Shared {marker}",
+            source="slack",
+            source_id="shared:message",
+        )
         config = JarvisConfig()
         config.agent.default_accounts = ["work"]
         config.connectors.google.accounts = {
@@ -157,8 +168,9 @@ class TestKnowledgeSearchTool:
             result = KnowledgeSearchTool(store=store).execute(query=marker)
 
         assert result.success is True
-        assert result.metadata["num_results"] == 0
-        assert marker not in result.content
+        assert result.metadata["num_results"] == 1
+        assert "Shared" in result.content
+        assert "gmail" not in result.content
 
     def test_filter_by_author(self, store):
         """author filter restricts results to sarah only."""

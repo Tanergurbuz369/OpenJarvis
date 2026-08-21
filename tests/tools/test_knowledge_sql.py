@@ -31,6 +31,17 @@ def test_select_count(store: KnowledgeStore) -> None:
     assert "4" in result.content
 
 
+def test_scoped_sql_is_fail_closed(store: KnowledgeStore) -> None:
+    from openjarvis.tools.knowledge_sql import KnowledgeSQLTool
+
+    result = KnowledgeSQLTool(store=store, accounts=["work"]).execute(
+        query="SELECT content, metadata FROM knowledge_chunks"
+    )
+
+    assert result.success is False
+    assert "unavailable" in result.content
+
+
 def test_group_by_author(store: KnowledgeStore) -> None:
     from openjarvis.tools.knowledge_sql import KnowledgeSQLTool
 

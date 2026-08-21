@@ -54,6 +54,51 @@ def test_scan_respects_source_filter(store: KnowledgeStore) -> None:
     assert "Spain" in all_content
 
 
+def test_scan_enforces_google_account_scope_and_hides_deleted_rows(
+    tmp_path: Path,
+) -> None:
+    from openjarvis.tools.scan_chunks import ScanChunksTool
+
+    store = KnowledgeStore(str(tmp_path / "scoped.db"))
+    store.store(
+        "WORK_ALLOWED",
+        source="gmail",
+        source_id="work:message",
+        metadata={"account": "work"},
+    )
+    store.store(
+        "PERSONAL_SECRET",
+        source="gdrive",
+        source_id="personal:file",
+        metadata={"account": "personal"},
+    )
+    deleted_id = store.store(
+        "DELETED_SECRET",
+        source="slack",
+        source_id="deleted",
+    )
+    store._conn.execute(
+        "UPDATE knowledge_chunks SET deleted_at = '2026-01-01' WHERE id = ?",
+        (deleted_id,),
+    )
+    store._conn.commit()
+    engine = _fake_engine()
+
+    result = ScanChunksTool(
+        store=store,
+        engine=engine,
+        model="test",
+        accounts=["work"],
+    ).execute(question="find the marker")
+
+    assert result.success
+    messages = str(engine.generate.call_args.args[0])
+    assert "WORK_ALLOWED" in messages
+    assert "PERSONAL_SECRET" not in messages
+    assert "DELETED_SECRET" not in messages
+    store.close()
+
+
 def test_scan_empty_store(tmp_path: Path) -> None:
     from openjarvis.tools.scan_chunks import ScanChunksTool
 

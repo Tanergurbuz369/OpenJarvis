@@ -132,6 +132,40 @@ def test_research_agent_applies_configured_default_accounts() -> None:
     assert fake_search.calls[3]["accounts"] == ["work"]
 
 
+def test_hybrid_account_scope_keeps_non_google_and_hides_other_profiles(
+    tmp_path,
+) -> None:
+    store = KnowledgeStore(tmp_path / "account-boundary.db")
+    store.store(
+        "BOUNDARY_MARKER work",
+        source="gmail",
+        source_id="work:message",
+        metadata={"account": "work"},
+    )
+    store.store(
+        "BOUNDARY_MARKER personal",
+        source="gdrive",
+        source_id="personal:file",
+        metadata={"account": "personal"},
+    )
+    store.store(
+        "BOUNDARY_MARKER shared",
+        source="slack",
+        source_id="shared:message",
+    )
+
+    hits = HybridSearch(store, embedder=None).search(
+        "BOUNDARY_MARKER",
+        accounts=["work"],
+    )
+
+    snippets = "\n".join(hit.content_snippet for hit in hits)
+    assert "work" in snippets
+    assert "shared" in snippets
+    assert "personal" not in snippets
+    store.close()
+
+
 class _AccountConnector(BaseConnector):
     connector_id = "gmail"
     display_name = "Gmail"

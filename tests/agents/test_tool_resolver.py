@@ -126,6 +126,32 @@ def test_deep_research_grants_are_live_deduplicated_and_use_selected_model(
         resolved.by_name["knowledge_sql"]._store.close()
 
 
+def test_scoped_deep_research_disables_raw_sql_and_scopes_scan(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    """Every granted reader must respect the configured account boundary."""
+    from openjarvis.core.config import JarvisConfig
+
+    db_path = tmp_path / "knowledge.db"
+    with KnowledgeStore(db_path=db_path) as store:
+        store.store("seed", source="slack")
+    config = JarvisConfig()
+    config.agent.default_accounts = ["work"]
+    monkeypatch.setattr("openjarvis.core.config.load_config", lambda: config)
+
+    tools = tool_resolver.build_deep_research_tools(object(), "test", db_path)
+    by_name = {tool.tool_id: tool for tool in tools}
+
+    sql_result = by_name["knowledge_sql"].execute(
+        query="SELECT content FROM knowledge_chunks"
+    )
+    assert sql_result.success is False
+    assert "unavailable" in sql_result.content
+    assert by_name["scan_chunks"]._accounts == ("work",)
+    by_name["knowledge_sql"]._store.close()
+
+
 @pytest.mark.parametrize(
     "tool_config",
     [

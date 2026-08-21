@@ -15,11 +15,47 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Union
 
 from openjarvis.core.events import EventType, get_event_bus
 from openjarvis.core.registry import MemoryRegistry
 from openjarvis.tools.storage._stubs import MemoryBackend, RetrievalResult
+
+
+def google_account_scope_sql(
+    accounts: Sequence[str],
+    *,
+    alias: str = "",
+) -> tuple[str, list[Any]]:
+    """Build a Google-profile boundary while retaining other connectors.
+
+    Named account configuration scopes the five connectors sharing a Google
+    OAuth grant. It must not hide unrelated Slack/Obsidian/etc. rows, but it
+    must exclude legacy unscoped Google rows because those belong to a
+    different credential boundary.
+    """
+    from openjarvis.connectors.oauth import OAUTH_PROVIDERS
+
+    prefix = f"{alias}." if alias else ""
+    account_expr = (
+        f"CASE WHEN json_valid({prefix}metadata) "
+        f"THEN json_extract({prefix}metadata, '$.account') END"
+    )
+    google_sources = tuple(OAUTH_PROVIDERS["google"].connector_ids)
+    google_placeholders = ", ".join("?" for _ in google_sources)
+    params: list[Any] = []
+    allowed = "0"
+    if accounts:
+        account_placeholders = ", ".join("?" for _ in accounts)
+        allowed = f"{account_expr} IN ({account_placeholders})"
+        params.extend(accounts)
+    params.extend(google_sources)
+    clause = (
+        f"({allowed} OR (COALESCE({account_expr}, '') = '' AND "
+        f"{prefix}source NOT IN ({google_placeholders})))"
+    )
+    return clause, params
+
 
 # ---------------------------------------------------------------------------
 # DDL
@@ -353,6 +389,7 @@ class KnowledgeStore(MemoryBackend):
         top_k: int = 5,
         source: Optional[str] = None,
         account: Optional[str] = None,
+        accounts: Optional[Sequence[str]] = None,
         doc_type: Optional[str] = None,
         author: Optional[str] = None,
         since: Optional[Union[datetime, str]] = None,
@@ -378,6 +415,8 @@ class KnowledgeStore(MemoryBackend):
         since_str = _to_iso(since) if since is not None else None
         until_str = _to_iso(until) if until is not None else None
         source, source_account = _split_source_account(source)
+        if account is not None and accounts is not None:
+            raise ValueError("account and accounts filters are mutually exclusive")
         if account and source_account and account != source_account:
             raise ValueError(
                 "Conflicting account filters: the scoped source and explicit "
@@ -395,6 +434,13 @@ class KnowledgeStore(MemoryBackend):
         if account is not None:
             filters.append("json_extract(kc.metadata, '$.account') = ?")
             params.append(account)
+        elif accounts is not None:
+            account_clause, account_params = google_account_scope_sql(
+                accounts,
+                alias="kc",
+            )
+            filters.append(account_clause)
+            params.extend(account_params)
         if doc_type is not None:
             filters.append("kc.doc_type = ?")
             params.append(doc_type)
@@ -462,6 +508,7 @@ class KnowledgeStore(MemoryBackend):
                     "doc_type": doc_type,
                     "author": author,
                     "account": account,
+                    "accounts": list(accounts) if accounts is not None else None,
                     "since": since_str,
                     "until": until_str,
                 },
@@ -607,20 +654,9 @@ class KnowledgeStore(MemoryBackend):
         where = "source IS NOT NULL AND source != ''"
         params: tuple[Any, ...] = ()
         if account_scope is not None:
-            unscoped = (
-                "COALESCE(CASE WHEN json_valid(metadata) "
-                "THEN json_extract(metadata, '$.account') END, '') = ''"
-            )
-            if account_scope:
-                placeholders = ", ".join("?" for _ in account_scope)
-                where += (
-                    f" AND ({unscoped} OR CASE WHEN json_valid(metadata) "
-                    "THEN json_extract(metadata, '$.account') END "
-                    f"IN ({placeholders}))"
-                )
-                params = account_scope
-            else:
-                where += f" AND {unscoped}"
+            account_clause, account_params = google_account_scope_sql(account_scope)
+            where += f" AND {account_clause}"
+            params = tuple(account_params)
         try:
             rows = self._conn.execute(
                 "SELECT DISTINCT source, "

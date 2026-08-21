@@ -434,7 +434,22 @@ def create_connectors_router():
             while not _lifecycle_lock.acquire(blocking=False):
                 await asyncio.sleep(0.01)
             try:
-                return await func(*args, **kwargs)
+                operation = asyncio.create_task(func(*args, **kwargs))
+                cancelled = False
+                while True:
+                    try:
+                        result = await asyncio.shield(operation)
+                        break
+                    except asyncio.CancelledError:
+                        if operation.done():
+                            raise
+                        # Starlette's threadpool work cannot be cancelled once
+                        # running. Keep the lifecycle lock until it drains so a
+                        # disconnected credential cannot be recreated later.
+                        cancelled = True
+                if cancelled:
+                    raise asyncio.CancelledError
+                return result
             finally:
                 _lifecycle_lock.release()
 
@@ -841,7 +856,7 @@ def create_connectors_router():
         # provider-level lifecycle and clean every primitive atomically.
         target_ids = (
             tuple(provider.connector_ids)
-            if account and provider and provider.name == "google"
+            if provider and provider.name == "google"
             else (connector_id,)
         )
         targets = {
@@ -895,6 +910,10 @@ def create_connectors_router():
         try:
             for instance in targets.values():
                 instance.disconnect()
+            if provider and provider.name == "google":
+                from openjarvis.connectors.oauth import delete_provider_tokens
+
+                delete_provider_tokens(provider, account=account)
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
         # A source can be shared by multiple connector implementations

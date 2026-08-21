@@ -56,27 +56,31 @@ def _disconnect_source(registry: object, source: str, account: str = "") -> None
     """Find and disconnect a registered source connector."""
     console = Console()
 
-    if account:
-        from openjarvis.connectors.oauth import (
-            delete_tokens,
-            get_provider_for_connector,
-            google_account_credentials_path,
-        )
+    from openjarvis.connectors.oauth import (
+        OAUTH_PROVIDERS,
+        delete_provider_tokens,
+        get_provider_for_connector,
+    )
 
-        provider = get_provider_for_connector(source)
-        if source == "google" or (provider and provider.name == "google"):
-            try:
+    provider = (
+        OAUTH_PROVIDERS["google"]
+        if source == "google"
+        else get_provider_for_connector(source)
+    )
+    if provider and provider.name == "google":
+        try:
+            if account:
                 _purge_google_account_index(account)
-                delete_tokens(google_account_credentials_path(account))
-                console.print(
-                    f"[green]Disconnected Google account {account} from all "
-                    "Google connectors.[/green]"
-                )
-            except Exception as exc:  # noqa: BLE001
-                console.print(
-                    f"[red]Failed to disconnect Google account {account}: {exc}[/red]"
-                )
-            return
+            else:
+                _migrate_legacy_google_index("")
+            delete_provider_tokens(provider, account=account)
+            label = f" account {account}" if account else ""
+            console.print(
+                f"[green]Disconnected Google{label} from all Google connectors.[/green]"
+            )
+        except Exception as exc:  # noqa: BLE001
+            console.print(f"[red]Failed to disconnect Google: {exc}[/red]")
+        return
 
     if not registry.contains(source):  # type: ignore[attr-defined]
         console.print(f"[red]Unknown source: {source}[/red]")

@@ -7,7 +7,7 @@ that keyword-based BM25 search misses.
 
 from __future__ import annotations
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Sequence
 
 from openjarvis.connectors.store import KnowledgeStore
 from openjarvis.core.registry import ToolRegistry
@@ -30,10 +30,12 @@ class ScanChunksTool(BaseTool):
         store: Optional[KnowledgeStore] = None,
         engine: Optional[InferenceEngine] = None,
         model: str = "",
+        accounts: Optional[Sequence[str]] = None,
     ) -> None:
         self._store = store
         self._engine = engine
         self._model = model
+        self._accounts = None if accounts is None else tuple(accounts)
 
     @property
     def spec(self) -> ToolSpec:
@@ -105,8 +107,15 @@ class ScanChunksTool(BaseTool):
         max_chunks: int = int(params.get("max_chunks", _DEFAULT_MAX_CHUNKS))
         batch_size: int = _DEFAULT_BATCH_SIZE
 
-        where_clauses: List[str] = []
+        where_clauses: List[str] = ["deleted_at IS NULL"]
         sql_params: List[Any] = []
+
+        if self._accounts is not None:
+            from openjarvis.connectors.store import google_account_scope_sql
+
+            account_clause, account_params = google_account_scope_sql(self._accounts)
+            where_clauses.append(account_clause)
+            sql_params.extend(account_params)
 
         if source:
             where_clauses.append("source = ?")

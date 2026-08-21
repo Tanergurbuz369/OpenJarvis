@@ -404,11 +404,14 @@ class HybridSearch:
             clauses.append("(" + " OR ".join(source_clauses) + ")")
 
         if accounts:
-            placeholders = ",".join("?" for _ in accounts)
-            clauses.append(
-                f"json_extract({prefix}metadata, '$.account') IN ({placeholders})"
+            from openjarvis.connectors.store import google_account_scope_sql
+
+            account_clause, account_params = google_account_scope_sql(
+                accounts,
+                alias=alias,
             )
-            params.extend(accounts)
+            clauses.append(account_clause)
+            params.extend(account_params)
 
         return " AND ".join(clauses), params
 

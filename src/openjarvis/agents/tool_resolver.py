@@ -284,13 +284,25 @@ def build_deep_research_tools(
 
     store = KnowledgeStore(str(path))
     try:
+        from openjarvis.core.config import load_config
+
+        config = load_config()
+        account_scope = config.connectors.google.account_scope(
+            config.agent.default_accounts
+        )
         retriever = TwoStageRetriever(store)
-        return [
+        tools = [
             KnowledgeSearchTool(retriever=retriever),
-            KnowledgeSQLTool(store=store),
-            ScanChunksTool(store=store, engine=engine, model=model),
+            KnowledgeSQLTool(store=store, accounts=account_scope),
+            ScanChunksTool(
+                store=store,
+                engine=engine,
+                model=model,
+                accounts=account_scope,
+            ),
             ThinkTool(),
         ]
+        return tools
     except Exception:
         store.close()
         raise
