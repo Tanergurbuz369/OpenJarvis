@@ -622,9 +622,50 @@ def test_available_sources_fall_back_to_store(stub_search: MagicMock) -> None:
     agent = ResearchAgent(engine, stub_search, model="mock", max_iterations=1)
     agent.run("hi")
 
-    fake_store.distinct_sources.assert_called_once()
+    fake_store.distinct_sources.assert_called_once_with(accounts=None)
     sys_content = engine.calls[0]["messages"][0].content
     assert "granola, slack" in sys_content
+
+
+def test_available_sources_respect_account_boundary(
+    stub_search: MagicMock,
+    tmp_path,
+) -> None:
+    """The planner must not learn that another named profile is indexed."""
+    from openjarvis.connectors.store import KnowledgeStore
+
+    store = KnowledgeStore(tmp_path / "account-sources.db")
+    store.store(
+        "work data",
+        source="gmail",
+        source_id="work:message",
+        metadata={"account": "work"},
+    )
+    store.store(
+        "personal data",
+        source="gdrive",
+        source_id="personal:file",
+        metadata={"account": "personal"},
+    )
+    store.store("shared data", source="slack", source_id="shared")
+    stub_search._store = store
+    engine = _MockEngine(responses=[_text_response("ok")])
+    agent = ResearchAgent(
+        engine,
+        stub_search,
+        model="mock",
+        max_iterations=1,
+        default_accounts=["work"],
+    )
+
+    try:
+        agent.run("hi")
+    finally:
+        store.close()
+
+    sys_content = engine.calls[0]["messages"][0].content
+    assert "gmail, gmail:work, slack" in sys_content
+    assert "gdrive:personal" not in sys_content
 
 
 def test_available_sources_empty_message_when_nothing_connected(

@@ -744,7 +744,7 @@ class ResearchAgent:
         if store is None:
             return []
         try:
-            return list(store.distinct_sources())
+            return list(store.distinct_sources(accounts=self._default_accounts))
         except Exception as exc:  # noqa: BLE001
             logger.debug("distinct_sources() failed: %s", exc)
             return []

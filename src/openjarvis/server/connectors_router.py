@@ -332,8 +332,7 @@ def create_connectors_router():
     # instance, checkpoint, and source-ownership state. Serializing them
     # globally keeps connect/disconnect/manual-sync decisions atomic,
     # including ownership checks for sources shared by multiple connectors.
-    _lifecycle_lock = threading.RLock()
-    _lifecycle_async_lock = asyncio.Lock()
+    _lifecycle_lock = threading.Lock()
     _oauth_state_lock = threading.Lock()
     _oauth_states: Dict[str, tuple[str, str, float]] = {}
     _OAUTH_STATE_TTL_SECONDS = 600.0
@@ -426,16 +425,18 @@ def create_connectors_router():
     def _serialized_async(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
-            async with _lifecycle_async_lock:
+            # ``threading.RLock`` is unsafe here: concurrent ASGI coroutines
+            # run on the same event-loop thread and therefore re-enter it.
+            # A plain cross-thread lock plus non-blocking async polling works
+            # both in production's single loop and TestClient's multi-thread
+            # portals, while cancellation during the wait cannot orphan an
+            # acquired lock in a worker thread.
+            while not _lifecycle_lock.acquire(blocking=False):
+                await asyncio.sleep(0.01)
+            try:
                 return await func(*args, **kwargs)
-
-        return wrapped
-
-    def _serialized_sync(func):
-        @wraps(func)
-        def wrapped(*args, **kwargs):
-            with _lifecycle_lock:
-                return func(*args, **kwargs)
+            finally:
+                _lifecycle_lock.release()
 
         return wrapped
 
@@ -463,7 +464,6 @@ def create_connectors_router():
             return "Connection timed out."
         return raw
 
-    @_serialized_sync
     def _start_sync(connector_id: str, instance: Any, account: str = "") -> str:
         """Spawn a background sync; returns ``"started"`` or ``"already_syncing"``.
 
@@ -799,7 +799,14 @@ def create_connectors_router():
         # immediately — the user shouldn't have to click "Sync Now".
         sync_status: Optional[str] = None
         if instance.is_connected():
-            sync_status = _start_sync(connector_id, instance, account)
+            from starlette.concurrency import run_in_threadpool
+
+            sync_status = await run_in_threadpool(
+                _start_sync,
+                connector_id,
+                instance,
+                account,
+            )
 
         return {
             "connector_id": connector_id,
@@ -1145,8 +1152,8 @@ def create_connectors_router():
         )
 
     @router.post("/{connector_id}/sync")
-    @_serialized_sync
-    def trigger_sync(connector_id: str, account: str = "") -> Dict[str, Any]:
+    @_serialized_async
+    async def trigger_sync(connector_id: str, account: str = "") -> Dict[str, Any]:
         """Trigger a sync in the background and return immediately."""
         _ensure_connectors_registered()
         if not ConnectorRegistry.contains(connector_id):
@@ -1162,7 +1169,9 @@ def create_connectors_router():
                 status_code=400,
                 detail=f"Connector '{connector_id}' is not connected",
             )
-        status = _start_sync(connector_id, inst, account)
+        from starlette.concurrency import run_in_threadpool
+
+        status = await run_in_threadpool(_start_sync, connector_id, inst, account)
         return {
             "connector_id": connector_id,
             "account": account or None,

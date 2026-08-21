@@ -111,6 +111,33 @@ def test_retrieve_filter_by_source_account_alias(ks: KnowledgeStore) -> None:
     assert "gmail:work" in ks.distinct_sources()
 
 
+def test_distinct_sources_hides_out_of_scope_accounts_but_keeps_unscoped(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="work mail",
+        source="gmail",
+        source_id="work:message",
+        metadata={"account": "work"},
+    )
+    _store(
+        ks,
+        content="personal file",
+        source="gdrive",
+        source_id="personal:file",
+        metadata={"account": "personal"},
+    )
+    _store(ks, content="shared message", source="slack", source_id="shared")
+
+    assert ks.distinct_sources(accounts=["work"]) == [
+        "gmail",
+        "gmail:work",
+        "slack",
+    ]
+    assert ks.distinct_sources(accounts=[]) == ["slack"]
+
+
 def test_retrieve_rejects_conflicting_scoped_and_explicit_accounts(
     ks: KnowledgeStore,
 ) -> None:

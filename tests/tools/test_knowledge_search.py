@@ -5,10 +5,12 @@ from __future__ import annotations
 import importlib
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
 from openjarvis.connectors.store import KnowledgeStore
+from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
 from openjarvis.core.registry import ToolRegistry
 from openjarvis.tools.knowledge_search import KnowledgeSearchTool
 
@@ -101,6 +103,62 @@ class TestKnowledgeSearchTool:
         assert "[gmail:work]" in result.content
         assert "account user@company.example" in result.content
         assert result.metadata["sources"][0]["source_email"] == ("user@company.example")
+
+    def test_configured_account_boundary_is_enforced(self, store):
+        marker = "accountboundaryuniquemarker"
+        store.store(
+            f"Personal {marker}",
+            source="gmail",
+            source_id="personal:message",
+            metadata={"account": "personal", "source_profile": "personal"},
+        )
+        store.store(
+            f"Work {marker}",
+            source="gmail",
+            source_id="work:message",
+            metadata={"account": "work", "source_profile": "work"},
+        )
+        config = JarvisConfig()
+        config.agent.default_accounts = ["personal"]
+        config.connectors.google.accounts = {
+            "personal": GoogleAccountProfileConfig(enabled=True),
+            "work": GoogleAccountProfileConfig(enabled=False),
+        }
+        tool = KnowledgeSearchTool(store=store)
+
+        with patch("openjarvis.core.config.load_config", return_value=config):
+            unscoped = tool.execute(query=marker)
+            disabled_account = tool.execute(query=marker, account="work")
+            disabled_source = tool.execute(query=marker, source="gmail:work")
+
+        assert unscoped.success is True
+        assert "Personal" in unscoped.content
+        assert "Work" not in unscoped.content
+        assert disabled_account.success is False
+        assert "disabled" in disabled_account.content
+        assert disabled_source.success is False
+        assert "disabled" in disabled_source.content
+
+    def test_all_disabled_default_scope_matches_nothing(self, store):
+        marker = "disabledboundaryuniquemarker"
+        store.store(
+            marker,
+            source="gmail",
+            source_id="work:message",
+            metadata={"account": "work", "source_profile": "work"},
+        )
+        config = JarvisConfig()
+        config.agent.default_accounts = ["work"]
+        config.connectors.google.accounts = {
+            "work": GoogleAccountProfileConfig(enabled=False)
+        }
+
+        with patch("openjarvis.core.config.load_config", return_value=config):
+            result = KnowledgeSearchTool(store=store).execute(query=marker)
+
+        assert result.success is True
+        assert result.metadata["num_results"] == 0
+        assert marker not in result.content
 
     def test_filter_by_author(self, store):
         """author filter restricts results to sarah only."""

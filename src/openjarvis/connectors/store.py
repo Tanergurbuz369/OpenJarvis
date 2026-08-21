@@ -589,27 +589,54 @@ class KnowledgeStore(MemoryBackend):
         row = self._conn.execute("SELECT COUNT(*) FROM knowledge_chunks").fetchone()
         return row[0] if row else 0
 
-    def distinct_sources(self) -> List[str]:
+    def distinct_sources(
+        self,
+        accounts: Optional[Iterable[str]] = None,
+    ) -> List[str]:
         """Return the sorted list of distinct ``source`` values currently indexed.
 
         Used by the research agent to populate the system prompt with the
         sources the user actually has connected — so the model doesn't
         mention "Notion" or "Apple Notes" when nothing from those sources
-        is in the corpus.
+        is in the corpus.  When *accounts* is supplied, account-scoped rows
+        outside that boundary are hidden while unscoped/legacy rows remain
+        visible.  ``None`` preserves the legacy unrestricted behaviour; an
+        empty iterable exposes only unscoped rows.
         """
+        account_scope = None if accounts is None else tuple(dict.fromkeys(accounts))
+        where = "source IS NOT NULL AND source != ''"
+        params: tuple[Any, ...] = ()
+        if account_scope is not None:
+            unscoped = (
+                "COALESCE(CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.account') END, '') = ''"
+            )
+            if account_scope:
+                placeholders = ", ".join("?" for _ in account_scope)
+                where += (
+                    f" AND ({unscoped} OR CASE WHEN json_valid(metadata) "
+                    "THEN json_extract(metadata, '$.account') END "
+                    f"IN ({placeholders}))"
+                )
+                params = account_scope
+            else:
+                where += f" AND {unscoped}"
         try:
             rows = self._conn.execute(
                 "SELECT DISTINCT source, "
-                "json_extract(metadata, '$.account') AS account "
+                "CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.account') END AS account "
                 "FROM knowledge_chunks "
-                "WHERE source IS NOT NULL AND source != '' "
-                "ORDER BY source, account"
+                f"WHERE {where} "
+                "ORDER BY source, account",
+                params,
             ).fetchall()
         except sqlite3.OperationalError:
             rows = self._conn.execute(
                 "SELECT DISTINCT source, NULL AS account FROM knowledge_chunks "
-                "WHERE source IS NOT NULL AND source != '' "
-                "ORDER BY source"
+                f"WHERE {where} "
+                "ORDER BY source",
+                params,
             ).fetchall()
 
         sources: set[str] = set()
