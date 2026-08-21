@@ -102,6 +102,33 @@ def test_min_chunk_size_filters_tiny_trailing_fragment():
     assert "b0" not in chunks[0].content
 
 
+def test_short_lead_in_before_oversized_paragraph_is_not_dropped():
+    """A sub-floor lead-in must be carried into an oversized window (#754)."""
+    lead_in = "IMPORTANT my API key rotation policy is documented here"
+    large_paragraph = " ".join(f"word{i}" for i in range(600))
+
+    chunks = chunk_text(f"{lead_in}\n\n{large_paragraph}")
+
+    assert any(lead_in in chunk.content for chunk in chunks)
+    output_tokens = {token for chunk in chunks for token in chunk.content.split()}
+    assert set(lead_in.split()).issubset(output_tokens)
+    assert {f"word{i}" for i in range(600)}.issubset(output_tokens)
+
+
+def test_short_paragraph_before_full_normal_paragraph_is_not_dropped():
+    """The ordinary paragraph-boundary flush also preserves sub-floor text."""
+    cfg = ChunkConfig(chunk_size=10, chunk_overlap=0, min_chunk_size=5)
+    short = "keep every word"
+    full = " ".join(f"next{i}" for i in range(10))
+
+    chunks = chunk_text(f"{short}\n\n{full}", config=cfg)
+
+    assert any(short in chunk.content for chunk in chunks)
+    assert set(short.split()) | set(full.split()) == {
+        token for chunk in chunks for token in chunk.content.split()
+    }
+
+
 def test_source_propagated():
     words = [f"word{i}" for i in range(60)]
     text = " ".join(words)

@@ -73,6 +73,56 @@ def chunk_text(
     for para in paragraphs:
         para_tokens = para.split()
 
+        # Split an oversized paragraph directly.  Any sub-floor content that
+        # precedes it must travel with the first window instead of being
+        # discarded by the pre-flush (#754).
+        if len(para_tokens) > cfg.chunk_size:
+            window_tokens = para_tokens
+            window_offset = current_offset
+
+            if current_tokens:
+                chunk_content = " ".join(current_tokens)
+                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
+                    chunks.append(
+                        Chunk(
+                            content=chunk_content,
+                            source=source,
+                            offset=chunk_start_offset,
+                            index=len(chunks),
+                        )
+                    )
+                    if (
+                        cfg.chunk_overlap > 0
+                        and len(current_tokens) > cfg.chunk_overlap
+                    ):
+                        prefix = current_tokens[-cfg.chunk_overlap :]
+                        window_tokens = [*prefix, *para_tokens]
+                        window_offset = current_offset - len(prefix)
+                else:
+                    window_tokens = [*current_tokens, *para_tokens]
+                    window_offset = chunk_start_offset
+                current_tokens = []
+
+            idx = 0
+            while idx < len(window_tokens):
+                window = window_tokens[idx : idx + cfg.chunk_size]
+                chunk_content = " ".join(window)
+                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
+                    chunks.append(
+                        Chunk(
+                            content=chunk_content,
+                            source=source,
+                            offset=window_offset + idx,
+                            index=len(chunks),
+                        )
+                    )
+                step = max(1, cfg.chunk_size - cfg.chunk_overlap)
+                idx += step
+
+            current_offset += len(para_tokens)
+            chunk_start_offset = current_offset
+            continue
+
         # If adding this paragraph would exceed chunk_size and we already
         # have content, flush the current chunk first.
         if current_tokens and len(current_tokens) + len(para_tokens) > cfg.chunk_size:
@@ -86,51 +136,15 @@ def chunk_text(
                         index=len(chunks),
                     )
                 )
-
-            # Keep the overlap tail for the next chunk
-            if cfg.chunk_overlap > 0 and len(current_tokens) > cfg.chunk_overlap:
-                overlap = current_tokens[-cfg.chunk_overlap :]
-                current_tokens = list(overlap)
-            else:
-                current_tokens = []
-            chunk_start_offset = current_offset
-
-        # If a single paragraph exceeds chunk_size, split it directly
-        if len(para_tokens) > cfg.chunk_size:
-            # Flush anything accumulated first
-            if current_tokens:
-                chunk_content = " ".join(current_tokens)
-                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
-                    chunks.append(
-                        Chunk(
-                            content=chunk_content,
-                            source=source,
-                            offset=chunk_start_offset,
-                            index=len(chunks),
-                        )
-                    )
-                current_tokens = []
-
-            # Split the oversized paragraph into fixed windows
-            idx = 0
-            while idx < len(para_tokens):
-                window = para_tokens[idx : idx + cfg.chunk_size]
-                chunk_content = " ".join(window)
-                if _count_tokens(chunk_content) >= cfg.min_chunk_size:
-                    chunks.append(
-                        Chunk(
-                            content=chunk_content,
-                            source=source,
-                            offset=current_offset + idx,
-                            index=len(chunks),
-                        )
-                    )
-                step = max(1, cfg.chunk_size - cfg.chunk_overlap)
-                idx += step
-
-            current_offset += len(para_tokens)
-            chunk_start_offset = current_offset
-            continue
+                # Keep the overlap tail for the next chunk.  If the buffered
+                # content is below the floor, leave it intact so the next
+                # paragraph can make it large enough to emit.
+                if cfg.chunk_overlap > 0 and len(current_tokens) > cfg.chunk_overlap:
+                    overlap = current_tokens[-cfg.chunk_overlap :]
+                    current_tokens = list(overlap)
+                else:
+                    current_tokens = []
+                chunk_start_offset = current_offset
 
         current_tokens.extend(para_tokens)
         current_offset += len(para_tokens)
