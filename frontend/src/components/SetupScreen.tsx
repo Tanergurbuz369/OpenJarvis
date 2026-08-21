@@ -8,6 +8,7 @@ import {
 } from '../lib/api';
 import { useAppStore } from '../lib/store';
 import { isEmbedOnlyModel } from '../lib/model-capabilities';
+import { InferenceSourceSetup } from './InferenceSourceSetup';
 
 const STEPS = [
   { key: 'ollama_ready', label: 'Inference Engine', icon: Cpu, detail: 'Starting Ollama...' },
@@ -77,10 +78,13 @@ function StepRow({
 
 export function SetupScreen({ onReady }: { onReady: () => void }) {
   const [status, setStatus] = useState<SetupStatus | null>(null);
+  const [statusChecked, setStatusChecked] = useState(false);
+  const [setupInitiated, setSetupInitiated] = useState(false);
   const handedOffRef = useRef(false);
   const poll = useCallback(async () => {
     const s = await getSetupStatus();
     if (s) setStatus(s);
+    setStatusChecked(true);
     if (s?.phase === 'ready' && !handedOffRef.current) {
       handedOffRef.current = true;
       // Pre-select a model BEFORE handing off so the chat is usable on
@@ -116,6 +120,17 @@ export function SetupScreen({ onReady }: { onReady: () => void }) {
     return () => clearInterval(interval);
   }, [poll]);
 
+  if (statusChecked && status?.requires_source && !setupInitiated) {
+    return (
+      <InferenceSourceSetup
+        onStarted={() => {
+          setSetupInitiated(true);
+          void poll();
+        }}
+      />
+    );
+  }
+
   const activeStep: StepKey | null =
     status && !status.ollama_ready
       ? 'ollama_ready'
@@ -143,7 +158,11 @@ export function SetupScreen({ onReady }: { onReady: () => void }) {
             OpenJarvis
           </h1>
           <p className="text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-            Setting up your local AI...
+            {!statusChecked
+              ? 'Checking your saved setup...'
+              : status?.source === 'custom'
+                ? 'Connecting to your AI server...'
+                : 'Setting up your local AI...'}
           </p>
         </div>
 

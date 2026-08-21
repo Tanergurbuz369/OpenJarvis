@@ -137,7 +137,8 @@ export interface SetupStatus {
   server_ready: boolean;
   model_ready: boolean;
   error: string | null;
-  source?: 'ollama' | 'custom'; // drives source-aware setup labels
+  source: 'unconfigured' | 'ollama' | 'custom';
+  requires_source: boolean;
 }
 
 export async function getSetupStatus(): Promise<SetupStatus | null> {
@@ -147,6 +148,17 @@ export async function getSetupStatus(): Promise<SetupStatus | null> {
     return await invoke<SetupStatus>('get_setup_status');
   } catch {
     return null;
+  }
+}
+
+/** Start desktop services after an inference source has been persisted. */
+export async function startBackend(): Promise<void> {
+  if (!isTauri()) throw new Error('The desktop backend is available in the desktop app only.');
+  try {
+    const { invoke } = await import('@tauri-apps/api/core');
+    await invoke<void>('start_backend');
+  } catch (e: any) {
+    throw new Error(e?.message ?? e ?? 'Failed to start the desktop backend');
   }
 }
 

@@ -418,20 +418,41 @@ struct SetupStatus {
     server_ready: bool,
     model_ready: bool,
     error: Option<String>,
-    /// "ollama" | "custom" — lets the setup UI relabel the progress steps.
+    /// "unconfigured" | "ollama" | "custom" — lets the setup UI choose
+    /// between the consent screen and source-aware progress labels.
     source: String,
+    /// A fresh desktop install must collect an explicit source choice before
+    /// any inference process is allowed to start.
+    requires_source: bool,
 }
 
 impl Default for SetupStatus {
     fn default() -> Self {
         Self {
-            phase: "starting".into(),
-            detail: "Initializing...".into(),
+            phase: "awaiting_source".into(),
+            detail: "Choose where OpenJarvis should run models.".into(),
             ollama_ready: false,
             server_ready: false,
             model_ready: false,
             error: None,
-            source: "ollama".into(),
+            source: "unconfigured".into(),
+            requires_source: true,
+        }
+    }
+}
+
+impl SetupStatus {
+    fn starting(cfg: &InferenceConfig) -> Self {
+        Self {
+            phase: "starting".into(),
+            detail: "Initializing...".into(),
+            source: match cfg.kind {
+                SourceKind::Ollama => "ollama",
+                SourceKind::Custom => "custom",
+            }
+            .into(),
+            requires_source: false,
+            ..Self::default()
         }
     }
 }
@@ -917,11 +938,17 @@ fn check_jarvis_port_available() -> Result<(), String> {
 // ---------------------------------------------------------------------------
 
 async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
-    // Decide the inference source (default Ollama) before launching anything.
-    let cfg = read_inference_config();
+    // Never infer consent from a missing or malformed config. A fresh desktop
+    // install must persist an explicit source choice before this function can
+    // launch Ollama, contact a custom endpoint, or download a model.
+    let Some(cfg) = read_configured_inference_config() else {
+        *status.lock().await = SetupStatus::default();
+        return;
+    };
     let plan = boot_plan(&cfg, total_ram_gb());
     {
         let mut s = status.lock().await;
+        *s = SetupStatus::starting(&cfg);
         s.source = match cfg.kind {
             SourceKind::Ollama => "ollama",
             SourceKind::Custom => "custom",
@@ -1572,6 +1599,10 @@ async fn start_backend(
     backend: tauri::State<'_, SharedBackend>,
     status: tauri::State<'_, SharedStatus>,
 ) -> Result<(), String> {
+    if read_configured_inference_config().is_none() {
+        *status.lock().await = SetupStatus::default();
+        return Err("Choose an inference source before starting OpenJarvis.".into());
+    }
     let b = backend.inner().clone();
     let s = status.inner().clone();
     tauri::async_runtime::spawn(boot_backend(b, s));
@@ -2261,18 +2292,26 @@ fn inference_config_path() -> std::path::PathBuf {
         .join("inference.json")
 }
 
-/// Parse config text. Any error (missing/garbage) yields the Ollama default —
-/// a broken file must never strand the user with no working inference source.
-fn parse_inference_config(text: &str) -> InferenceConfig {
-    serde_json::from_str::<InferenceConfig>(text).unwrap_or_default()
+/// Parse only an explicitly persisted source choice. Missing/invalid config is
+/// intentionally `None`: callers on the boot path must wait for setup rather
+/// than silently falling back to Ollama.
+fn parse_configured_inference_config(text: &str) -> Option<InferenceConfig> {
+    let value = serde_json::from_str::<serde_json::Value>(text).ok()?;
+    if !value.as_object()?.contains_key("kind") {
+        return None;
+    }
+    serde_json::from_value::<InferenceConfig>(value).ok()
+}
+
+fn read_configured_inference_config() -> Option<InferenceConfig> {
+    std::fs::read_to_string(inference_config_path())
+        .ok()
+        .and_then(|text| parse_configured_inference_config(&text))
 }
 
 /// Read the on-disk inference config, or the Ollama default if absent.
 fn read_inference_config() -> InferenceConfig {
-    match std::fs::read_to_string(inference_config_path()) {
-        Ok(text) => parse_inference_config(&text),
-        Err(_) => InferenceConfig::default(),
-    }
+    read_configured_inference_config().unwrap_or_default()
 }
 
 /// Write the inference config to disk (pretty JSON).
@@ -2728,7 +2767,12 @@ async fn hide_overlay() -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let backend: SharedBackend = Arc::new(Mutex::new(BackendManager::default()));
-    let status: SharedStatus = Arc::new(Mutex::new(SetupStatus::default()));
+    let configured_at_launch = read_configured_inference_config();
+    let initial_status = configured_at_launch
+        .as_ref()
+        .map(SetupStatus::starting)
+        .unwrap_or_default();
+    let status: SharedStatus = Arc::new(Mutex::new(initial_status));
 
     let boot_backend_ref = backend.clone();
     let boot_status_ref = status.clone();
@@ -2813,8 +2857,12 @@ pub fn run() {
                 }
             }
 
-            // Auto-start backend services on launch
-            tauri::async_runtime::spawn(boot_backend(boot_backend_ref, boot_status_ref));
+            // Returning users keep automatic startup after they have persisted
+            // a source. Fresh installs stay inert until the setup UI records
+            // explicit consent and invokes `start_backend`.
+            if configured_at_launch.is_some() {
+                tauri::async_runtime::spawn(boot_backend(boot_backend_ref, boot_status_ref));
+            }
 
             Ok(())
         })
@@ -2871,9 +2919,9 @@ mod tests {
         boot_plan, default_local_model, format_extension_import_failure,
         format_missing_rust_toolchain, format_port_unavailable, format_uv_sync_failure,
         format_uv_sync_spawn_error, matching_installed_model, model_names_match, normalize_host,
-        parse_inference_config, parse_ollama_model_names, preferred_installed_model,
+        parse_configured_inference_config, parse_ollama_model_names, preferred_installed_model,
         should_persist_resolved_model, startup_installed_model, upsert_engine_host,
-        uv_sync_stderr_tail, InferenceConfig, SourceKind, DESKTOP_UV_SYNC_COMMAND,
+        uv_sync_stderr_tail, InferenceConfig, SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
     };
     use std::path::Path;
 
@@ -3090,16 +3138,52 @@ mod tests {
     }
 
     #[test]
-    fn parse_defaults_to_ollama_when_file_missing_or_garbage() {
-        assert!(matches!(parse_inference_config("").kind, SourceKind::Ollama));
-        assert!(matches!(parse_inference_config("not json").kind, SourceKind::Ollama));
+    fn startup_requires_an_explicit_valid_source_config() {
+        assert!(parse_configured_inference_config("").is_none());
+        assert!(parse_configured_inference_config("not json").is_none());
+        assert!(parse_configured_inference_config("{}").is_none());
+
+        let ollama = parse_configured_inference_config(r#"{"kind":"ollama"}"#).unwrap();
+        assert!(matches!(ollama.kind, SourceKind::Ollama));
+
+        let custom = parse_configured_inference_config(
+            r#"{"kind":"custom","model":"m","host":"http://localhost:1234"}"#,
+        )
+        .unwrap();
+        assert!(matches!(custom.kind, SourceKind::Custom));
+    }
+
+    #[test]
+    fn initial_setup_status_is_inert_until_a_source_is_chosen() {
+        let status = SetupStatus::default();
+        assert!(status.requires_source);
+        assert_eq!(status.phase, "awaiting_source");
+        assert_eq!(status.source, "unconfigured");
+        assert!(!status.ollama_ready);
+        assert!(!status.model_ready);
+        assert!(!status.server_ready);
+    }
+
+    #[test]
+    fn persisted_source_status_can_enter_startup() {
+        let cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+        let status = SetupStatus::starting(&cfg);
+        assert!(!status.requires_source);
+        assert_eq!(status.phase, "starting");
+        assert_eq!(status.source, "custom");
     }
 
     #[test]
     fn parse_reads_custom_endpoint() {
-        let cfg = parse_inference_config(
+        let cfg = parse_configured_inference_config(
             r#"{"kind":"custom","model":"qwen2.5-7b","host":"http://localhost:1234","engine":"lmstudio"}"#,
-        );
+        )
+        .unwrap();
         assert!(matches!(cfg.kind, SourceKind::Custom));
         assert_eq!(cfg.model.as_deref(), Some("qwen2.5-7b"));
         assert_eq!(cfg.host.as_deref(), Some("http://localhost:1234"));
