@@ -687,7 +687,11 @@ export function resolveConnectorAccount(
 ): string {
   if (selectedAccount !== undefined) return selectedAccount.trim();
   if (connector.connected) return '';
-  return connector.accounts?.find((profile) => profile.connected)?.account ?? '';
+  return (
+    connector.accounts?.find(
+      (profile) => profile.enabled !== false && profile.connected,
+    )?.account ?? ''
+  );
 }
 
 function isSelectedAccountConnected(
@@ -697,7 +701,10 @@ function isSelectedAccountConnected(
   if (!account) return connector.connected;
   return Boolean(
     connector.accounts?.find(
-      (profile) => profile.account === account && profile.connected,
+      (profile) =>
+        profile.account === account &&
+        profile.enabled !== false &&
+        profile.connected,
     ),
   );
 }

@@ -56,6 +56,7 @@ describe('connector lifecycle status', () => {
       chunks: 0,
       auth_type: 'oauth',
       accounts: [
+        { account: 'disabled', connected: true, enabled: false },
         { account: 'work', connected: true, source_email: 'me@example.com' },
       ],
     };

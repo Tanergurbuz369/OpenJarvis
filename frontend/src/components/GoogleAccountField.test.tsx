@@ -34,4 +34,19 @@ describe('Google account profile field', () => {
     expect(supportsGoogleAccounts('spotify')).toBe(false);
     expect(supportsGoogleAccounts('gmail_imap')).toBe(false);
   });
+
+  it('marks configured disabled profiles as unavailable', () => {
+    const html = renderToStaticMarkup(
+      <GoogleAccountField
+        connectorId="gmail"
+        account="work"
+        accounts={[{ account: 'work', connected: true, enabled: false }]}
+        onChange={vi.fn()}
+      />,
+    );
+
+    expect(html).toContain('disabled in config.toml');
+    expect(html).toMatch(/<option[^>]*disabled/);
+    expect(html).toContain('work — disabled');
+  });
 });

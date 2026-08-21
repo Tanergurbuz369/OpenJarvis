@@ -485,7 +485,12 @@ def test_named_account_oauth_state_binds_segmented_token(
     listing = client.get("/v1/connectors").json()["connectors"]
     gdrive = next(item for item in listing if item["connector_id"] == "gdrive")
     assert gdrive["accounts"] == [
-        {"account": "work", "connected": True, "source_email": ""}
+        {
+            "account": "work",
+            "enabled": True,
+            "connected": True,
+            "source_email": "",
+        }
     ]
 
     disconnected = client.post(
@@ -525,6 +530,24 @@ def test_connect_rejects_conflicting_account_and_profile(client: TestClient) -> 
 
     assert response.status_code == 400
     assert "must name the same alias" in response.json()["detail"]
+
+
+def test_disabled_google_account_is_rejected_by_server(client: TestClient) -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+
+    config = JarvisConfig()
+    config.connectors.google.accounts["work"] = GoogleAccountProfileConfig(
+        enabled=False
+    )
+
+    with patch("openjarvis.core.config.load_config", return_value=config):
+        response = client.post(
+            "/v1/connectors/gdrive/connect",
+            json={"code": _CLIENT_PAIR, "account": "work"},
+        )
+
+    assert response.status_code == 403
+    assert "disabled in config.toml" in response.json()["detail"]
 
 
 def test_reauth_rejected_while_sibling_account_sync_is_active(

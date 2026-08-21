@@ -31,7 +31,14 @@ export function GoogleAccountField({
 
   useEffect(() => setDraft(account), [account]);
 
-  const commit = () => onChange(draft.trim());
+  const normalizedDraft = draft.trim().toLowerCase();
+  const disabledProfile = accounts.find(
+    (profile) =>
+      profile.account.toLowerCase() === normalizedDraft && profile.enabled === false,
+  );
+  const commit = () => {
+    if (!disabledProfile) onChange(draft.trim());
+  };
 
   return (
     <div style={{ marginBottom: 10 }}>
@@ -75,7 +82,11 @@ export function GoogleAccountField({
       />
       <datalist id={`${listId}-options`}>
         {accounts.map((profile) => (
-          <option key={profile.account} value={profile.account}>
+          <option
+            key={profile.account}
+            value={profile.account}
+            disabled={profile.enabled === false}
+          >
             {profile.source_email || (profile.connected ? 'Connected' : 'Not connected')}
           </option>
         ))}
@@ -84,7 +95,7 @@ export function GoogleAccountField({
         <button
           type="button"
           onClick={commit}
-          disabled={disabled}
+          disabled={disabled || Boolean(disabledProfile)}
           style={{
             marginTop: 5,
             padding: '4px 8px',
@@ -93,7 +104,7 @@ export function GoogleAccountField({
             borderRadius: 4,
             color: 'var(--color-on-accent)',
             fontSize: 10.5,
-            cursor: disabled ? 'default' : 'pointer',
+            cursor: disabled || disabledProfile ? 'default' : 'pointer',
           }}
         >
           Use profile
@@ -110,6 +121,11 @@ export function GoogleAccountField({
           ? `Actions apply only to “${account}”.`
           : 'Leave blank to use the legacy default Google connection.'}
       </div>
+      {disabledProfile && (
+        <div role="alert" style={{ marginTop: 4, fontSize: 10.5, color: '#f59e0b' }}>
+          This profile is disabled in config.toml.
+        </div>
+      )}
       {accounts.length > 0 && (
         <div
           data-testid="known-google-accounts"
@@ -123,8 +139,10 @@ export function GoogleAccountField({
           {accounts
             .map((profile) =>
               profile.source_email
-                ? `${profile.account} (${profile.source_email})`
-                : profile.account,
+                ? `${profile.account} (${profile.source_email})${
+                    profile.enabled === false ? ' — disabled' : ''
+                  }`
+                : `${profile.account}${profile.enabled === false ? ' — disabled' : ''}`,
             )
             .join(', ')}
         </div>

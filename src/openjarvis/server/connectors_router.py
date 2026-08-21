@@ -153,6 +153,14 @@ def create_connectors_router():
                 "Named account profiles are currently supported only for Google "
                 "connectors.",
             )
+        if alias:
+            from openjarvis.core.config import load_config
+
+            if not load_config().connectors.google.is_enabled(alias):
+                raise HTTPException(
+                    403,
+                    f"Google account profile '{alias}' is disabled in config.toml",
+                )
         return alias
 
     def _normalise_request_account(
