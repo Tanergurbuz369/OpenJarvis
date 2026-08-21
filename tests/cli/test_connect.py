@@ -242,6 +242,10 @@ def test_legacy_migration_is_explicit_and_precedes_named_sync() -> None:
             "openjarvis.cli.connect_cmd._sync_sources",
             side_effect=lambda *args, **kwargs: calls.append("sync"),
         ),
+        mock.patch(
+            "openjarvis.connectors.gmail.GmailConnector.is_connected",
+            return_value=True,
+        ),
     ):
         result = runner.invoke(
             cli,
@@ -256,7 +260,7 @@ def test_legacy_migration_is_explicit_and_precedes_named_sync() -> None:
         )
 
     assert result.exit_code == 0
-    assert calls == ["migrate:work", "connect", "sync"]
+    assert calls == ["connect", "migrate:work", "sync"]
 
 
 def test_disabled_configured_google_account_is_rejected(monkeypatch) -> None:

@@ -465,11 +465,6 @@ def connect(
             raise click.UsageError(
                 "--migrate-legacy-google requires `google --account ALIAS`"
             )
-        _migrate_legacy_google_index(account_alias)
-        click.echo(
-            "Removed legacy unscoped Google rows and checkpoints; "
-            f"reindexing now targets '{account_alias}'."
-        )
 
     if disconnect_source:
         _disconnect_source(ConnectorRegistry, disconnect_source, account=account_alias)
@@ -477,6 +472,18 @@ def connect(
 
     if source:
         _connect_source(ConnectorRegistry, source, path=path, account=account_alias)
+        if migrate_legacy_google:
+            from openjarvis.connectors.gmail import GmailConnector
+
+            if not GmailConnector(account=account_alias).is_connected():
+                raise click.ClickException(
+                    "Google authorization did not complete; legacy data was not changed"
+                )
+            _migrate_legacy_google_index(account_alias)
+            click.echo(
+                "Removed legacy unscoped Google rows and checkpoints; "
+                f"reindexing now targets '{account_alias}'."
+            )
         if trigger_sync:
             _sync_sources(ConnectorRegistry, source=source, account=account_alias)
         return
