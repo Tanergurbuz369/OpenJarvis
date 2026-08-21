@@ -184,7 +184,8 @@ def list_google_accounts() -> List[Dict[str, Any]]:
         from openjarvis.core.config import load_config
 
         for raw_alias, profile in load_config().connectors.google.accounts.items():
-            configured[normalize_account_alias(raw_alias)] = profile.enabled
+            alias = normalize_account_alias(raw_alias)
+            configured[alias] = configured.get(alias, True) and profile.enabled
     except (OSError, ValueError):
         configured = {}
 

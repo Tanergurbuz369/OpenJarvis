@@ -145,11 +145,9 @@ def _migrate_legacy_google_index(account: str) -> None:
                 # ambiguous and must be preserved rather than risking an
                 # unrelated IMAP mailbox.  The other Google source IDs are
                 # unambiguous and safe to migrate by source alone.
-                store.delete_by_sources(unambiguous_sources, unscoped_only=True)
-                store.delete_by_sources(
-                    ("gmail",),
-                    unscoped_only=True,
-                    metadata_connector="gmail",
+                store.delete_unscoped_sources_with_attribution(
+                    unambiguous_sources,
+                    {"gmail": "gmail"},
                 )
             except Exception:
                 for connector_id, checkpoint in old_checkpoints.items():

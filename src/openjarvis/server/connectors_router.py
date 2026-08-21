@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import secrets
 import threading
@@ -332,6 +333,7 @@ def create_connectors_router():
     # globally keeps connect/disconnect/manual-sync decisions atomic,
     # including ownership checks for sources shared by multiple connectors.
     _lifecycle_lock = threading.RLock()
+    _lifecycle_async_lock = asyncio.Lock()
     _oauth_state_lock = threading.Lock()
     _oauth_states: Dict[str, tuple[str, str, float]] = {}
     _OAUTH_STATE_TTL_SECONDS = 600.0
@@ -424,7 +426,7 @@ def create_connectors_router():
     def _serialized_async(func):
         @wraps(func)
         async def wrapped(*args, **kwargs):
-            with _lifecycle_lock:
+            async with _lifecycle_async_lock:
                 return await func(*args, **kwargs)
 
         return wrapped
@@ -963,6 +965,7 @@ def create_connectors_router():
         }
 
     @router.get("/{connector_id}/oauth/start")
+    @_serialized_async
     async def oauth_start(
         connector_id: str,
         request: Request,

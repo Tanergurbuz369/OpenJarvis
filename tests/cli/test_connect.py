@@ -336,14 +336,10 @@ def test_legacy_migration_preserves_ambiguous_gmail_rows() -> None:
     ):
         _migrate_legacy_google_index("work")
 
-    calls = store.delete_by_sources.call_args_list
-    assert calls[-2].kwargs == {"unscoped_only": True}
-    assert "gmail" not in calls[-2].args[0]
-    assert calls[-1].args == (("gmail",),)
-    assert calls[-1].kwargs == {
-        "unscoped_only": True,
-        "metadata_connector": "gmail",
-    }
+    store.delete_unscoped_sources_with_attribution.assert_called_once()
+    sources, attribution = store.delete_unscoped_sources_with_attribution.call_args.args
+    assert "gmail" not in sources
+    assert attribution == {"gmail": "gmail"}
 
 
 def test_disabled_configured_google_account_is_rejected(monkeypatch) -> None:

@@ -65,5 +65,10 @@ describe('connector lifecycle status', () => {
     expect(resolveConnectorAccount(connector, ' Personal ')).toBe('personal');
     expect(connectorInstanceKey('gdrive', 'work')).toBe('gdrive:work');
     expect(connectorInstanceKey('gdrive')).toBe('gdrive');
+
+    connector.accounts = [
+      { account: 'disabled-work', connected: true, enabled: false },
+    ];
+    expect(resolveConnectorAccount(connector, undefined)).toBe('disabled-work');
   });
 });

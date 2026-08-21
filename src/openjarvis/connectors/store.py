@@ -527,6 +527,52 @@ class KnowledgeStore(MemoryBackend):
             raise
         return cur.rowcount
 
+    def delete_unscoped_sources_with_attribution(
+        self,
+        unambiguous_sources: Iterable[str],
+        attributed_sources: Dict[str, str],
+    ) -> int:
+        """Atomically delete legacy unscoped rows with safe attribution.
+
+        Sources in ``unambiguous_sources`` are deleted by source ID.  Entries
+        in ``attributed_sources`` are deleted only when their metadata carries
+        the matching connector marker.  One DELETE statement covers both sets
+        so a database error cannot commit only half of a migration.
+        Malformed legacy metadata is treated as unscoped but never as positive
+        attribution.
+        """
+        unique_sources = tuple(dict.fromkeys(unambiguous_sources))
+        attributed = tuple(dict(attributed_sources).items())
+        predicates: List[str] = []
+        params: List[Any] = []
+        if unique_sources:
+            placeholders = ", ".join("?" for _ in unique_sources)
+            predicates.append(f"source IN ({placeholders})")
+            params.extend(unique_sources)
+        for source, connector in attributed:
+            predicates.append(
+                "(source = ? AND CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.connector') END = ?)"
+            )
+            params.extend((source, connector))
+        if not predicates:
+            return 0
+        where = (
+            "COALESCE(CASE WHEN json_valid(metadata) "
+            "THEN json_extract(metadata, '$.account') END, '') = '' "
+            f"AND ({' OR '.join(predicates)})"
+        )
+        try:
+            cur = self._conn.execute(
+                f"DELETE FROM knowledge_chunks WHERE {where}",
+                tuple(params),
+            )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        return cur.rowcount
+
     def clear(self) -> None:
         """Remove all stored chunks."""
         self._conn.executescript(

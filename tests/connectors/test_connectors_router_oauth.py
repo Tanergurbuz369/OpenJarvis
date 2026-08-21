@@ -27,6 +27,7 @@ shared file when the caller-supplied path does not yet exist on disk).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import threading
 from pathlib import Path
@@ -796,6 +797,60 @@ def test_raw_google_token_rejected_while_sibling_sync_is_active(
         assert account_file.read_bytes() == original_credentials
     finally:
         release.set()
+
+
+def test_connect_and_disconnect_are_serialized_on_one_event_loop(
+    client: TestClient,
+    hermetic_connectors: Path,
+) -> None:
+    """An earlier in-flight connect cannot recreate a disconnected profile."""
+    httpx = pytest.importorskip("httpx")
+    import openjarvis.connectors.oauth as oauth_mod
+    from openjarvis.connectors.gdrive import GDriveConnector
+
+    started = threading.Event()
+    release = threading.Event()
+
+    def blocking_callback(instance: Any, code: str) -> None:
+        started.set()
+        release.wait(timeout=5)
+        oauth_mod.save_tokens(instance._credentials_path, {"client_id": code})
+
+    async def run_race() -> tuple[Any, Any, bool]:
+        transport = httpx.ASGITransport(app=client.app)
+        async with httpx.AsyncClient(
+            transport=transport,
+            base_url="http://testserver",
+        ) as async_client:
+            connect_task = asyncio.create_task(
+                async_client.post(
+                    "/v1/connectors/gdrive/connect",
+                    json={"code": "raw-code", "account": "work"},
+                )
+            )
+            assert await asyncio.to_thread(started.wait, 2)
+            disconnect_task = asyncio.create_task(
+                async_client.post(
+                    "/v1/connectors/gdrive/disconnect",
+                    params={"account": "work"},
+                )
+            )
+            await asyncio.sleep(0.05)
+            assert not disconnect_task.done()
+            release.set()
+            connect_response, disconnect_response = await asyncio.gather(
+                connect_task,
+                disconnect_task,
+            )
+        account_file = hermetic_connectors / "google" / "accounts" / "work.json"
+        return connect_response, disconnect_response, account_file.exists()
+
+    with patch.object(GDriveConnector, "handle_callback", blocking_callback):
+        connected, disconnected, credential_exists = asyncio.run(run_race())
+
+    assert connected.status_code == 200
+    assert disconnected.status_code == 200
+    assert credential_exists is False
 
 
 def test_oauth_state_is_required_and_single_use(

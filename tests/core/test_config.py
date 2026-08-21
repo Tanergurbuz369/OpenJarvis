@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from openjarvis.core.config import (
     AgentConfig,
     ChannelConfig,
@@ -257,6 +259,23 @@ class TestAgentConfigNew:
         assert cfg.connectors.google.account_scope([]) is None
         assert cfg.connectors.google.account_scope(["work"]) == []
         assert cfg.connectors.google.account_scope(["personal", "work"]) == ["personal"]
+
+    def test_google_account_aliases_reject_canonical_duplicates(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        config_path = tmp_path / "config.toml"
+        config_path.write_text(
+            "[connectors.google.accounts.Work]\n"
+            "enabled = true\n\n"
+            "[connectors.google.accounts.work]\n"
+            "enabled = false\n",
+            encoding="utf-8",
+        )
+
+        load_config.cache_clear()
+        with pytest.raises(ValueError, match="Duplicate Google account profile"):
+            load_config(config_path)
 
     def test_default_tools_backward_compat(self) -> None:
         ac = AgentConfig()

@@ -386,6 +386,78 @@ def test_delete_by_sources_can_require_positive_connector_provenance(
     assert [row["doc_id"] for row in remaining] == ["gmail:imap:1"]
 
 
+def test_legacy_attributed_delete_handles_malformed_metadata_atomically(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="legacy Drive row",
+        source="gdrive",
+        doc_id="gdrive:legacy:1",
+    )
+    _store(
+        ks,
+        content="ambiguous Gmail row",
+        source="gmail",
+        doc_id="gmail:ambiguous:1",
+    )
+    ks._conn.execute(
+        "UPDATE knowledge_chunks SET metadata = 'not-json' WHERE source = 'gmail'"
+    )
+    ks._conn.commit()
+
+    deleted = ks.delete_unscoped_sources_with_attribution(
+        ("gdrive",),
+        {"gmail": "gmail"},
+    )
+
+    assert deleted == 1
+    remaining = ks._conn.execute("SELECT doc_id FROM knowledge_chunks").fetchall()
+    assert [row["doc_id"] for row in remaining] == ["gmail:ambiguous:1"]
+
+
+def test_legacy_attributed_delete_rolls_back_whole_statement_on_error(
+    ks: KnowledgeStore,
+) -> None:
+    _store(
+        ks,
+        content="legacy Drive row",
+        source="gdrive",
+        doc_id="gdrive:legacy:1",
+    )
+    _store(
+        ks,
+        content="legacy Gmail row",
+        source="gmail",
+        doc_id="gmail:legacy:1",
+        metadata={"connector": "gmail"},
+    )
+    ks._conn.executescript(
+        """
+        CREATE TRIGGER reject_legacy_gmail_delete
+        BEFORE DELETE ON knowledge_chunks
+        WHEN OLD.source = 'gmail'
+        BEGIN
+          SELECT RAISE(ABORT, 'simulated migration failure');
+        END;
+        """
+    )
+
+    with pytest.raises(Exception, match="simulated migration failure"):
+        ks.delete_unscoped_sources_with_attribution(
+            ("gdrive",),
+            {"gmail": "gmail"},
+        )
+
+    remaining = ks._conn.execute(
+        "SELECT doc_id FROM knowledge_chunks ORDER BY doc_id"
+    ).fetchall()
+    assert [row["doc_id"] for row in remaining] == [
+        "gdrive:legacy:1",
+        "gmail:legacy:1",
+    ]
+
+
 def test_clear(ks: KnowledgeStore) -> None:
     """clear() removes all stored documents."""
     _store(ks, content="Document one about research")

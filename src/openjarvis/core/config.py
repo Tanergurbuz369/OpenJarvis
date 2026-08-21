@@ -1722,10 +1722,27 @@ class GoogleConnectorsConfig:
         from openjarvis.connectors.oauth import normalize_account_alias
 
         alias = normalize_account_alias(account)
-        for configured, profile in self.accounts.items():
-            if normalize_account_alias(configured) == alias:
-                return profile.enabled
-        return True
+        matches = [
+            profile.enabled
+            for configured, profile in self.accounts.items()
+            if normalize_account_alias(configured) == alias
+        ]
+        return all(matches) if matches else True
+
+    def validate_aliases(self) -> None:
+        """Reject config keys that collapse to the same canonical alias."""
+        from openjarvis.connectors.oauth import normalize_account_alias
+
+        seen: Dict[str, str] = {}
+        for configured in self.accounts:
+            alias = normalize_account_alias(configured)
+            previous = seen.get(alias)
+            if previous is not None:
+                raise ValueError(
+                    "Duplicate Google account profile aliases after normalization: "
+                    f"{previous!r} and {configured!r}"
+                )
+            seen[alias] = configured
 
     def enabled_aliases(self, accounts: List[str]) -> List[str]:
         """Normalize, de-duplicate, and discard disabled configured aliases."""
@@ -2114,6 +2131,7 @@ def load_config(path: Optional[Path] = None) -> JarvisConfig:
                     getattr(cfg, section_name),
                     data[section_name],
                 )
+        cfg.connectors.google.validate_aliases()
 
         # Memory: accept [memory] (old) → maps to tools.storage
         if "memory" in data:

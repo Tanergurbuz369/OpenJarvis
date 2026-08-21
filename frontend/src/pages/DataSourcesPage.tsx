@@ -694,7 +694,9 @@ export function resolveConnectorAccount(
   return (
     connector.accounts?.find(
       (profile) => profile.enabled !== false && profile.connected,
-    )?.account ?? ''
+    )?.account ??
+    connector.accounts?.find((profile) => profile.connected)?.account ??
+    ''
   );
 }
 
@@ -707,7 +709,6 @@ function isSelectedAccountConnected(
     connector.accounts?.find(
       (profile) =>
         normalizeGoogleAccount(profile.account) === normalizeGoogleAccount(account) &&
-        profile.enabled !== false &&
         profile.connected,
     ),
   );
@@ -1211,11 +1212,13 @@ function DataSourcesSection() {
             const account = accountFor(c);
             const instanceKey = connectorInstanceKey(c.connector_id, account);
             const sync = syncStatuses[instanceKey];
-            const sourceEmail = c.accounts?.find(
+            const selectedProfile = c.accounts?.find(
               (profile) =>
                 normalizeGoogleAccount(profile.account) ===
                 normalizeGoogleAccount(account),
-            )?.source_email;
+            );
+            const sourceEmail = selectedProfile?.source_email;
+            const accountDisabled = selectedProfile?.enabled === false;
             const hasError = !!sync?.error;
             return (
               <div
@@ -1240,7 +1243,7 @@ function DataSourcesSection() {
                         connectorId={c.connector_id}
                         account={account}
                         accounts={c.accounts ?? []}
-                        disabled={connectorActionsBusy}
+                        disabled={connectorActionsBusy || accountDisabled}
                         onChange={(nextAccount) =>
                           selectAccount(
                             c.connector_id,
@@ -1257,13 +1260,18 @@ function DataSourcesSection() {
                         Signed in as {sourceEmail}
                       </div>
                     )}
+                    {accountDisabled && (
+                      <div style={{ fontSize: 10.5, color: '#f59e0b', marginBottom: 4 }}>
+                        Disabled in config.toml · disconnect remains available
+                      </div>
+                    )}
                     <SyncStatusDisplay
                       chunks={c.chunks}
                       sync={sync}
                       unitLabel={unit}
                       connectorId={c.connector_id}
                       account={account}
-                      disabled={connectorActionsBusy}
+                      disabled={connectorActionsBusy || accountDisabled}
                       onSyncTriggered={loadConnectors}
                     />
                     {disconnectError?.id === instanceKey && (
