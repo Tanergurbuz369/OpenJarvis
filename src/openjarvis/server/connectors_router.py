@@ -912,6 +912,7 @@ def create_connectors_router():
             for target_id, instance in targets.items()
             for source in _knowledge_sources(target_id, instance)
         }
+        attributed_shared_sources: Dict[str, str] = {}
         if not account:
             for other_id in ConnectorRegistry.keys():
                 if other_id in target_ids:
@@ -924,6 +925,19 @@ def create_connectors_router():
                     continue
                 try:
                     if _get_or_create(other_id).is_connected():
+                        # Gmail OAuth and Gmail IMAP intentionally share the
+                        # ``gmail`` source.  Preserve ambiguous IMAP rows, but
+                        # still remove rows that positively identify the
+                        # disconnecting OAuth connector in metadata.
+                        for source in shared:
+                            provenance_owners = [
+                                target_id
+                                for target_id, target in targets.items()
+                                if target_id == source
+                                and source in _knowledge_sources(target_id, target)
+                            ]
+                            if len(provenance_owners) == 1:
+                                attributed_shared_sources[source] = provenance_owners[0]
                         purge_sources.difference_update(shared)
                 except Exception:
                     # If ownership cannot be established safely, retain data.
@@ -944,10 +958,16 @@ def create_connectors_router():
                     for key in sync_keys.values():
                         engine.reset_checkpoint(key)
                     try:
-                        store.delete_by_sources(
-                            purge_sources,
-                            account=account or None,
-                        )
+                        if not account and attributed_shared_sources:
+                            store.delete_unscoped_sources_with_attribution(
+                                purge_sources,
+                                attributed_shared_sources,
+                            )
+                        else:
+                            store.delete_by_sources(
+                                purge_sources,
+                                account=account or None,
+                            )
                     except Exception:
                         for key, checkpoint in old_checkpoints.items():
                             engine.restore_checkpoint(key, checkpoint)

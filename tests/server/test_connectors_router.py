@@ -439,6 +439,62 @@ def test_disconnect_preserves_source_owned_by_connected_peer(app) -> None:
         _instances.pop("gmail_imap", None)
 
 
+def test_google_disconnect_purges_attributed_gmail_but_preserves_imap(app) -> None:
+    """Shared Gmail source cleanup must use row-level connector provenance."""
+    from openjarvis.connectors._stubs import SyncStatus
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.server.connectors_router import _instances
+
+    class FakeConnector:
+        def __init__(self, connector_id, indexed_sources=()):
+            self.connector_id = connector_id
+            self.indexed_sources = indexed_sources
+            self.connected = True
+
+        def is_connected(self):
+            return self.connected
+
+        def disconnect(self):
+            self.connected = False
+
+        def sync_status(self):
+            return SyncStatus()
+
+    google_ids = ("gcalendar", "gcontacts", "gdrive", "gmail", "google_tasks")
+    for connector_id in google_ids:
+        _instances[connector_id] = FakeConnector(connector_id)
+    _instances["gmail_imap"] = FakeConnector("gmail_imap", ("gmail",))
+    try:
+        with KnowledgeStore() as store:
+            store.store(
+                content="Google OAuth sentinel",
+                source="gmail",
+                doc_type="email",
+                doc_id="gmail:oauth-owned",
+                metadata={"connector": "gmail"},
+            )
+            store.store(
+                content="ambiguous IMAP sentinel",
+                source="gmail",
+                doc_type="email",
+                doc_id="gmail:imap-owned",
+                metadata={"imap_uid": "41"},
+            )
+
+        response = app.post("/v1/connectors/gdrive/disconnect")
+        assert response.status_code == 200, response.text
+
+        with KnowledgeStore() as store:
+            remaining = store._conn.execute(
+                "SELECT doc_id FROM knowledge_chunks WHERE source = 'gmail'"
+            ).fetchall()
+            assert [row["doc_id"] for row in remaining] == ["gmail:imap-owned"]
+            store.delete_by_source("gmail")
+    finally:
+        for connector_id in (*google_ids, "gmail_imap"):
+            _instances.pop(connector_id, None)
+
+
 def test_disconnect_restores_checkpoint_when_purge_fails(app, monkeypatch) -> None:
     from openjarvis.connectors.pipeline import IngestionPipeline
     from openjarvis.connectors.store import KnowledgeStore
