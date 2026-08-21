@@ -366,6 +366,18 @@ impl ChildHandle {
     }
 }
 
+/// Spawn a subprocess whose lifetime cannot escape the async operation that
+/// created it.  Tokio's default is `kill_on_drop(false)`, which means aborting
+/// the boot task in the small window between `spawn()` and storing the child in
+/// `BackendManager` would detach it.  The same default also lets one-shot boot
+/// commands (`git clone`, `uv sync`, extension verification) continue after a
+/// source reset.  Every subprocess on the boot path must opt in here (or call
+/// `kill_on_drop(true)` before `output()`).
+fn spawn_owned_child(cmd: &mut tokio::process::Command) -> std::io::Result<tokio::process::Child> {
+    cmd.kill_on_drop(true);
+    cmd.spawn()
+}
+
 /// Rolling buffer holding the most recent ~16 KB of jarvis stderr.
 ///
 /// Populated by a background drainer task spawned at boot so the pipe
@@ -397,6 +409,10 @@ impl BackendManager {
     async fn stop_all(&mut self) {
         if let Some(task) = self.boot_task.take() {
             task.abort();
+            // `abort()` only requests cancellation.  Await it before touching
+            // children or returning so the boot future has dropped any local,
+            // not-yet-registered child and cannot write config after reset.
+            let _ = task.await;
         }
         if let Some(ref mut h) = self.jarvis {
             h.kill().await;
@@ -417,6 +433,7 @@ async fn start_managed_boot(backend: SharedBackend, status: SharedStatus) {
     let mut manager = backend.lock().await;
     if let Some(task) = manager.boot_task.take() {
         task.abort();
+        let _ = task.await;
     }
     let task_backend = backend.clone();
     let task = tauri::async_runtime::spawn(boot_backend(task_backend, status));
@@ -918,6 +935,7 @@ async fn verify_openjarvis_rust_extension(
         .current_dir(root);
     prepare_subprocess_for_appimage(&mut cmd);
     add_cargo_bin_to_path(&mut cmd);
+    cmd.kill_on_drop(true);
 
     match cmd.output().await {
         Ok(out) if out.status.success() => Ok(()),
@@ -1008,7 +1026,7 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
                 .stderr(std::process::Stdio::null());
             // Avoid LD_LIBRARY_PATH leak when running inside an AppImage (#455).
             prepare_subprocess_for_appimage(&mut sidecar_cmd);
-            match sidecar_cmd.spawn() {
+            match spawn_owned_child(&mut sidecar_cmd) {
                 Ok(child) => Some(child),
                 Err(_) => None,
             }
@@ -1229,7 +1247,8 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
             s.detail = "Downloading OpenJarvis (first launch)...".into();
         }
 
-        let clone_result = tokio::process::Command::new(&git_bin)
+        let mut clone_cmd = tokio::process::Command::new(&git_bin);
+        clone_cmd
             .args([
                 "clone",
                 "--depth",
@@ -1238,8 +1257,9 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
                 &clone_target,
             ])
             .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::piped())
-            .spawn();
+            .stderr(std::process::Stdio::piped());
+        prepare_subprocess_for_appimage(&mut clone_cmd);
+        let clone_result = spawn_owned_child(&mut clone_cmd);
 
         match clone_result {
             Ok(child) => match child.wait_with_output().await {
@@ -1334,6 +1354,11 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
                     // pre-spawn step done so the setup UI doesn't show a
                     // half-progress bar (model_ready / ollama_ready stay
                     // false otherwise because we skipped those steps).
+                    if let Err(err) = pending_rollback.confirm(&mut cfg) {
+                        let mut s = status.lock().await;
+                        s.error = Some(format!("Could not confirm inference setup: {}", err));
+                        return;
+                    }
                     let mut s = status.lock().await;
                     s.phase = "ready".into();
                     s.detail =
@@ -1430,6 +1455,7 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
     // Avoid LD_LIBRARY_PATH leak when running inside an AppImage (#455).
     prepare_subprocess_for_appimage(&mut sync_cmd);
     add_cargo_bin_to_path(&mut sync_cmd);
+    sync_cmd.kill_on_drop(true);
     let sync_output = sync_cmd.output().await;
     match sync_output {
         Ok(out) if !out.status.success() => {
@@ -1496,7 +1522,7 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
     for (key, value) in read_cloud_keys() {
         cmd.env(&key, &value);
     }
-    let jarvis_child = cmd.spawn();
+    let jarvis_child = spawn_owned_child(&mut cmd);
 
     match jarvis_child {
         Ok(mut child) => {
@@ -1598,15 +1624,10 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
         }
     }
 
-    if !cfg.confirmed {
-        let mut confirmed = cfg.clone();
-        confirmed.confirmed = true;
-        if let Err(err) = write_inference_config(&confirmed) {
-            let mut s = status.lock().await;
-            s.error = Some(format!("Could not confirm inference setup: {}", err));
-            return;
-        }
-        pending_rollback.disarm();
+    if let Err(err) = pending_rollback.confirm(&mut cfg) {
+        let mut s = status.lock().await;
+        s.error = Some(format!("Could not confirm inference setup: {}", err));
+        return;
     }
 
     {
@@ -2406,6 +2427,28 @@ impl PendingInferenceRollback {
     fn disarm(&mut self) {
         self.path = None;
     }
+
+    /// Commit a staged first-run choice only after every readiness gate has
+    /// succeeded.  Keeping this operation on the rollback guard makes all
+    /// successful exits use the same write-then-disarm ordering: if the write
+    /// fails (or the future is cancelled), `Drop` removes the staged file.
+    fn confirm(&mut self, cfg: &mut InferenceConfig) -> Result<(), String> {
+        if cfg.confirmed {
+            self.disarm();
+            return Ok(());
+        }
+
+        let path = self
+            .path
+            .as_ref()
+            .ok_or_else(|| "Pending inference setup lost its rollback path.".to_string())?;
+        let mut confirmed = cfg.clone();
+        confirmed.confirmed = true;
+        write_inference_config_at(&confirmed, path)?;
+        *cfg = confirmed;
+        self.disarm();
+        Ok(())
+    }
 }
 
 impl Drop for PendingInferenceRollback {
@@ -2441,12 +2484,15 @@ fn read_inference_config() -> InferenceConfig {
 /// Write the inference config to disk (pretty JSON).
 fn write_inference_config(cfg: &InferenceConfig) -> Result<(), String> {
     let path = inference_config_path();
+    write_inference_config_at(cfg, &path)
+}
+
+fn write_inference_config_at(cfg: &InferenceConfig, path: &std::path::Path) -> Result<(), String> {
     if let Some(parent) = path.parent() {
         let _ = std::fs::create_dir_all(parent);
     }
     let json = serde_json::to_string_pretty(cfg).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json + "\n")
-        .map_err(|e| format!("Failed to save inference config: {}", e))
+    std::fs::write(path, json + "\n").map_err(|e| format!("Failed to save inference config: {}", e))
 }
 
 /// Upsert `[engine.<engine>] host = "<host>"` into an existing config.toml
@@ -3057,9 +3103,9 @@ mod tests {
         format_missing_rust_toolchain, format_port_unavailable, format_uv_sync_failure,
         format_uv_sync_spawn_error, matching_installed_model, model_names_match, normalize_host,
         parse_configured_inference_config, parse_ollama_model_names, preferred_installed_model,
-        should_persist_resolved_model, startup_installed_model, upsert_engine_host,
-        uv_sync_stderr_tail, BackendManager, InferenceConfig, PendingInferenceRollback,
-        SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
+        should_persist_resolved_model, spawn_owned_child, startup_installed_model,
+        upsert_engine_host, uv_sync_stderr_tail, BackendManager, InferenceConfig,
+        PendingInferenceRollback, SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
     };
     use std::path::Path;
 
@@ -3475,6 +3521,25 @@ mod tests {
             let _rollback = PendingInferenceRollback::at_path(&confirmed, confirmed_path.clone());
         }
         assert!(confirmed_path.exists());
+
+        let committed_path = root.join("committed.json");
+        std::fs::write(&committed_path, "pending").unwrap();
+        let mut staged = InferenceConfig {
+            kind: SourceKind::Ollama,
+            confirmed: false,
+            model: Some("qwen3.5:4b".into()),
+            host: None,
+            engine: None,
+        };
+        {
+            let mut rollback = PendingInferenceRollback::at_path(&staged, committed_path.clone());
+            rollback.confirm(&mut staged).unwrap();
+        }
+        assert!(staged.confirmed);
+        assert!(committed_path.exists());
+        let committed: InferenceConfig =
+            serde_json::from_str(&std::fs::read_to_string(&committed_path).unwrap()).unwrap();
+        assert!(committed.confirmed);
         std::fs::remove_dir_all(root).unwrap();
     }
 
@@ -3501,10 +3566,77 @@ mod tests {
         let mut manager = BackendManager::default();
         manager.boot_task = Some(tauri::async_runtime::JoinHandle::Tokio(task));
         manager.stop_all().await;
-        tokio::task::yield_now().await;
 
         assert!(manager.boot_task.is_none());
-        assert!(dropped.load(Ordering::SeqCst));
+        assert!(
+            dropped.load(Ordering::SeqCst),
+            "stop_all must not return before the aborted boot future is dropped"
+        );
+    }
+
+    #[test]
+    fn owned_child_process_helper() {
+        let Some(started) = std::env::var_os("OPENJARVIS_OWNED_CHILD_STARTED") else {
+            return;
+        };
+        let completed = std::env::var_os("OPENJARVIS_OWNED_CHILD_COMPLETED").unwrap();
+        std::fs::write(started, "started").unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        std::fs::write(completed, "completed").unwrap();
+    }
+
+    #[tokio::test]
+    async fn aborting_boot_kills_child_before_manager_registration() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let root = std::env::temp_dir().join(format!(
+            "openjarvis-owned-child-{}-{unique}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        let started = root.join("started");
+        let completed = root.join("completed");
+
+        let (spawned_tx, spawned_rx) = tokio::sync::oneshot::channel();
+        let started_for_child = started.clone();
+        let completed_for_child = completed.clone();
+        let task = tokio::spawn(async move {
+            let mut cmd = tokio::process::Command::new(std::env::current_exe().unwrap());
+            cmd.args([
+                "--exact",
+                "tests::owned_child_process_helper",
+                "--nocapture",
+            ])
+            .env("OPENJARVIS_OWNED_CHILD_STARTED", started_for_child)
+            .env("OPENJARVIS_OWNED_CHILD_COMPLETED", completed_for_child)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null());
+            let child = spawn_owned_child(&mut cmd).unwrap();
+            spawned_tx.send(()).unwrap();
+            let _unregistered_child = child;
+            std::future::pending::<()>().await;
+        });
+        spawned_rx.await.unwrap();
+
+        for _ in 0..100 {
+            if started.exists() {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        assert!(started.exists(), "helper process did not start");
+
+        task.abort();
+        let _ = task.await;
+        tokio::time::sleep(std::time::Duration::from_millis(700)).await;
+
+        assert!(
+            !completed.exists(),
+            "an aborted boot task left its not-yet-registered child running"
+        );
+        std::fs::remove_dir_all(root).unwrap();
     }
 
     #[test]
