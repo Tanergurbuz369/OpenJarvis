@@ -278,12 +278,8 @@ def ingest_sources(
 def _launch_chat(store: KnowledgeStore, console: Console) -> None:
     """Start an interactive Deep Research chat session."""
     from openjarvis.agents.deep_research import DeepResearchAgent
-    from openjarvis.connectors.retriever import TwoStageRetriever
+    from openjarvis.agents.tool_resolver import build_deep_research_tools_from_store
     from openjarvis.engine.ollama import OllamaEngine
-    from openjarvis.tools.knowledge_search import KnowledgeSearchTool
-    from openjarvis.tools.knowledge_sql import KnowledgeSQLTool
-    from openjarvis.tools.scan_chunks import ScanChunksTool
-    from openjarvis.tools.think import ThinkTool
 
     console.print("\n[bold]Setting up Deep Research agent...[/bold]")
 
@@ -307,13 +303,7 @@ def _launch_chat(store: KnowledgeStore, console: Console) -> None:
             return
 
     # Tools
-    retriever = TwoStageRetriever(store)
-    tools = [
-        KnowledgeSearchTool(retriever=retriever),
-        KnowledgeSQLTool(store=store),
-        ScanChunksTool(store=store, engine=engine, model=_OLLAMA_MODEL),
-        ThinkTool(),
-    ]
+    tools = build_deep_research_tools_from_store(engine, _OLLAMA_MODEL, store)
 
     # Agent
     agent = DeepResearchAgent(

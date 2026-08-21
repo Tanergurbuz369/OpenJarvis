@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -96,6 +96,48 @@ def test_scan_enforces_google_account_scope_and_hides_deleted_rows(
     assert "WORK_ALLOWED" in messages
     assert "PERSONAL_SECRET" not in messages
     assert "DELETED_SECRET" not in messages
+    store.close()
+
+
+def test_scan_can_narrow_multi_account_boundary(tmp_path: Path) -> None:
+    from openjarvis.core.config import GoogleAccountProfileConfig, JarvisConfig
+    from openjarvis.tools.scan_chunks import ScanChunksTool
+
+    store = KnowledgeStore(str(tmp_path / "multi-account.db"))
+    for account in ("work", "personal"):
+        store.store(
+            f"{account.upper()}_SCAN_MARKER",
+            source="gmail",
+            source_id=f"{account}:message",
+            metadata={"account": account},
+        )
+    config = JarvisConfig()
+    config.connectors.google.accounts = {
+        "work": GoogleAccountProfileConfig(enabled=True),
+        "personal": GoogleAccountProfileConfig(enabled=True),
+        "disabled": GoogleAccountProfileConfig(enabled=False),
+    }
+    engine = _fake_engine()
+    tool = ScanChunksTool(
+        store=store,
+        engine=engine,
+        model="test",
+        accounts=["work", "personal"],
+    )
+
+    with patch("openjarvis.core.config.load_config", return_value=config):
+        work = tool.execute(question="marker", source="gmail:work")
+        outside = tool.execute(question="marker", account="outside")
+        disabled = tool.execute(question="marker", account="disabled")
+
+    assert work.success is True
+    messages = str(engine.generate.call_args.args[0])
+    assert "WORK_SCAN_MARKER" in messages
+    assert "PERSONAL_SCAN_MARKER" not in messages
+    assert outside.success is False
+    assert "outside" in outside.content
+    assert disabled.success is False
+    assert "disabled" in disabled.content
     store.close()
 
 

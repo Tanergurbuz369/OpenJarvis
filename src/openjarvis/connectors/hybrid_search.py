@@ -403,7 +403,7 @@ class HybridSearch:
                 params.extend([source, account])
             clauses.append("(" + " OR ".join(source_clauses) + ")")
 
-        if accounts:
+        if accounts is not None:
             from openjarvis.connectors.store import google_account_scope_sql
 
             account_clause, account_params = google_account_scope_sql(

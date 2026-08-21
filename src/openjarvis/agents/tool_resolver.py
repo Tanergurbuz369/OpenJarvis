@@ -259,6 +259,37 @@ def instantiate_registered_tool(
     return tool_cls()
 
 
+def build_deep_research_tools_from_store(
+    engine: Any,
+    model: str,
+    store: Any,
+) -> list[Any]:
+    """Construct one consistently account-scoped deep-research tool set."""
+    from openjarvis.connectors.retriever import TwoStageRetriever
+    from openjarvis.core.config import load_config
+    from openjarvis.tools.knowledge_search import KnowledgeSearchTool
+    from openjarvis.tools.knowledge_sql import KnowledgeSQLTool
+    from openjarvis.tools.scan_chunks import ScanChunksTool
+    from openjarvis.tools.think import ThinkTool
+
+    config = load_config()
+    account_scope = config.connectors.google.account_scope(
+        config.agent.default_accounts
+    )
+    retriever = TwoStageRetriever(store)
+    return [
+        KnowledgeSearchTool(retriever=retriever),
+        KnowledgeSQLTool(store=store, accounts=account_scope),
+        ScanChunksTool(
+            store=store,
+            engine=engine,
+            model=model,
+            accounts=account_scope,
+        ),
+        ThinkTool(),
+    ]
+
+
 def build_deep_research_tools(
     engine: Any,
     model: str,
@@ -275,34 +306,11 @@ def build_deep_research_tools(
     if not path.exists():
         return []
 
-    from openjarvis.connectors.retriever import TwoStageRetriever
     from openjarvis.connectors.store import KnowledgeStore
-    from openjarvis.tools.knowledge_search import KnowledgeSearchTool
-    from openjarvis.tools.knowledge_sql import KnowledgeSQLTool
-    from openjarvis.tools.scan_chunks import ScanChunksTool
-    from openjarvis.tools.think import ThinkTool
 
     store = KnowledgeStore(str(path))
     try:
-        from openjarvis.core.config import load_config
-
-        config = load_config()
-        account_scope = config.connectors.google.account_scope(
-            config.agent.default_accounts
-        )
-        retriever = TwoStageRetriever(store)
-        tools = [
-            KnowledgeSearchTool(retriever=retriever),
-            KnowledgeSQLTool(store=store, accounts=account_scope),
-            ScanChunksTool(
-                store=store,
-                engine=engine,
-                model=model,
-                accounts=account_scope,
-            ),
-            ThinkTool(),
-        ]
-        return tools
+        return build_deep_research_tools_from_store(engine, model, store)
     except Exception:
         store.close()
         raise
@@ -507,6 +515,7 @@ __all__ = [
     "BROWSER_SUB_TOOLS",
     "ResolvedAgentTools",
     "build_deep_research_tools",
+    "build_deep_research_tools_from_store",
     "ensure_registries_populated",
     "instantiate_registered_tool",
     "resolve_agent_tools",

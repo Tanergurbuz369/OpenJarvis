@@ -163,6 +163,15 @@ def test_hybrid_account_scope_keeps_non_google_and_hides_other_profiles(
     assert "work" in snippets
     assert "shared" in snippets
     assert "personal" not in snippets
+
+    disabled_hits = HybridSearch(store, embedder=None).search(
+        "BOUNDARY_MARKER",
+        accounts=[],
+    )
+    disabled_snippets = "\n".join(hit.content_snippet for hit in disabled_hits)
+    assert "shared" in disabled_snippets
+    assert "work" not in disabled_snippets
+    assert "personal" not in disabled_snippets
     store.close()
 
 

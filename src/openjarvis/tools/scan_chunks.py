@@ -58,7 +58,14 @@ class ScanChunksTool(BaseTool):
                     },
                     "source": {
                         "type": "string",
-                        "description": "Filter by source (e.g. 'granola', 'gmail').",
+                        "description": (
+                            "Filter by source (e.g. 'granola', 'gmail', or "
+                            "'gmail:work' for a named Google profile)."
+                        ),
+                    },
+                    "account": {
+                        "type": "string",
+                        "description": "Narrow the scan to one Google profile alias.",
                     },
                     "doc_type": {
                         "type": "string",
@@ -101,6 +108,7 @@ class ScanChunksTool(BaseTool):
             )
 
         source: str = params.get("source", "")
+        account: str = params.get("account", "")
         doc_type: str = params.get("doc_type", "")
         since: str = params.get("since", "")
         until: str = params.get("until", "")
@@ -110,7 +118,22 @@ class ScanChunksTool(BaseTool):
         where_clauses: List[str] = ["deleted_at IS NULL"]
         sql_params: List[Any] = []
 
-        if self._accounts is not None:
+        try:
+            source, requested_account = self._resolve_account_filter(source, account)
+        except ValueError as exc:
+            return ToolResult(
+                tool_name="scan_chunks",
+                content=str(exc),
+                success=False,
+            )
+
+        if requested_account:
+            where_clauses.append(
+                "CASE WHEN json_valid(metadata) "
+                "THEN json_extract(metadata, '$.account') END = ?"
+            )
+            sql_params.append(requested_account)
+        elif self._accounts is not None:
             from openjarvis.connectors.store import google_account_scope_sql
 
             account_clause, account_params = google_account_scope_sql(self._accounts)
@@ -195,6 +218,38 @@ class ScanChunksTool(BaseTool):
                 "batches_with_findings": len(findings),
             },
         )
+
+    def _resolve_account_filter(self, source: str, account: str) -> tuple[str, str]:
+        """Normalize and intersect a per-call profile with the hard boundary."""
+        from openjarvis.connectors.oauth import (
+            get_provider_for_connector,
+            normalize_account_alias,
+        )
+        from openjarvis.core.config import load_config
+
+        requested = normalize_account_alias(account) if account else ""
+        normalized_source = source.strip()
+        if ":" in normalized_source:
+            connector_id, raw_account = normalized_source.split(":", 1)
+            provider = get_provider_for_connector(connector_id)
+            if provider is not None and provider.name == "google":
+                source_account = normalize_account_alias(raw_account)
+                if requested and requested != source_account:
+                    raise ValueError(
+                        "Conflicting account filters: source and account must match"
+                    )
+                requested = source_account
+                normalized_source = connector_id
+
+        if requested:
+            if not load_config().connectors.google.is_enabled(requested):
+                raise ValueError(f"Google account profile '{requested}' is disabled")
+            if self._accounts is not None and requested not in self._accounts:
+                raise ValueError(
+                    f"Google account profile '{requested}' is outside the "
+                    "configured agent account boundary"
+                )
+        return normalized_source, requested
 
 
 __all__ = ["ScanChunksTool"]
