@@ -108,7 +108,7 @@ uv sync --extra memory-mixedbread
 export MXBAI_API_KEY="..."
 
 # Mirror the local knowledge base into a Mixedbread store (idempotent —
-# re-run after connector syncs to refresh):
+# re-run after connector syncs to refresh and remove deleted local chunks):
 jarvis mixedbread-sync
 ```
 
@@ -121,6 +121,9 @@ The local SQLite knowledge base stays canonical: remote results are
 mapped back to local chunks, so citations, deep links, thread context,
 and person/time/source filters behave exactly as with hybrid search.
 Any API failure falls back to local hybrid search automatically.
+Each sync also deletes stale files previously created by this mirror, so
+content removed from the local knowledge base is not retained remotely.
+Files uploaded independently to the same Mixedbread store are left alone.
 
 !!! warning "Cloud opt-in"
     `jarvis mixedbread-sync` uploads knowledge-base content (email, chat,

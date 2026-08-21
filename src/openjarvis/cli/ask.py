@@ -157,15 +157,22 @@ def _run_research(
 
     from openjarvis.connectors.hybrid_search import build_research_search
 
+    search = build_research_search(store, embedder, load_config())
     agent = ResearchAgent(
         engine=engine,
-        search=build_research_search(store, embedder, load_config()),
+        search=search,
         model=planner_model,
         on_event=on_event,
     )
 
     started = time.monotonic()
-    result = agent.run(query_text)
+    try:
+        result = agent.run(query_text)
+    finally:
+        close_search = getattr(search, "close", None)
+        if callable(close_search):
+            close_search()
+        store.close()
     elapsed = time.monotonic() - started
 
     logger.debug(

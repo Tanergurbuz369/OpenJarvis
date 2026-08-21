@@ -68,20 +68,32 @@ def mixedbread_sync(
         )
 
     try:
-        sync = MixedbreadKnowledgeSync(store, store_name=resolved_store)
-    except (ImportError, ValueError) as exc:
-        raise click.ClickException(str(exc)) from exc
+        try:
+            sync = MixedbreadKnowledgeSync(store, store_name=resolved_store)
+        except (ImportError, ValueError) as exc:
+            raise click.ClickException(str(exc)) from exc
+        try:
+            report = sync.sync(dry_run=dry_run)
+        finally:
+            sync.close()
+    finally:
+        store.close()
 
-    report = sync.sync(dry_run=dry_run)
     if report.dry_run:
         click.echo(f"{report.total} chunk(s) would be uploaded to '{resolved_store}'.")
         return
     click.echo(
         f"Synced {report.uploaded}/{report.total} chunk(s) to '{resolved_store}'"
         + (f" ({report.failed} failed)" if report.failed else "")
+        + (f"; deleted {report.deleted} stale chunk(s)" if report.deleted else "")
+        + (
+            f" ({report.delete_failed} deletion failure(s))"
+            if report.delete_failed
+            else ""
+        )
         + "."
     )
-    if report.failed:
+    if report.failed or report.delete_failed:
         raise SystemExit(1)
 
 

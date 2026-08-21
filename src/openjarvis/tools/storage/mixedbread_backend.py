@@ -91,6 +91,7 @@ class MixedbreadMemory(MemoryBackend):
         not yet see it.
         """
         del db_path
+        self._owns_client = client is None
         if client is None:
             if not (api_key or os.environ.get("MXBAI_API_KEY")):
                 raise ValueError(API_KEY_MISSING_HINT)
@@ -101,6 +102,7 @@ class MixedbreadMemory(MemoryBackend):
         self._wait_for_indexing = wait_for_indexing
         self._store_id: Optional[str] = None
         self._store_lock = threading.Lock()
+        self._closed = False
 
     # ------------------------------------------------------------------
     # MemoryBackend interface
@@ -225,6 +227,20 @@ class MixedbreadMemory(MemoryBackend):
             except NotFoundError:
                 pass
             self._store_id = None
+
+    def close(self) -> None:
+        """Close the SDK client when this backend created it."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> "MixedbreadMemory":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     # ------------------------------------------------------------------
     # Internal helpers

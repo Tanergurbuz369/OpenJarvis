@@ -17,11 +17,11 @@ import pytest
 
 pytest.importorskip("mixedbread")
 
-import httpx
-from mixedbread import ConflictError, NotFoundError
+import httpx  # noqa: E402
+from mixedbread import ConflictError, NotFoundError  # noqa: E402
 
-from openjarvis.core.registry import MemoryRegistry
-from openjarvis.tools.storage.mixedbread_backend import (
+from openjarvis.core.registry import MemoryRegistry  # noqa: E402
+from openjarvis.tools.storage.mixedbread_backend import (  # noqa: E402
     DEFAULT_STORE_NAME,
     MixedbreadMemory,
 )
@@ -108,6 +108,10 @@ class FakeStores:
 class FakeClient:
     def __init__(self, *, existing_store: bool = False) -> None:
         self.stores = FakeStores(existing=existing_store)
+        self.close_calls = 0
+
+    def close(self) -> None:
+        self.close_calls += 1
 
 
 def test_registry_registration_and_db_path() -> None:
@@ -264,6 +268,22 @@ def test_clear_on_missing_store_is_a_noop() -> None:
     backend.clear()
 
     assert client.stores.deleted == []
+
+
+def test_close_only_closes_an_owned_client(monkeypatch: pytest.MonkeyPatch) -> None:
+    from openjarvis.tools.storage import mixedbread_backend as module
+
+    owned = FakeClient()
+    monkeypatch.setattr(module, "Mixedbread", lambda api_key: owned)
+    backend = module.MixedbreadMemory(api_key="test")
+
+    backend.close()
+    backend.close()
+    assert owned.close_calls == 1
+
+    injected = FakeClient()
+    module.MixedbreadMemory(client=injected).close()
+    assert injected.close_calls == 0
 
 
 def test_concurrent_first_use_creates_one_store() -> None:

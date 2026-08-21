@@ -532,6 +532,17 @@ class HybridSearch:
             for r in rows
         ]
 
+    def thread_context(
+        self, thread_id: str, anchor_chunk_id: str
+    ) -> List[Dict[str, Any]]:
+        """Return bounded sibling context for a search hit.
+
+        This public wrapper lets alternate rankers reuse HybridSearch's
+        enrichment contract without depending on a private implementation
+        method.
+        """
+        return self._thread_context(thread_id, anchor_chunk_id)
+
     def _normalise_calendar_timeline_scope(
         self,
         query: str,
@@ -675,9 +686,12 @@ class HybridSearch:
         structured filter is applied directly. Upcoming calendar timelines are
         returned nearest-first; other fallbacks return the most recent rows.
         """
-        time_range, sources, chronological_order, metadata_only = (
-            self._normalise_calendar_timeline_scope(query, time_range, sources)
-        )
+        (
+            time_range,
+            sources,
+            chronological_order,
+            metadata_only,
+        ) = self._normalise_calendar_timeline_scope(query, time_range, sources)
         rank_query = "" if metadata_only else query
         calendar_timeline = chronological_order and _sources_include_gcalendar(sources)
         recall_time_range = None if calendar_timeline else time_range

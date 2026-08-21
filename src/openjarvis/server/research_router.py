@@ -422,9 +422,10 @@ async def _stream_research(
 
         from openjarvis.connectors.hybrid_search import build_research_search
 
+        search = build_research_search(store, embedder, config)
         agent = ResearchAgent(
             engine=engine,
-            search=build_research_search(store, embedder, config),
+            search=search,
             model=model,
             clarify_handler=lambda question: _WEB_CLARIFY_RESPONSE,
             on_event=on_event,
@@ -497,6 +498,16 @@ async def _stream_research(
                 {"type": "error", "message": f"{type(exc).__name__}: {exc}"},
             )
         finally:
+            close_search = getattr(search, "close", None)
+            if callable(close_search):
+                try:
+                    close_search()
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("research: search cleanup failed: %s", exc)
+            try:
+                store.close()
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("research: knowledge store cleanup failed: %s", exc)
             loop.call_soon_threadsafe(queue.put_nowait, _DONE)
 
     task = asyncio.create_task(asyncio.to_thread(_run))

@@ -32,7 +32,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any, Iterator, List, Optional, Sequence, Tuple
 
 from openjarvis.connectors.hybrid_search import (
     HybridSearch,
@@ -45,11 +45,7 @@ from openjarvis.connectors.store import KnowledgeStore
 logger = logging.getLogger(__name__)
 
 DEFAULT_KNOWLEDGE_STORE = "openjarvis-knowledge"
-
-_HYDRATE_COLUMNS = (
-    "id, doc_id, content, source, title, author, participants, "
-    "timestamp, thread_id, chunk_index, url"
-)
+MIRROR_METADATA_KEY = "openjarvis_knowledge_mirror"
 
 
 def _build_client(api_key: Optional[str]) -> Any:
@@ -70,6 +66,8 @@ class SyncReport:
 
     uploaded: int = 0
     failed: int = 0
+    deleted: int = 0
+    delete_failed: int = 0
     total: int = 0
     dry_run: bool = False
 
@@ -93,20 +91,16 @@ class MixedbreadKnowledgeSync:
     ) -> None:
         self._store = store
         self._store_name = store_name
+        self._owns_client = client is None
         self._client = client if client is not None else _build_client(api_key)
         self._max_workers = int(max_workers)
+        self._closed = False
 
     def sync(self, *, dry_run: bool = False) -> SyncReport:
-        """Upload every live chunk; return counts."""
-        rows = self._store._conn.execute(
-            f"""
-            SELECT {_HYDRATE_COLUMNS}
-            FROM knowledge_chunks
-            WHERE deleted_at IS NULL
-            """
-        ).fetchall()
+        """Mirror live chunks and remove stale mirrored cloud files."""
+        rows = self._store.list_live_chunks()
         report = SyncReport(total=len(rows), dry_run=dry_run)
-        if dry_run or not rows:
+        if dry_run:
             return report
 
         from openjarvis.tools.storage.mixedbread_backend import resolve_store_id
@@ -122,6 +116,7 @@ class MixedbreadKnowledgeSync:
                         "source": row["source"] or "",
                         "title": row["title"] or "",
                         "doc_id": row["doc_id"] or "",
+                        MIRROR_METADATA_KEY: True,
                     },
                     external_id=row["id"],
                     overwrite=True,
@@ -135,7 +130,74 @@ class MixedbreadKnowledgeSync:
             outcomes = list(pool.map(_push, rows))
         report.uploaded = sum(outcomes)
         report.failed = len(outcomes) - report.uploaded
+
+        live_ids = {row["id"] for row in rows}
+        try:
+            remote_files = list(self._iter_mirrored_files(store_id))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("mixedbread sync: could not list remote files (%s)", exc)
+            report.delete_failed += 1
+            return report
+
+        for remote in remote_files:
+            external_id = str(getattr(remote, "external_id", "") or "")
+            if not external_id or external_id in live_ids:
+                continue
+            try:
+                self._client.stores.files.delete(
+                    remote.id,
+                    store_identifier=store_id,
+                )
+                report.deleted += 1
+            except Exception as exc:  # noqa: BLE001
+                report.delete_failed += 1
+                logger.warning(
+                    "mixedbread sync: stale chunk %s could not be deleted (%s)",
+                    external_id,
+                    exc,
+                )
         return report
+
+    def _iter_mirrored_files(self, store_id: str) -> Iterator[Any]:
+        """Yield this integration's files across all SDK result pages."""
+        after: Optional[str] = None
+        while True:
+            kwargs: dict[str, Any] = {
+                "store_identifier": store_id,
+                "limit": 100,
+            }
+            if after is not None:
+                kwargs["after"] = after
+            page = self._client.stores.files.list(**kwargs)
+            for remote in getattr(page, "data", ()):
+                metadata = getattr(remote, "metadata", None)
+                if (
+                    isinstance(metadata, dict)
+                    and metadata.get(MIRROR_METADATA_KEY) is True
+                ):
+                    yield remote
+
+            pagination = getattr(page, "pagination", None)
+            if not pagination or not getattr(pagination, "has_more", False):
+                return
+            next_cursor = getattr(pagination, "last_cursor", None)
+            if not next_cursor or next_cursor == after:
+                raise RuntimeError("Mixedbread file listing returned an invalid cursor")
+            after = str(next_cursor)
+
+    def close(self) -> None:
+        """Close the SDK client when this instance created it."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> "MixedbreadKnowledgeSync":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
 
 def _chunk_document(row: Any) -> str:
@@ -181,6 +243,7 @@ class MixedbreadSearch:
         self._store = store
         self._store_name = store_name
         self._agentic = agentic
+        self._owns_client = client is None
         self._client = client if client is not None else _build_client(api_key)
         self._fallback = fallback
         self._overfetch = max(1, int(overfetch))
@@ -189,6 +252,7 @@ class MixedbreadSearch:
         self._helper = HybridSearch(store, None)
         self._store_id: Optional[str] = None
         self._store_lock = threading.Lock()
+        self._closed = False
 
     def search(
         self,
@@ -288,19 +352,12 @@ class MixedbreadSearch:
         """Fetch local rows for *chunk_ids* that pass the structured filters."""
         if not chunk_ids:
             return {}
-        filter_sql, filter_params = self._helper._build_filters(
-            person=person, time_range=time_range, sources=sources
+        return self._store.get_live_chunks(
+            chunk_ids,
+            person=person,
+            time_range=time_range,
+            sources=sources,
         )
-        placeholders = ",".join("?" for _ in chunk_ids)
-        rows = self._store._conn.execute(
-            f"""
-            SELECT {_HYDRATE_COLUMNS}
-            FROM knowledge_chunks
-            WHERE id IN ({placeholders}) AND {filter_sql}
-            """,
-            [*chunk_ids, *filter_params],
-        ).fetchall()
-        return {r["id"]: r for r in rows}
 
     def _hit_from_row(self, row: Any, score: float) -> SearchHit:
         thread_id = row["thread_id"] or ""
@@ -317,9 +374,23 @@ class MixedbreadSearch:
             bm25_score=0.0,
             vector_score=0.0,
             thread_id=thread_id,
-            thread_context=self._helper._thread_context(thread_id, row["id"]),
+            thread_context=self._helper.thread_context(thread_id, row["id"]),
             url=row["url"] or "",
         )
+
+    def close(self) -> None:
+        """Close the SDK client when this instance created it."""
+        if self._closed:
+            return
+        self._closed = True
+        if self._owns_client:
+            self._client.close()
+
+    def __enter__(self) -> "MixedbreadSearch":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
 
     @staticmethod
     def _hit_from_remote(chunk: Any) -> SearchHit:
@@ -341,6 +412,7 @@ class MixedbreadSearch:
 
 __all__ = [
     "DEFAULT_KNOWLEDGE_STORE",
+    "MIRROR_METADATA_KEY",
     "MixedbreadKnowledgeSync",
     "MixedbreadSearch",
     "SyncReport",
