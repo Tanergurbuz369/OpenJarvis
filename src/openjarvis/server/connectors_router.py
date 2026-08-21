@@ -958,7 +958,7 @@ def create_connectors_router():
                     for key in sync_keys.values():
                         engine.reset_checkpoint(key)
                     try:
-                        if not account and attributed_shared_sources:
+                        if not account and provider and provider.name == "google":
                             store.delete_unscoped_sources_with_attribution(
                                 purge_sources,
                                 attributed_shared_sources,

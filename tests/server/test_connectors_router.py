@@ -495,6 +495,60 @@ def test_google_disconnect_purges_attributed_gmail_but_preserves_imap(app) -> No
             _instances.pop(connector_id, None)
 
 
+def test_default_google_disconnect_preserves_named_account_rows(app) -> None:
+    """Disconnecting legacy/default Google auth must not purge named profiles."""
+    from openjarvis.connectors._stubs import SyncStatus
+    from openjarvis.connectors.store import KnowledgeStore
+    from openjarvis.server.connectors_router import _instances
+
+    class FakeConnector:
+        def __init__(self, connector_id):
+            self.connector_id = connector_id
+            self.connected = True
+
+        def is_connected(self):
+            return self.connected
+
+        def disconnect(self):
+            self.connected = False
+
+        def sync_status(self):
+            return SyncStatus()
+
+    google_ids = ("gcalendar", "gcontacts", "gdrive", "gmail", "google_tasks")
+    for connector_id in google_ids:
+        _instances[connector_id] = FakeConnector(connector_id)
+    try:
+        with KnowledgeStore() as store:
+            store.store(
+                content="default Drive sentinel",
+                source="gdrive",
+                doc_type="file",
+                doc_id="gdrive:default-owned",
+                metadata={"connector": "gdrive"},
+            )
+            store.store(
+                content="work Drive sentinel",
+                source="gdrive",
+                doc_type="file",
+                doc_id="gdrive:work-owned",
+                metadata={"connector": "gdrive", "account": "work"},
+            )
+
+        response = app.post("/v1/connectors/gdrive/disconnect")
+        assert response.status_code == 200, response.text
+
+        with KnowledgeStore() as store:
+            remaining = store._conn.execute(
+                "SELECT doc_id FROM knowledge_chunks WHERE source = 'gdrive'"
+            ).fetchall()
+            assert [row["doc_id"] for row in remaining] == ["gdrive:work-owned"]
+            store.delete_by_source("gdrive")
+    finally:
+        for connector_id in google_ids:
+            _instances.pop(connector_id, None)
+
+
 def test_disconnect_restores_checkpoint_when_purge_fails(app, monkeypatch) -> None:
     from openjarvis.connectors.pipeline import IngestionPipeline
     from openjarvis.connectors.store import KnowledgeStore
