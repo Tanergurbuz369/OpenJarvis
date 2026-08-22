@@ -1350,6 +1350,29 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
                     // away between probes.
                     // (No early return — we want to spawn our own.)
                 } else {
+                    // A newly staged key may only enter a child process that
+                    // this desktop instance launched. A listener that merely
+                    // answers /health could be a port squatter; never POST or
+                    // otherwise disclose the pending secret to it.
+                    match pending_rollback.staged_credential_present() {
+                        Ok(true) => {
+                            let mut s = status.lock().await;
+                            s.error = Some(format!(
+                                "An API server is already running on port {}, but OpenJarvis cannot securely apply your new inference API key to a server it did not start. Stop that server, then try setup again.",
+                                JARVIS_PORT,
+                            ));
+                            return;
+                        }
+                        Err(err) => {
+                            let mut s = status.lock().await;
+                            s.error = Some(format!(
+                                "Could not verify the staged inference API key: {}",
+                                err
+                            ));
+                            return;
+                        }
+                        Ok(false) => {}
+                    }
                     // Attach to the existing healthy server. Mark every
                     // pre-spawn step done so the setup UI doesn't show a
                     // half-progress bar (model_ready / ollama_ready stay
@@ -1519,7 +1542,7 @@ async fn boot_backend(backend: SharedBackend, status: SharedStatus) {
     prepare_subprocess_for_appimage(&mut cmd);
 
     // Inject cloud API keys from secure desktop storage.
-    for (key, value) in read_cloud_keys() {
+    for (key, value) in cloud_keys_for_inference(&cfg) {
         cmd.env(&key, &value);
     }
     let jarvis_child = spawn_owned_child(&mut cmd);
@@ -1694,7 +1717,7 @@ async fn reset_inference_source(
     status: tauri::State<'_, SharedStatus>,
 ) -> Result<(), String> {
     backend.lock().await.stop_all().await;
-    remove_inference_config()?;
+    discard_pending_inference_setup()?;
     *status.lock().await = SetupStatus::default();
     Ok(())
 }
@@ -2058,6 +2081,10 @@ async fn submit_savings(
 // ---------------------------------------------------------------------------
 
 const SECURE_KEY_SERVICE: &str = "OpenJarvis Cloud Keys";
+// A first-run custom credential is kept in its own secure-storage slot until
+// the managed backend has passed every readiness gate.  In particular, do not
+// overwrite an existing <ENGINE>_API_KEY while setup can still be cancelled.
+const PENDING_INFERENCE_API_KEY: &str = "OPENJARVIS_PENDING_INFERENCE_API_KEY";
 const MANAGED_CLOUD_KEY_NAMES: &[&str] = &[
     "OPENAI_API_KEY",
     "ANTHROPIC_API_KEY",
@@ -2173,6 +2200,23 @@ fn secure_store_set(key_name: &str, key_value: &str) -> Result<(), String> {
         .map_err(|err| format!("Failed to save {} in secure key storage: {}", key_name, err))
 }
 
+trait InferenceCredentialStore: Send + Sync {
+    fn get(&self, key_name: &str) -> Result<Option<String>, String>;
+    fn set(&self, key_name: &str, key_value: &str) -> Result<(), String>;
+}
+
+struct SystemInferenceCredentialStore;
+
+impl InferenceCredentialStore for SystemInferenceCredentialStore {
+    fn get(&self, key_name: &str) -> Result<Option<String>, String> {
+        secure_store_get(key_name)
+    }
+
+    fn set(&self, key_name: &str, key_value: &str) -> Result<(), String> {
+        secure_store_set(key_name, key_value)
+    }
+}
+
 fn read_legacy_cloud_keys() -> Vec<(String, String)> {
     let path = legacy_cloud_keys_path();
     let mut keys = Vec::new();
@@ -2229,29 +2273,91 @@ fn read_cloud_keys() -> Vec<(String, String)> {
         .collect()
 }
 
-async fn reload_cloud_keys(keys: Vec<(String, String)>) {
-    let reload_url = format!("http://127.0.0.1:{}/v1/cloud/reload", JARVIS_PORT);
+/// Overlay a staged first-run credential onto the child-process environment.
+/// The durable provider key remains untouched until setup is confirmed.
+fn cloud_keys_for_inference(cfg: &InferenceConfig) -> Vec<(String, String)> {
+    let mut keys = read_cloud_keys();
+    let Some(credential) = PendingInferenceCredential::for_config(cfg) else {
+        return keys;
+    };
+    let Ok(Some(staged)) = secure_store_get(PENDING_INFERENCE_API_KEY) else {
+        return keys;
+    };
+    if staged.is_empty() {
+        return keys;
+    }
+    keys.retain(|(name, _)| name != &credential.target_key);
+    keys.push((credential.target_key, staged));
+    keys
+}
+
+async fn reload_cloud_keys_at(reload_url: &str, keys: Vec<(String, String)>) {
     let key_map: serde_json::Map<String, serde_json::Value> = keys
         .into_iter()
         .map(|(key, value)| (key, serde_json::Value::String(value)))
         .collect();
     let _ = reqwest::Client::new()
-        .post(&reload_url)
+        .post(reload_url)
         .json(&serde_json::json!({ "keys": key_map }))
         .timeout(std::time::Duration::from_secs(10))
         .send()
         .await;
 }
 
+/// Hot-reload only a live server process launched and owned by this desktop
+/// process.  A healthy-looking loopback listener is not proof of ownership and
+/// must never receive raw credentials.
+async fn reload_cloud_keys_for_owned_backend(
+    backend: &SharedBackend,
+    status: &SharedStatus,
+    keys: Vec<(String, String)>,
+) {
+    let reload_url = format!("http://127.0.0.1:{}/v1/cloud/reload", JARVIS_PORT);
+    reload_cloud_keys_for_owned_backend_at(backend, status, keys, &reload_url).await;
+}
+
+async fn reload_cloud_keys_for_owned_backend_at(
+    backend: &SharedBackend,
+    status: &SharedStatus,
+    keys: Vec<(String, String)>,
+    reload_url: &str,
+) {
+    if !status.lock().await.server_ready {
+        return;
+    }
+
+    // Keep the manager lock for the request so stop/reset cannot kill our
+    // child and let an unrelated process claim the port between the ownership
+    // check and the credential POST.
+    let mut manager = backend.lock().await;
+    let Some(handle) = manager.jarvis.as_mut() else {
+        return;
+    };
+    if !matches!(handle.child.try_wait(), Ok(None)) {
+        return;
+    }
+    reload_cloud_keys_at(reload_url, keys).await;
+}
+
 /// Save a single cloud API key to secure desktop storage.
 #[tauri::command]
-async fn save_cloud_key(key_name: String, key_value: String) -> Result<(), String> {
+async fn save_cloud_key(
+    key_name: String,
+    key_value: String,
+    backend: tauri::State<'_, SharedBackend>,
+    status: tauri::State<'_, SharedStatus>,
+) -> Result<(), String> {
     let key_value = key_value.trim().to_string();
     secure_store_set(&key_name, &key_value)?;
 
-    // Tell the running server to hot-reload its cloud engine so the user
-    // doesn't need to restart the app after entering an API key.
-    reload_cloud_keys(vec![(key_name, key_value)]).await;
+    // Tell only our own ready child to hot-reload its cloud engine.  Posting to
+    // a merely responsive port would disclose the raw key to a port squatter.
+    reload_cloud_keys_for_owned_backend(
+        backend.inner(),
+        status.inner(),
+        vec![(key_name, key_value)],
+    )
+    .await;
 
     Ok(())
 }
@@ -2300,6 +2406,9 @@ async fn set_inference_source(
         host: host.map(|h| normalize_host(&h)).filter(|h| !h.is_empty()),
         engine: engine.filter(|e| !e.is_empty()),
     };
+    let api_key = api_key
+        .map(|key| key.trim().to_string())
+        .filter(|key| !key.is_empty());
     if let SourceKind::Custom = cfg.kind {
         if cfg.host.is_none() {
             return Err("A server URL is required for a custom endpoint.".into());
@@ -2307,21 +2416,14 @@ async fn set_inference_source(
         if cfg.model.as_deref().unwrap_or("").is_empty() {
             return Err("A model name is required for a custom endpoint.".into());
         }
-        if let Some(key) = api_key.filter(|k| !k.is_empty()) {
-            let engine = cfg
-                .engine
-                .clone()
-                .unwrap_or_else(|| CUSTOM_FALLBACK_ENGINE.to_string());
-            let key_name = engine_api_key_name(&engine);
-            // Save the key before persisting the config: if the key can't be
-            // written, surface it and DON'T record a custom source whose
-            // credential is missing (which would fail confusingly at runtime).
-            save_cloud_key(key_name, key)
-                .await
-                .map_err(|e| format!("Could not store the API key: {}", e))?;
-        }
     }
-    write_inference_config(&cfg)
+
+    let store = SystemInferenceCredentialStore;
+    if cfg.confirmed {
+        persist_confirmed_inference_config(&cfg, api_key.as_deref(), &store)
+    } else {
+        stage_pending_inference_config(&cfg, api_key.as_deref(), &store)
+    }
 }
 
 /// Pull a model via Ollama (called from frontend download button).
@@ -2399,11 +2501,145 @@ fn inference_config_path() -> std::path::PathBuf {
         .join("inference.json")
 }
 
-fn remove_inference_config() -> Result<(), String> {
-    match std::fs::remove_file(inference_config_path()) {
+fn remove_inference_config_at(path: &std::path::Path) -> Result<(), String> {
+    match std::fs::remove_file(path) {
         Ok(()) => Ok(()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(err) => Err(format!("Failed to clear inference config: {}", err)),
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct PendingInferenceCredential {
+    target_key: String,
+}
+
+impl PendingInferenceCredential {
+    fn for_config(cfg: &InferenceConfig) -> Option<Self> {
+        if cfg.confirmed || !matches!(cfg.kind, SourceKind::Custom) {
+            return None;
+        }
+        let engine = cfg.engine.as_deref().unwrap_or(CUSTOM_FALLBACK_ENGINE);
+        Some(Self {
+            target_key: engine_api_key_name(engine),
+        })
+    }
+}
+
+fn restore_credential(
+    store: &dyn InferenceCredentialStore,
+    key_name: &str,
+    previous: Option<&str>,
+) -> Result<(), String> {
+    store.set(key_name, previous.unwrap_or(""))
+}
+
+/// Persist a returning-user source and its optional credential as one logical
+/// transaction. If the config write fails, restore the exact prior key.
+fn persist_confirmed_inference_config(
+    cfg: &InferenceConfig,
+    api_key: Option<&str>,
+    store: &dyn InferenceCredentialStore,
+) -> Result<(), String> {
+    persist_confirmed_inference_config_at(cfg, api_key, store, inference_config_path().as_path())
+}
+
+fn persist_confirmed_inference_config_at(
+    cfg: &InferenceConfig,
+    api_key: Option<&str>,
+    store: &dyn InferenceCredentialStore,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    let Some(api_key) = api_key else {
+        return write_inference_config_at(cfg, path);
+    };
+    let Some(target_key) = (matches!(cfg.kind, SourceKind::Custom))
+        .then(|| engine_api_key_name(cfg.engine.as_deref().unwrap_or(CUSTOM_FALLBACK_ENGINE)))
+    else {
+        return write_inference_config_at(cfg, path);
+    };
+
+    let previous = store
+        .get(&target_key)
+        .map_err(|err| format!("Could not read the existing API key: {}", err))?;
+    store
+        .set(&target_key, api_key)
+        .map_err(|err| format!("Could not store the API key: {}", err))?;
+    if let Err(config_err) = write_inference_config_at(cfg, path) {
+        return match restore_credential(store, &target_key, previous.as_deref()) {
+            Ok(()) => Err(config_err),
+            Err(restore_err) => Err(format!(
+                "{}; additionally could not restore the previous API key: {}",
+                config_err, restore_err
+            )),
+        };
+    }
+    Ok(())
+}
+
+/// Stage a first-run key in a dedicated secure slot. The real provider key is
+/// not touched until the managed server is healthy and setup is confirmed.
+fn stage_pending_inference_config(
+    cfg: &InferenceConfig,
+    api_key: Option<&str>,
+    store: &dyn InferenceCredentialStore,
+) -> Result<(), String> {
+    stage_pending_inference_config_at(cfg, api_key, store, inference_config_path().as_path())
+}
+
+fn stage_pending_inference_config_at(
+    cfg: &InferenceConfig,
+    api_key: Option<&str>,
+    store: &dyn InferenceCredentialStore,
+    path: &std::path::Path,
+) -> Result<(), String> {
+    // A new choice supersedes any interrupted prior attempt. Fail closed if
+    // secure storage cannot clear it: otherwise a stale secret could be bound
+    // to the wrong engine when boot begins.
+    store
+        .set(PENDING_INFERENCE_API_KEY, "")
+        .map_err(|err| format!("Could not clear a pending API key: {}", err))?;
+    if matches!(cfg.kind, SourceKind::Custom) {
+        if let Some(api_key) = api_key {
+            store
+                .set(PENDING_INFERENCE_API_KEY, api_key)
+                .map_err(|err| format!("Could not stage the API key: {}", err))?;
+        }
+    }
+
+    if let Err(config_err) = write_inference_config_at(cfg, path) {
+        return match store.set(PENDING_INFERENCE_API_KEY, "") {
+            Ok(()) => Err(config_err),
+            Err(cleanup_err) => Err(format!(
+                "{}; additionally could not discard the staged API key: {}",
+                config_err, cleanup_err
+            )),
+        };
+    }
+    Ok(())
+}
+
+fn discard_pending_inference_setup() -> Result<(), String> {
+    discard_pending_inference_setup_at(
+        inference_config_path().as_path(),
+        &SystemInferenceCredentialStore,
+    )
+}
+
+fn discard_pending_inference_setup_at(
+    path: &std::path::Path,
+    store: &dyn InferenceCredentialStore,
+) -> Result<(), String> {
+    let key_result = store.set(PENDING_INFERENCE_API_KEY, "");
+    let config_result = remove_inference_config_at(path);
+    match (key_result, config_result) {
+        (Ok(()), Ok(())) => Ok(()),
+        (Err(key_err), Ok(())) => Err(format!("Failed to discard pending API key: {}", key_err)),
+        (Ok(()), Err(config_err)) => Err(config_err),
+        (Err(key_err), Err(config_err)) => Err(format!(
+            "{}; additionally failed to discard pending API key: {}",
+            config_err, key_err
+        )),
     }
 }
 
@@ -2411,21 +2647,57 @@ fn remove_inference_config() -> Result<(), String> {
 /// Confirmed returning-user configs are never removed by a transient outage.
 struct PendingInferenceRollback {
     path: Option<std::path::PathBuf>,
+    credential: Option<PendingInferenceCredential>,
+    credential_store: Option<Arc<dyn InferenceCredentialStore>>,
 }
 
 impl PendingInferenceRollback {
     fn new(cfg: &InferenceConfig) -> Self {
-        Self::at_path(cfg, inference_config_path())
+        Self {
+            path: (!cfg.confirmed).then_some(inference_config_path()),
+            credential: PendingInferenceCredential::for_config(cfg),
+            credential_store: (!cfg.confirmed).then(|| {
+                Arc::new(SystemInferenceCredentialStore) as Arc<dyn InferenceCredentialStore>
+            }),
+        }
     }
 
+    #[cfg(test)]
     fn at_path(cfg: &InferenceConfig, path: std::path::PathBuf) -> Self {
         Self {
             path: (!cfg.confirmed).then_some(path),
+            credential: None,
+            credential_store: None,
+        }
+    }
+
+    #[cfg(test)]
+    fn at_path_with_store(
+        cfg: &InferenceConfig,
+        path: std::path::PathBuf,
+        credential_store: Arc<dyn InferenceCredentialStore>,
+    ) -> Self {
+        Self {
+            path: (!cfg.confirmed).then_some(path),
+            credential: PendingInferenceCredential::for_config(cfg),
+            credential_store: (!cfg.confirmed).then_some(credential_store),
         }
     }
 
     fn disarm(&mut self) {
         self.path = None;
+        self.credential = None;
+        self.credential_store = None;
+    }
+
+    fn staged_credential_present(&self) -> Result<bool, String> {
+        let (Some(_), Some(store)) = (&self.credential, &self.credential_store) else {
+            return Ok(false);
+        };
+        Ok(matches!(
+            store.get(PENDING_INFERENCE_API_KEY)?,
+            Some(value) if !value.is_empty()
+        ))
     }
 
     /// Commit a staged first-run choice only after every readiness gate has
@@ -2444,7 +2716,45 @@ impl PendingInferenceRollback {
             .ok_or_else(|| "Pending inference setup lost its rollback path.".to_string())?;
         let mut confirmed = cfg.clone();
         confirmed.confirmed = true;
-        write_inference_config_at(&confirmed, path)?;
+
+        let mut promoted: Option<(String, Option<String>)> = None;
+        if let (Some(credential), Some(store)) = (&self.credential, &self.credential_store) {
+            if let Some(staged) = store.get(PENDING_INFERENCE_API_KEY)? {
+                if !staged.is_empty() {
+                    let previous = store.get(&credential.target_key)?;
+                    store.set(&credential.target_key, &staged)?;
+                    if let Err(cleanup_err) = store.set(PENDING_INFERENCE_API_KEY, "") {
+                        let restore_result = restore_credential(
+                            store.as_ref(),
+                            &credential.target_key,
+                            previous.as_deref(),
+                        );
+                        return match restore_result {
+                            Ok(()) => Err(cleanup_err),
+                            Err(restore_err) => Err(format!(
+                                "{}; additionally could not restore the previous API key: {}",
+                                cleanup_err, restore_err
+                            )),
+                        };
+                    }
+                    promoted = Some((credential.target_key.clone(), previous));
+                }
+            }
+        }
+
+        if let Err(config_err) = write_inference_config_at(&confirmed, path) {
+            if let (Some((target_key, previous)), Some(store)) = (promoted, &self.credential_store)
+            {
+                return match restore_credential(store.as_ref(), &target_key, previous.as_deref()) {
+                    Ok(()) => Err(config_err),
+                    Err(restore_err) => Err(format!(
+                        "{}; additionally could not restore the previous API key: {}",
+                        config_err, restore_err
+                    )),
+                };
+            }
+            return Err(config_err);
+        }
         *cfg = confirmed;
         self.disarm();
         Ok(())
@@ -2455,6 +2765,11 @@ impl Drop for PendingInferenceRollback {
     fn drop(&mut self) {
         if let Some(path) = self.path.take() {
             let _ = std::fs::remove_file(path);
+        }
+        if self.credential.take().is_some() {
+            if let Some(store) = self.credential_store.take() {
+                let _ = store.set(PENDING_INFERENCE_API_KEY, "");
+            }
         }
     }
 }
@@ -2941,14 +3256,24 @@ async fn hide_overlay() -> Result<(), String> {
 pub fn run() {
     let backend: SharedBackend = Arc::new(Mutex::new(BackendManager::default()));
     let configured_at_launch = match read_configured_inference_config() {
-        Some(cfg) if cfg.confirmed => Some(cfg),
+        Some(cfg) if cfg.confirmed => {
+            // A confirmed source never consumes a staging slot. Clear any
+            // remnant from a prior interrupted config write.
+            let _ = secure_store_set(PENDING_INFERENCE_API_KEY, "");
+            Some(cfg)
+        }
         Some(_) => {
             // A prior first-run boot was interrupted or failed before it
             // reached ready. Never replay that unvalidated choice on launch.
-            let _ = remove_inference_config();
+            let _ = discard_pending_inference_setup();
             None
         }
-        None => None,
+        None => {
+            // Clean up a stage left behind if the process exited between the
+            // secure-store write and the pending config write.
+            let _ = secure_store_set(PENDING_INFERENCE_API_KEY, "");
+            None
+        }
     };
     let initial_status = configured_at_launch
         .as_ref()
@@ -3099,15 +3424,67 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::{
-        boot_plan, default_local_model, format_extension_import_failure,
-        format_missing_rust_toolchain, format_port_unavailable, format_uv_sync_failure,
-        format_uv_sync_spawn_error, matching_installed_model, model_names_match, normalize_host,
-        parse_configured_inference_config, parse_ollama_model_names, preferred_installed_model,
-        should_persist_resolved_model, spawn_owned_child, startup_installed_model,
-        upsert_engine_host, uv_sync_stderr_tail, BackendManager, InferenceConfig,
+        boot_plan, default_local_model, discard_pending_inference_setup_at,
+        format_extension_import_failure, format_missing_rust_toolchain, format_port_unavailable,
+        format_uv_sync_failure, format_uv_sync_spawn_error, matching_installed_model,
+        model_names_match, normalize_host, parse_configured_inference_config,
+        parse_ollama_model_names, persist_confirmed_inference_config_at, preferred_installed_model,
+        reload_cloud_keys_for_owned_backend_at, should_persist_resolved_model, spawn_owned_child,
+        stage_pending_inference_config_at, startup_installed_model, upsert_engine_host,
+        uv_sync_stderr_tail, BackendManager, InferenceConfig, InferenceCredentialStore,
         PendingInferenceRollback, SetupStatus, SourceKind, DESKTOP_UV_SYNC_COMMAND,
+        PENDING_INFERENCE_API_KEY,
     };
+    use std::collections::HashMap;
     use std::path::Path;
+    use std::sync::Mutex as StdMutex;
+
+    #[derive(Default)]
+    struct MemoryCredentialStore {
+        values: StdMutex<HashMap<String, String>>,
+    }
+
+    impl MemoryCredentialStore {
+        fn put(&self, key_name: &str, key_value: &str) {
+            self.values
+                .lock()
+                .unwrap()
+                .insert(key_name.to_string(), key_value.to_string());
+        }
+
+        fn value(&self, key_name: &str) -> Option<String> {
+            self.values.lock().unwrap().get(key_name).cloned()
+        }
+    }
+
+    impl InferenceCredentialStore for MemoryCredentialStore {
+        fn get(&self, key_name: &str) -> Result<Option<String>, String> {
+            Ok(self.value(key_name))
+        }
+
+        fn set(&self, key_name: &str, key_value: &str) -> Result<(), String> {
+            let mut values = self.values.lock().unwrap();
+            if key_value.is_empty() {
+                values.remove(key_name);
+            } else {
+                values.insert(key_name.to_string(), key_value.to_string());
+            }
+            Ok(())
+        }
+    }
+
+    fn unique_test_root(label: &str) -> std::path::PathBuf {
+        let nonce = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!(
+            "openjarvis-{}-{}-{}",
+            label,
+            std::process::id(),
+            nonce
+        ))
+    }
 
     #[test]
     fn tail_returns_whole_string_when_shorter_than_limit() {
@@ -3541,6 +3918,224 @@ mod tests {
             serde_json::from_str(&std::fs::read_to_string(&committed_path).unwrap()).unwrap();
         assert!(committed.confirmed);
         std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn pending_custom_key_is_staged_without_overwriting_existing_key() {
+        let root = unique_test_root("stage-inference-key");
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("inference.json");
+        let store = MemoryCredentialStore::default();
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        let cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+
+        stage_pending_inference_config_at(&cfg, Some("new-key"), &store, &path).unwrap();
+
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        assert_eq!(
+            store.value(PENDING_INFERENCE_API_KEY).as_deref(),
+            Some("new-key")
+        );
+        let staged: InferenceConfig =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(!staged.confirmed);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn cancelled_pending_setup_discards_stage_and_preserves_existing_key() {
+        let root = unique_test_root("cancel-inference-key");
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("inference.json");
+        let store = std::sync::Arc::new(MemoryCredentialStore::default());
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        let cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+        stage_pending_inference_config_at(&cfg, Some("new-key"), store.as_ref(), &path).unwrap();
+
+        {
+            let _rollback =
+                PendingInferenceRollback::at_path_with_store(&cfg, path.clone(), store.clone());
+        }
+
+        assert!(!path.exists());
+        assert_eq!(store.value(PENDING_INFERENCE_API_KEY), None);
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn successful_pending_setup_promotes_stage_only_at_confirmation() {
+        let root = unique_test_root("confirm-inference-key");
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("inference.json");
+        let store = std::sync::Arc::new(MemoryCredentialStore::default());
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        let mut cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+        stage_pending_inference_config_at(&cfg, Some("new-key"), store.as_ref(), &path).unwrap();
+
+        {
+            let mut rollback =
+                PendingInferenceRollback::at_path_with_store(&cfg, path.clone(), store.clone());
+            rollback.confirm(&mut cfg).unwrap();
+        }
+
+        assert!(cfg.confirmed);
+        assert_eq!(store.value(PENDING_INFERENCE_API_KEY), None);
+        assert_eq!(store.value("LMSTUDIO_API_KEY").as_deref(), Some("new-key"));
+        let confirmed: InferenceConfig =
+            serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+        assert!(confirmed.confirmed);
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_confirmation_restores_existing_key_and_leaves_no_stage() {
+        let root = unique_test_root("failed-confirm-inference-key");
+        let path = root.join("config-is-a-directory");
+        std::fs::create_dir_all(&path).unwrap();
+        let store = std::sync::Arc::new(MemoryCredentialStore::default());
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        store.put(PENDING_INFERENCE_API_KEY, "new-key");
+        let mut cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+
+        let result = {
+            let mut rollback =
+                PendingInferenceRollback::at_path_with_store(&cfg, path.clone(), store.clone());
+            rollback.confirm(&mut cfg)
+        };
+
+        assert!(result.is_err());
+        assert!(!cfg.confirmed);
+        assert_eq!(store.value(PENDING_INFERENCE_API_KEY), None);
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_pending_config_write_discards_new_stage() {
+        let root = unique_test_root("failed-stage-inference-key");
+        let path = root.join("config-is-a-directory");
+        std::fs::create_dir_all(&path).unwrap();
+        let store = MemoryCredentialStore::default();
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        let cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: false,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+
+        let result = stage_pending_inference_config_at(&cfg, Some("new-key"), &store, &path);
+
+        assert!(result.is_err());
+        assert_eq!(store.value(PENDING_INFERENCE_API_KEY), None);
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn failed_confirmed_config_write_restores_existing_key() {
+        let root = unique_test_root("failed-confirmed-inference-key");
+        let path = root.join("config-is-a-directory");
+        std::fs::create_dir_all(&path).unwrap();
+        let store = MemoryCredentialStore::default();
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        let cfg = InferenceConfig {
+            kind: SourceKind::Custom,
+            confirmed: true,
+            model: Some("m".into()),
+            host: Some("http://localhost:1234".into()),
+            engine: Some("lmstudio".into()),
+        };
+
+        let result = persist_confirmed_inference_config_at(&cfg, Some("new-key"), &store, &path);
+
+        assert!(result.is_err());
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn reset_discards_pending_config_and_stage_without_touching_existing_key() {
+        let root = unique_test_root("reset-inference-key");
+        std::fs::create_dir_all(&root).unwrap();
+        let path = root.join("inference.json");
+        std::fs::write(&path, "pending").unwrap();
+        let store = MemoryCredentialStore::default();
+        store.put("LMSTUDIO_API_KEY", "existing-key");
+        store.put(PENDING_INFERENCE_API_KEY, "new-key");
+
+        discard_pending_inference_setup_at(&path, &store).unwrap();
+
+        assert!(!path.exists());
+        assert_eq!(store.value(PENDING_INFERENCE_API_KEY), None);
+        assert_eq!(
+            store.value("LMSTUDIO_API_KEY").as_deref(),
+            Some("existing-key")
+        );
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn ready_port_squatter_never_receives_cloud_key_without_owned_child() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        listener.set_nonblocking(true).unwrap();
+        let reload_url = format!("http://{}/v1/cloud/reload", listener.local_addr().unwrap());
+        let backend = std::sync::Arc::new(tokio::sync::Mutex::new(BackendManager::default()));
+        let mut setup_status = SetupStatus::default();
+        setup_status.server_ready = true;
+        let status = std::sync::Arc::new(tokio::sync::Mutex::new(setup_status));
+
+        reload_cloud_keys_for_owned_backend_at(
+            &backend,
+            &status,
+            vec![("OPENAI_API_KEY".into(), "must-not-leak".into())],
+            &reload_url,
+        )
+        .await;
+
+        let error = listener.accept().unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::WouldBlock);
     }
 
     #[tokio::test]
