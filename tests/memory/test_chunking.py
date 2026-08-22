@@ -15,6 +15,55 @@ def test_whitespace_only_returns_empty():
     assert chunk_text("   \n\n  ") == []
 
 
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"chunk_size": 0}, "chunk_size must be an integer >= 1"),
+        ({"chunk_size": -1}, "chunk_size must be an integer >= 1"),
+        ({"chunk_size": True}, "chunk_size must be an integer >= 1"),
+        ({"chunk_overlap": -1}, "chunk_overlap must be an integer >= 0"),
+        ({"chunk_overlap": False}, "chunk_overlap must be an integer >= 0"),
+    ],
+)
+def test_invalid_chunk_config_is_rejected(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        ChunkConfig(**kwargs)
+
+
+def test_mutated_invalid_config_is_rejected_before_chunking():
+    cfg = ChunkConfig(chunk_size=2, chunk_overlap=0, min_chunk_size=1)
+    cfg.chunk_size = 0
+
+    with pytest.raises(ValueError, match="chunk_size"):
+        chunk_text("a b", config=cfg)
+
+
+def test_valid_boundary_sweep_preserves_content_size_and_offsets():
+    tokens = [f"t{i}" for i in range(23)]
+    text = " ".join(tokens[:3]) + "\n\n" + " ".join(tokens[3:])
+
+    for chunk_size in range(1, 9):
+        for chunk_overlap in range(0, 11):
+            chunks = chunk_text(
+                text,
+                config=ChunkConfig(
+                    chunk_size=chunk_size,
+                    chunk_overlap=chunk_overlap,
+                    min_chunk_size=1,
+                ),
+            )
+            emitted = []
+            for chunk in chunks:
+                chunk_tokens = chunk.content.split()
+                emitted.extend(chunk_tokens)
+                assert 0 < len(chunk_tokens) <= chunk_size
+                assert tokens[chunk.offset : chunk.offset + len(chunk_tokens)] == (
+                    chunk_tokens
+                )
+            assert set(tokens).issubset(emitted)
+            assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
+
+
 def test_short_text_single_chunk():
     # Need >= 50 words (default min_chunk_size)
     words = [f"word{i}" for i in range(60)]

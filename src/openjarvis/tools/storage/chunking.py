@@ -19,6 +19,24 @@ class ChunkConfig:
     chunk_overlap: int = 64
     min_chunk_size: int = 50
 
+    def __post_init__(self) -> None:
+        self.validate()
+
+    def validate(self) -> None:
+        """Reject values that cannot produce a finite, well-formed chunk stream."""
+        if (
+            isinstance(self.chunk_size, bool)
+            or not isinstance(self.chunk_size, int)
+            or self.chunk_size < 1
+        ):
+            raise ValueError("chunk_size must be an integer >= 1")
+        if (
+            isinstance(self.chunk_overlap, bool)
+            or not isinstance(self.chunk_overlap, int)
+            or self.chunk_overlap < 0
+        ):
+            raise ValueError("chunk_overlap must be an integer >= 0")
+
 
 @dataclass(slots=True)
 class Chunk:
@@ -57,10 +75,14 @@ def chunk_text(
     -------
     List of :class:`Chunk` objects, in order.
     """
+    cfg = config or ChunkConfig()
+    # ``ChunkConfig`` is intentionally mutable for API compatibility. Recheck
+    # here so a caller cannot construct a valid config, mutate it, and enter a
+    # non-progress loop during ingestion.
+    cfg.validate()
+
     if not text or not text.strip():
         return []
-
-    cfg = config or ChunkConfig()
 
     # Split into paragraphs (double newline)
     paragraphs = [p for p in text.split("\n\n") if p.strip()]
