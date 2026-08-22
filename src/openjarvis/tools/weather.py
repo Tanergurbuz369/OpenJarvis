@@ -8,11 +8,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-from openjarvis.connectors.weather import (
-    WeatherAPIError,
-    WeatherConnector,
-    fetch_weather,
-)
+from openjarvis.connectors import weather as weather_connector
 from openjarvis.core.credentials import get_tool_credential
 from openjarvis.core.registry import ToolRegistry
 from openjarvis.core.types import ToolResult
@@ -94,11 +90,11 @@ class WeatherTool(BaseTool):
         self,
         *,
         api_key: str | None = None,
-        connector: WeatherConnector | None = None,
+        connector: weather_connector.WeatherConnector | None = None,
         config: Any = None,
     ) -> None:
         self._api_key = (api_key or "").strip() or None
-        self._connector = connector or WeatherConnector()
+        self._connector = connector or weather_connector.WeatherConnector()
         self._config_error = False
         if config is None:
             try:
@@ -253,7 +249,7 @@ class WeatherTool(BaseTool):
             )
 
         try:
-            current_payload, forecast_payload = fetch_weather(
+            current_payload, forecast_payload = weather_connector.fetch_weather(
                 api_key=api_key,
                 location=location,
                 units=units,
@@ -261,7 +257,7 @@ class WeatherTool(BaseTool):
                 include_forecast=include_forecast,
                 forecast_count=math.ceil(forecast_hours / 3),
             )
-        except WeatherAPIError as exc:
+        except weather_connector.WeatherAPIError as exc:
             return self._failure(f"Weather lookup failed: {exc}")
         except Exception:
             # Do not stringify unknown provider exceptions: request exceptions
