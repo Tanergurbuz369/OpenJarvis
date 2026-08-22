@@ -173,6 +173,15 @@ class QueueActionTool(BaseTool):
 
     def execute(self, **params: Any) -> ToolResult:
         store = self._store or get_store()
+        if params["action_type"] == "sms_draft_reply":
+            fields, error = _validated_sms_draft_fields(params.get("payload", {}))
+            if fields is None:
+                return ToolResult(
+                    tool_name=self.spec.name,
+                    success=False,
+                    content=error,
+                    metadata={"status": "rejected"},
+                )
         action = store.queue_action(
             action_type=params["action_type"],
             description=params["description"],
@@ -436,15 +445,26 @@ class ExecutePendingActionsTool(BaseTool):
 # ---------------------------------------------------------------------------
 
 
+def _validated_sms_draft_fields(
+    payload: Dict[str, Any],
+) -> Tuple[Optional[Tuple[str, str]], str]:
+    """Return normalized SMS draft fields or an actionable validation error."""
+    raw_contact = payload.get("contact")
+    raw_body = payload.get("body")
+    if not isinstance(raw_contact, str) or not raw_contact.strip():
+        return None, "Missing contact in payload"
+    if not isinstance(raw_body, str) or not raw_body.strip():
+        return None, "Missing body in payload"
+    return (raw_contact.strip(), raw_body.strip()), ""
+
+
 def _exec_sms_draft_reply(payload: Dict[str, Any]) -> Tuple[bool, str]:
     """Validate and surface a draft without sending it."""
 
-    contact = str(payload.get("contact", "")).strip()
-    body = str(payload.get("body", "")).strip()
-    if not contact:
-        return False, "Missing contact in payload"
-    if not body:
-        return False, "Missing body in payload"
+    fields, error = _validated_sms_draft_fields(payload)
+    if fields is None:
+        return False, error
+    contact, body = fields
     return True, f"Draft for {contact}: {body[:80]}"
 
 
